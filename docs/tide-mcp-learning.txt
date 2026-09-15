@@ -1078,5 +1078,146 @@ restart was required):
     check is blocked.
 
 ============================================================
+ISSUE 012 - TideCloak browser authentication redirects required
+            Tide-specific Playwright handling
+============================================================================
+
+Date: 2026-09-15
+Project feature: Playwright E2E foundation for the frontend
+                 (feature/playwright-e2e) - local-tidecloak test group
+                 covering unauthenticated route protection and login/logout.
+Tide component: TideCloak client-side login() redirect chain; the local
+                 realm's brokered hand-off to the external Tide-hosted
+                 sign-in page.
+Status: Workaround available and Open for Tide
+Impact: Development time and correctness - initial E2E tests were built on a
+        wrong assumption about where the browser ends up, and had to be
+        rewritten around the observed real redirect chain.
+Priority for Tide: Medium
+
+1. What happened
+The first version of the Playwright local-tidecloak tests assumed that an
+unauthenticated visit to a protected route would either stay on the
+application's own origin or return to a login page still hosted on the
+local TideCloak origin, using a standard Keycloak-style
+"/protocol/openid-connect/auth" path as the final resting place. All five
+tests (three route-protection tests, one login test, one logout test) timed
+out waiting for that assumption to become true, even though the protected
+pages had already correctly left the application.
+
+2. How to reproduce or observe it
+  * Run a local TideCloak realm whose identity provider is Tide itself
+    (a Tide-linked realm, as created by the realm wizard in ISSUE 005).
+  * Visit an unauthenticated protected route in a Next.js app using
+    @tidecloak/nextjs, where the route triggers login() directly.
+  * Record the resulting browser navigation chain instead of assuming the
+    final URL.
+
+3. Evidence
+  * All five initial Playwright tests timed out on a `page.waitForURL`
+    assertion that expected the browser to remain on, or return to, the
+    local TideCloak origin.
+  * The recorded navigation chain showed the browser correctly leaving the
+    protected application route, passing through the local TideCloak
+    realm's own authorization endpoint, and then being brokered onward to a
+    separate, externally-hosted HTTPS sign-in page - an HTTPS authentication
+    page on a hostname ending in .tideprotocol.com.
+  * The external authentication URL carried temporary session information,
+    a state value and cryptographic signatures. None of that URL, its query
+    string, or any session/state/signature value is reproduced here or in
+    any test file - only protocol, hostname suffix and path shape are
+    checked in code.
+  * One earlier manual /settings attempt returned a browser-level
+    ERR_NETWORK_CHANGED error while five Playwright workers were running
+    concurrently. A later run of the same three route tests, also with five
+    workers, passed all three. Root cause of the earlier ERR_NETWORK_CHANGED
+    is NOT confirmed, and parallel workers are NOT confirmed as the cause -
+    the passing five-worker run is evidence against, not for, that theory.
+
+4. Root cause
+Confirmed: the tests' assumption about the final destination of the login
+redirect was wrong. The real chain is local-app -> local TideCloak
+authorization endpoint -> external Tide-hosted HTTPS sign-in page, not
+local-app -> local TideCloak login form.
+Root cause of the one-off ERR_NETWORK_CHANGED observation is not confirmed.
+
+5. Investigation
+  * Inspected Playwright's generated error-context files and failure
+    screenshots from the failing run (kept out of version control; not
+    reproduced in this entry).
+  * Confirmed from those artifacts that each protected route did leave the
+    application origin, and that the final page reached was an HTTPS
+    authentication page on a hostname ending in .tideprotocol.com, with a
+    "Sign in" heading, username/password fields, and a sign-in control -
+    but with markup different from the standard Keycloak selectors
+    initially assumed, and no elements exposing stable accessible names or
+    roles for those fields/control.
+  * Confirmed the local TideCloak authorization endpoint DID appear earlier
+    in the same navigation chain, showing the local realm's own protection
+    step still runs before the external hand-off.
+  * Compared a failing five-worker /settings run (ERR_NETWORK_CHANGED) with
+    a later, passing five-worker run of the same three tests; concluded the
+    single failure is not enough evidence to blame concurrent workers.
+
+6. Solution or workaround (confirmed)
+  * Rewrote the route-protection tests to:
+      - record the main-frame navigation chain (origin + path only, no
+        query string) as the test runs, instead of assuming a destination;
+      - assert the chain passed through the local TideCloak authorization
+        endpoint for the realm (matched by path shape, not a hardcoded realm
+        name);
+      - assert the final page uses HTTPS and a hostname ending in the
+        expected Tide domain suffix;
+      - assert the protected application content never rendered;
+      - never hardcode, log, or store the temporary session URL, state
+        value, or signatures.
+  * Kept automated login/logout tests, but changed them to always skip with
+    a clear explanation: the external Tide sign-in page's username/password
+    fields and sign-in control could not be located using genuine,
+    non-guessed accessible selectors from the available evidence, so no
+    reliable automated interaction could be written without guessing. A
+    manual login/logout verification procedure was documented instead of a
+    guessed, potentially-flaky automated one.
+  * Set the local-tidecloak Playwright project to run with a single worker
+    (`playwright test --project=local-tidecloak --workers=1`) as a
+    reliability precaution for real authentication sessions, without
+    claiming this fixes a confirmed concurrency bug.
+
+7. Verification
+  * Re-ran the corrected local-tidecloak test group with one worker and no
+    credentials: 3 route-protection tests passed, 2 login/logout tests
+    skipped with their explanatory message, output confirmed
+    "Running 5 tests using 1 worker".
+  * Manual login, protected dashboard access after login, and logout were
+    separately verified successfully by the developer outside of
+    Playwright, confirming the underlying application behaviour is correct
+    even though it is not (yet) automated end-to-end.
+
+8. Value for Tide
+  * Why it matters: the Tide MCP material previously reviewed for this
+    project did not describe this redirect chain - the
+    local-realm-to-external-Tide-hosted-page hand-off that occurs once a
+    realm is linked to Tide as its identity provider - so a builder writing
+    browser automation has no way to predict where the browser will end up,
+    or that the final page is on a different, external origin with markup
+    different from the standard Keycloak selectors initially assumed.
+  * Suggested Tide improvement: provide a TideCloak Playwright/E2E guide
+    covering:
+      - the local TideCloak to external Tide-hosted redirect chain;
+      - the expected authentication domain(s) a test should assert against;
+      - safe URL and query-string redaction guidance for tests and logs;
+      - stable accessible selectors for the Tide-hosted sign-in page (or a
+        documented test-automation contract for it);
+      - guidance on provisioning a dedicated, disposable test account for
+        automated E2E login;
+      - recommended worker/concurrency settings for tests that open real
+        authentication sessions.
+  * How it helps others: any builder adding browser-based E2E tests against
+    a Tide-linked realm hits the same wrong assumption this entry started
+    from; a documented redirect chain and selector contract would let them
+    write correct tests on the first attempt instead of discovering the
+    real behaviour through failing tests.
+
+============================================================
 END OF LOG
 ==========
