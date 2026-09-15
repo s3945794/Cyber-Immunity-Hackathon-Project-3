@@ -3,7 +3,21 @@ pre-commit:
     validate-placeholders:
       run: node scripts/validate-placeholders.js
 
-    format:
+    format-root:
+      glob: '{,**/}*.{ts,tsx,js,jsx,mjs,cjs,json,md,css,yml,yaml}'
+      exclude: '(^frontend/|^backend/|node_modules|\.next|\.git|pnpm-lock\.yaml)'
+      run: pnpm exec prettier --ignore-unknown --write {staged_files}
+      stage_fixed: true
+
+    format-frontend:
+      root: 'frontend/'
+      glob: '{,**/}*.{ts,tsx,js,jsx,mjs,cjs,json,md,css,yml,yaml}'
+      exclude: '(node_modules|\.next|\.git|pnpm-lock\.yaml)'
+      run: pnpm exec prettier --ignore-unknown --write {staged_files}
+      stage_fixed: true
+
+    format-backend:
+      root: 'backend/'
       glob: '{,**/}*.{ts,tsx,js,jsx,mjs,cjs,json,md,css,yml,yaml}'
       exclude: '(node_modules|\.next|\.git|pnpm-lock\.yaml)'
       run: pnpm exec prettier --ignore-unknown --write {staged_files}

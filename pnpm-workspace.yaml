@@ -20,6 +20,10 @@ overrides:
 
 allowBuilds:
   '@firebase/util': true
+  # postinstall only copies silent-check-sso.html into public/ — we add that file
+  # by hand (see frontend/public/), so the script is not needed. See the Tide
+  # learning log (ISSUE: @tidecloak/js postinstall vs pnpm build-script policy).
+  '@tidecloak/js': false
   esbuild: true
   lefthook: true
   protobufjs: true

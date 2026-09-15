@@ -1,27 +1,15 @@
 import type { Metadata } from 'next'
-import { getServerSession } from '@/actions/auth.actions'
-import { adminDb } from '@/lib/firebase/admin'
 
 export const metadata: Metadata = {
   title: 'Dashboard',
 }
 
-export default async function DashboardPage() {
-  const session = await getServerSession()
-  const profileSnap = session ? await adminDb.collection('users').doc(session.uid).get() : null
-
-  const displayName = profileSnap?.exists
-    ? (profileSnap.data()?.displayName as string | null)
-    : null
-  const greetingName = displayName ?? session?.email ?? null
-
+export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Welcome back{greetingName ? `, ${greetingName}` : ''}.
-        </p>
+        <p className="mt-1 text-sm text-zinc-500">Welcome back.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

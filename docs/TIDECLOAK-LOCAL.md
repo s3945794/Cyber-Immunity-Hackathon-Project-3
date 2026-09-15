@@ -8,11 +8,12 @@
 > runtime test; they are **not** yet reproducible by a script on another
 > machine.
 
-| Phase  | Scope                                                                                                                                                                                       | Status                                                        |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| **1A** | Local TideCloak **container foundation** + **interactive** realm / client provisioning via the built-in wizard                                                                              | **Done and verified by manual runtime test**                  |
-| **1B** | The four SOC **roles**, adapter-JSON export, and a **reproducible / scripted** realm setup                                                                                                  | Not started — scripted path still unavailable (see ISSUE 005) |
-| Later  | **Frontend + backend authentication migration** — TideCloak provider, redirect handler, route/API protection, server-side JWT verification, role checks; removal of Firebase Authentication | Not started                                                   |
+| Phase  | Scope                                                                                                                                                                            | Status                                                        |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| **1A** | Local TideCloak **container foundation** + **interactive** realm / client provisioning via the built-in wizard                                                                   | **Done and verified by manual runtime test**                  |
+| **1B** | The four SOC **roles**, adapter-JSON export, and a **reproducible / scripted** realm setup                                                                                       | Not started — scripted path still unavailable (see ISSUE 005) |
+| **2A** | **Frontend** TideCloak auth — provider, `login`/`logout`, `/auth/redirect` callback, `useAuth()` state; Firebase Auth UI + `__session` cookie removed (`feature/tidecloak-auth`) | Code complete — not yet run against a live realm              |
+| **2B** | **Backend / server-side** — route & API protection, server-side JWT verification, RBAC (`feature/tidecloak-protect`)                                                             | Not started                                                   |
 
 ---
 
