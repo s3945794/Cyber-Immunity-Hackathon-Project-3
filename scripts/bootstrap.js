@@ -55,12 +55,12 @@ function checkFirebaserc() {
   const def = data?.projects?.default
   if (typeof def === 'string' && (def.includes('REPLACE_WITH') || def.trim() === '')) {
     warn(
-      '.firebaserc still uses a template project id. Set projects.default to your real Firebase project id (same as NEXT_PUBLIC_FIREBASE_PROJECT_ID).',
+      '.firebaserc still uses a template project id. Set projects.default to your real Firebase project id (same as NEXT_PUBLIC_FIREBASE_PROJECT_ID).'
     )
   }
 }
 
-console.log('\n=== Garage boilerplate: bootstrap (first-time local setup) ===\n')
+console.log('\n=== SOC Incident Report Protection: bootstrap (first-time local setup) ===\n')
 
 console.log('Installing dependencies…\n')
 runPnpm(['install'])

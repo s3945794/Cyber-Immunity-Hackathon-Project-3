@@ -2,100 +2,119 @@
 
 ## System Overview
 
-The system has three parts: a **Next.js frontend** (deployed to Vercel), an **Express API** running as a single Cloud Function (optional — deployed to Firebase, requires the Blaze plan), and **Firebase services** (Auth, Firestore) used by both. There's no local emulator — the app always talks to a real Firebase project (use a free project for local dev).
+The system has three parts: a **Next.js frontend** (deployed to Vercel) using **TideCloak** for
+frontend authentication, an **Express API** running as a single Cloud Function (optional —
+deployed to Firebase, requires the Blaze plan), and **Firestore** used by both. There's no local
+Firestore emulator — the app always talks to a real Firebase project (use a free project for
+local dev). TideCloak runs in a local Docker container for development — see
+`docs/TIDECLOAK-LOCAL.md`.
 
-The frontend is server-rendered (Server Actions, `proxy.ts`, `/api/auth/session`), so it needs a server host. It deploys to Vercel's free Hobby tier rather than Firebase Hosting, since Firebase Hosting's SSR integration runs on Cloud Functions/Cloud Run and requires Blaze even at zero traffic — Vercel doesn't.
+The frontend is server-rendered (Server Actions), so it needs a server host. It deploys to
+Vercel's free Hobby tier rather than Firebase Hosting, since Firebase Hosting's SSR integration
+runs on Cloud Functions/Cloud Run and requires Blaze even at zero traffic — Vercel doesn't.
 
 ```mermaid
 flowchart TB
     subgraph Browser
         UI["Next.js 16 App<br/>(React 19)"]
+        TC["TideCloak SDK<br/>(front-channel tokens)"]
     end
 
     subgraph Vercel
         SC["Server Components<br/>+ Server Actions"]
-        PROXY["proxy.ts<br/>(session cookie check)"]
     end
 
     subgraph "Cloud Functions v2"
         API["Express API (fat lambda)<br/>/api/*"]
-        MW["auth middleware<br/>(verifies ID token)"]
+        MW["auth middleware<br/>(verifies Firebase ID token — legacy, not yet TideCloak)"]
+    end
+
+    subgraph TideCloak
+        TCS["TideCloak realm<br/>(local Docker container)"]
     end
 
     subgraph Firebase
-        AUTH["Authentication"]
         FS[("Firestore")]
     end
 
-    UI -->|"page requests"| PROXY --> SC
-    UI -->|"sign-in, realtime data<br/>(client SDK)"| AUTH
+    UI -->|"login / logout / callback"| TC --> TCS
     UI -->|"onSnapshot subscriptions<br/>(guarded by security rules)"| FS
-    UI -->|"Bearer ID token"| MW --> API
+    UI -->|"Bearer Firebase ID token (legacy)"| MW --> API
     SC -->|"Admin SDK"| FS
-    SC -->|"verify session cookie"| AUTH
     API -->|"Admin SDK"| FS
 ```
 
-Three paths to the data, each with its own guard:
+Current paths to the data:
 
-| Path | Used for | Guarded by |
-|------|----------|-----------|
-| Browser → Firestore (client SDK) | Real-time subscriptions in Client Components | **Firestore security rules** |
-| Browser → Server Component / Server Action | SSR pages, mutations | **`requireAuth()`** (verifies session cookie) |
-| Browser → Express API | Business logic endpoints, heavy operations | **auth middleware** (verifies ID token) |
+| Path                                       | Used for                                     | Guarded by                                                                                                  |
+| ------------------------------------------ | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Browser → Firestore (client SDK)           | Real-time subscriptions in Client Components | **Firestore security rules**                                                                                |
+| Browser → TideCloak                        | Login, logout, silent SSO                    | **TideCloak realm** — front-channel PKCE flow                                                               |
+| Browser → Server Component / Server Action | SSR pages, mutations                         | **Not yet enforced** — `requireAuth()` is a fail-closed stub pending `feature/tidecloak-protect`            |
+| Browser → Express API                      | Business logic endpoints                     | **auth middleware** — currently verifies a **Firebase ID token** (legacy, not yet reconnected to TideCloak) |
 
-## Authentication Flow
+## Authentication Flow (current — TideCloak frontend, front-channel)
 
 ```mermaid
 sequenceDiagram
     participant B as Browser
-    participant FA as Firebase Auth
+    participant TC as TideCloak realm
     participant N as Next.js server
-    participant A as Express API
 
-    B->>FA: signInWithEmail / signInWithGoogle (client SDK)
-    FA-->>B: ID token (auto-refreshes hourly)
-    B->>N: POST /api/auth/session (ID token)
-    N->>FA: createSessionCookie()
-    N-->>B: HttpOnly __session cookie (14 days)
+    B->>TC: login() — redirect to TideCloak sign-in
+    TC-->>B: redirect to /auth/redirect with authorization code
+    B->>TC: PKCE token exchange (useAuthCallback)
+    TC-->>B: access token + ID token (held in the browser)
 
-    Note over B,N: Page loads from now on
-    B->>N: GET /dashboard (cookie sent automatically)
-    N->>N: proxy.ts — cookie present? (optimistic, redirect only)
-    N->>FA: requireAuth() → verifySessionCookie(cookie, true)
-    N-->>B: rendered page
-
-    Note over B,A: API calls from now on
-    B->>A: GET /api/... with Authorization: Bearer (ID token)
-    A->>FA: verifyIdToken()
-    A-->>B: JSON response
+    Note over B: Client-side auth state from now on
+    B->>B: useAuth() reads token claims (uid, username, email)
+    B->>N: GET /dashboard (no server-side check yet)
+    N-->>B: rendered page — (dashboard) layout gates client-side via useAuth()
 ```
 
-**Critical:** the cookie check in `proxy.ts` is optimistic (presence only) — it exists to redirect signed-out users, not to enforce security. Cryptographic verification always happens server-side near the data: `requireAuth()` in Server Actions/Components, the auth middleware in the API.
+**Current state:** TideCloak issues front-channel (browser-held) tokens. The `(dashboard)`
+layout's client-side gate via `useAuth()` is a **UX gate only** — it does not verify anything
+server-side. There is currently **no cryptographic verification** of the TideCloak session on
+the server: `getServerSession()` always returns `null`, and `requireAuth()` always redirects.
+Server-side TideCloak JWT verification is planned but not yet implemented (`feature/tidecloak-protect`).
+
+**Removed:** Firebase Authentication (client SDK), the `__session` cookie, `proxy.ts`, and the
+`/api/auth/session` route no longer exist in this codebase.
 
 ## Request Patterns
 
 ### Server-rendered page (Server Component)
+
 1. Browser requests `/dashboard`
-2. `proxy.ts` checks the `__session` cookie → redirects to `/auth/signin` if absent
-3. Server Component calls `requireAuth()`, then fetches Firestore data via the Admin SDK
+2. The `(dashboard)` layout is a Client Component that gates via `useAuth()` — a UX redirect
+   only, not a security boundary
+3. Server Components under it fetch Firestore data via the Admin SDK, unauthenticated at the
+   server layer today
 4. HTML is streamed to the browser
 
 ### Client-side real-time data
+
 1. Client Component mounts
 2. `useCollection()` hook subscribes to Firestore via `onSnapshot`
 3. UI updates live as data changes — Firestore security rules enforce access
 
 ### Mutation (Server Action)
+
 1. Client Component calls a Server Action
-2. Action calls `requireAuth()`, validates input with Zod, writes via the Admin SDK
-3. Returns `ActionResult<T>` — `{ success, error?, data? }`
+2. Action calls `requireAuth()` — currently always redirects (fail-closed stub); real TideCloak
+   verification is future work
+3. Once implemented: validates input with Zod, writes via the Admin SDK, returns
+   `ActionResult<T>` — `{ success, error?, data? }`
 
 ### API call (Cloud Functions)
-1. Client obtains a Firebase ID token: `user.getIdToken()`
+
+1. Client obtains a **Firebase ID token** (legacy path, not yet connected to TideCloak)
 2. Client sends `Authorization: Bearer {token}` to `/api/...`
-3. Auth middleware verifies the token and attaches `req.user`
+3. Auth middleware verifies the Firebase token and attaches `req.user`
 4. Route handler validates input with Zod, queries Firestore, responds
+
+This backend flow is unchanged from before the TideCloak migration and is **not** currently
+reachable from the TideCloak-authenticated frontend — see `docs/BACKEND.md`.
 
 ## Backend Structure
 
@@ -115,16 +134,14 @@ Two conventions are enforced by a CI test (`backend/tests/unit/conventions.test.
 ## Security Model
 
 - **Firestore rules** — last line of defence; always assume clients are untrusted
-- **Cloud Functions** — verify ID tokens in the auth middleware for every protected route
-- **Next.js Server Actions** — call `requireAuth()` (verifies session cookie via Admin SDK) before any data operation
-- **proxy.ts** — optimistic cookie check only; used for redirects, never for security
+- **TideCloak** — frontend login/logout/callback/silent SSO; browser-held front-channel tokens
+- **Cloud Functions** — verify **Firebase ID tokens** in the auth middleware for every protected route (legacy — not yet TideCloak)
+- **Next.js Server Actions** — call `requireAuth()`, currently a fail-closed stub; real TideCloak verification is not yet implemented
+- **`(dashboard)` layout** — client-side `useAuth()` gate only; a UX redirect, not a security boundary
 
-See `docs/SECURITY.md` for the full layered security reference.
+See `docs/SECURITY.md` for the full layered security reference, including what is and isn't implemented today.
 
 ## Key Design Decisions
-
-**Why session cookies instead of just Firebase client auth?**
-Next.js route interception (`proxy.ts`) runs on a lightweight runtime and cannot use the Firebase Admin SDK. The session cookie gives it a cheap signal for redirects. Cryptographic trust is established server-side near the data.
 
 **Why feature-based folder structure?**
 Features in `frontend/src/features/{feature}/` are self-contained — types, hooks, actions, and components together. Deleting a feature means deleting one folder. Cross-feature imports are explicit violations of the intended boundary.

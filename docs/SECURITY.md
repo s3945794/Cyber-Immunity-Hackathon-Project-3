@@ -4,15 +4,22 @@
 
 Security is enforced in layers — each layer is independent so a failure in one does not collapse the others.
 
-| Layer | Mechanism |
-|-------|-----------|
-| Claude Code | Deny rules, PreToolUse/PostToolUse hooks |
-| HTTP | helmet headers, CORS policy, rate limiting, body size cap |
-| Auth | Firebase token verification, session cookies |
-| API | Zod input validation, per-user access control |
-| Data | Firestore security rules (default deny, field allowlists) |
-| CI | `pnpm audit --audit-level=high` on every PR |
-| Dependencies | Dependabot weekly PRs for backend, frontend, and Actions |
+| Layer                       | Mechanism                                                 | Status                                                    |
+| --------------------------- | --------------------------------------------------------- | --------------------------------------------------------- |
+| Claude Code                 | Deny rules, PreToolUse/PostToolUse hooks                  | Active                                                    |
+| HTTP                        | helmet headers, CORS policy, rate limiting, body size cap | Active                                                    |
+| Auth (frontend)             | TideCloak login/logout/callback, front-channel tokens     | Active                                                    |
+| Auth (server-side)          | TideCloak JWT verification, RBAC                          | **Not implemented** — `feature/tidecloak-protect`         |
+| Auth (backend API, current) | Firebase ID token verification                            | Active, but **legacy** — not yet reconnected to TideCloak |
+| API                         | Zod input validation, per-user access control             | Active                                                    |
+| Data                        | Firestore security rules (default deny, field allowlists) | Active                                                    |
+| CI                          | `pnpm audit --audit-level=high` on every PR               | Active                                                    |
+| Dependencies                | Dependabot weekly PRs for backend, frontend, and Actions  | Active                                                    |
+
+**Read this before assuming any request is authenticated:** the `(dashboard)` layout's client-side
+`useAuth()` gate is a UX redirect only. No Server Action or Server Component currently verifies a
+TideCloak session server-side — `getServerSession()` always returns `null`. Treat every server-side
+code path as unauthenticated until `feature/tidecloak-protect` lands.
 
 There's no automated secret scanner in this boilerplate. Never commit `.env`, service account JSON, or any real API key — `.env` is gitignored and `.env.example` ships with empty values for exactly this reason.
 
@@ -24,15 +31,15 @@ There's no automated secret scanner in this boilerplate. Never commit `.env`, se
 
 `helmet()` is the first middleware in `backend/src/app.ts`. It sets:
 
-| Header | Value | Protection |
-|--------|-------|------------|
-| `X-Content-Type-Options` | `nosniff` | MIME-type sniffing |
-| `X-Frame-Options` | `SAMEORIGIN` | Clickjacking |
-| `X-DNS-Prefetch-Control` | `off` | DNS prefetch leakage |
-| `Strict-Transport-Security` | `max-age=15552000` | Downgrade attacks |
-| `Referrer-Policy` | `no-referrer` | Referrer leakage |
-| `X-Download-Options` | `noopen` | IE download exploit |
-| `X-Permitted-Cross-Domain-Policies` | `none` | Flash/Acrobat cross-domain |
+| Header                              | Value              | Protection                 |
+| ----------------------------------- | ------------------ | -------------------------- |
+| `X-Content-Type-Options`            | `nosniff`          | MIME-type sniffing         |
+| `X-Frame-Options`                   | `SAMEORIGIN`       | Clickjacking               |
+| `X-DNS-Prefetch-Control`            | `off`              | DNS prefetch leakage       |
+| `Strict-Transport-Security`         | `max-age=15552000` | Downgrade attacks          |
+| `Referrer-Policy`                   | `no-referrer`      | Referrer leakage           |
+| `X-Download-Options`                | `noopen`           | IE download exploit        |
+| `X-Permitted-Cross-Domain-Policies` | `none`             | Flash/Acrobat cross-domain |
 
 ### CORS
 
@@ -41,6 +48,7 @@ app.use(cors({ origin: process.env.CORS_ORIGIN ?? false }))
 ```
 
 `false` is the default — all cross-origin requests are denied unless `CORS_ORIGIN` is explicitly set. Set it in `backend/.env` / Cloud Functions environment config:
+
 ```bash
 CORS_ORIGIN=https://your-app.web.app
 ```
@@ -52,6 +60,7 @@ Do not set `CORS_ORIGIN=*` in production.
 Global limiter: 300 requests per 15 minutes per IP address. Responses use RFC 9457 format with `status: 429`.
 
 Add per-endpoint tighter limits on sensitive operations (auth flows, writes):
+
 ```typescript
 import rateLimit from 'express-rate-limit'
 
@@ -73,22 +82,49 @@ Request body is capped at `1mb` (`express.json({ limit: '1mb' })`). Routes that 
 
 ## HTTP Security (Frontend)
 
-Security headers are set in `next.config.ts` for all routes:
+Security headers are set in `frontend/next.config.ts`, split between normal app pages and the
+TideCloak silent-SSO page:
 
-| Header | Value |
-|--------|-------|
-| `X-Content-Type-Options` | `nosniff` |
-| `X-Frame-Options` | `DENY` |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` |
-| `Permissions-Policy` | camera, microphone, geolocation, browsing-topics all disabled |
+| Header                    | Normal pages                                                                                   | `/silent-check-sso.html`                                         |
+| ------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `X-Content-Type-Options`  | `nosniff`                                                                                      | `nosniff`                                                        |
+| `X-Frame-Options`         | `DENY`                                                                                         | `SAMEORIGIN` (must be framable same-origin by the TideCloak SDK) |
+| `Content-Security-Policy` | `frame-src 'self' *` (permissive for local dev — tighten to known Tide domains for production) | `frame-ancestors 'self'`                                         |
+| `Referrer-Policy`         | `strict-origin-when-cross-origin`                                                              | same                                                             |
+| `Permissions-Policy`      | camera, microphone, geolocation, browsing-topics all disabled                                  | same                                                             |
 
-**Content Security Policy (CSP)** is an opt-in per project — it requires nonce injection in `proxy.ts` and a tuned `script-src` for each project's third-party scripts. See Next.js CSP docs when adding it to a client project.
+See `docs/tide-mcp-learning.txt` (ISSUE 011) for why the silent-SSO page needs a different
+`X-Frame-Options` value than the rest of the app.
+
+**Content Security Policy (CSP)** beyond the `frame-src`/`frame-ancestors` split above is an
+opt-in per project — it requires nonce injection and a tuned `script-src` for each project's
+third-party scripts. Note: the previous guidance to inject nonces in `proxy.ts` is stale —
+`proxy.ts` has been removed. See Next.js CSP docs for the current middleware-based approach if
+this is added later.
 
 ---
 
 ## Authentication
 
-### Backend token flow
+### Frontend — TideCloak (current)
+
+```
+Browser → login() → redirect to TideCloak realm
+TideCloak → /auth/redirect with authorization code
+Browser → useAuthCallback() → PKCE token exchange → access token + ID token (held in browser)
+useAuth() → { user, authenticated, loading, login, logout } (read from token claims)
+```
+
+- Tokens are front-channel (browser-held), not stored in a server-side session
+- The `(dashboard)` layout's `useAuth()` gate is a **client-side UX redirect only** — it is not
+  a security control
+- **No server-side verification of the TideCloak session exists yet.** `getServerSession()`
+  always returns `null`; `requireAuth()` always redirects. Treat every Server Action and Server
+  Component as unauthenticated until `feature/tidecloak-protect` implements real verification
+- Removed: the Firebase Authentication client SDK, the `__session` cookie, `proxy.ts`, and the
+  `/api/auth/session` route
+
+### Backend API — Firebase ID token (legacy, not yet TideCloak)
 
 ```
 Client → Authorization: Bearer <Firebase ID token>
@@ -98,33 +134,24 @@ authMiddleware → verifyToken(token) → AuthUser { uid, email, claims }
 Route handler → (req as AuthenticatedRequest).user.uid
 ```
 
-- Tokens expire after 1 hour — the client SDK auto-refreshes via `getIdToken()`
-- The `verifyToken` function is injected — pass a mock to `createApp()` in tests without touching Firebase
+- This flow **predates the TideCloak migration** and has not been reconnected to the
+  TideCloak-authenticated frontend. It is not currently reachable from the app's own sign-in
+  flow. See `docs/BACKEND.md`
+- Tokens expire after 1 hour — this assumed a Firebase client SDK that auto-refreshed via
+  `getIdToken()`, which no longer exists in the frontend
+- The `verifyToken` function is injected — pass a mock to `createApp()` in tests without
+  touching Firebase
 - Invalid or expired tokens always return `401 Unauthorized` with RFC 9457 format
+- Replacing this with TideCloak JWT verification (EdDSA) is `feature/tidecloak-protect`
 
-### Frontend session flow
+### Revoking sessions (Firebase, legacy path only)
 
-```
-Sign in → Firebase ID token → POST /api/auth/session
-                               ↓
-                     adminAuth.createSessionCookie()
-                               ↓
-                     HttpOnly __session cookie (14 days)
-                               ↓
-proxy.ts: optimistic presence check → gates protected routes
-Server Actions: requireAuth() → adminAuth.verifySessionCookie(cookie, true)
-```
+To force-sign-out a user under the current Firebase-token backend flow:
 
-- `requireAuth()` checks token revocation (`checkRevoked: true`) on every Server Action call
-- The `proxy.ts` cookie check is **optimistic** (presence only) — real cryptographic verification always happens in Server Actions near the data
-- Session cookies are `HttpOnly`, `Secure` (production), `SameSite=Strict`
-
-### Revoking sessions
-
-To force-sign-out a user:
 1. `adminAuth.revokeRefreshTokens(uid)` — revokes all tokens
-2. Delete the Firestore `users/{uid}` session record if used
-3. Subsequent `verifySessionCookie(cookie, true)` calls will return 401
+2. Subsequent token verifications with `checkRevoked: true` will fail
+
+TideCloak session revocation is not yet wired into this project.
 
 ---
 
@@ -133,10 +160,12 @@ To force-sign-out a user:
 All route handlers validate `req.body` with Zod before use. Use `.strict()` to reject unknown fields (prevents mass assignment):
 
 ```typescript
-const schema = z.object({
-  title: z.string().min(1).max(200),
-  content: z.string().min(1),
-}).strict()  // rejects any fields not listed above
+const schema = z
+  .object({
+    title: z.string().min(1).max(200),
+    content: z.string().min(1),
+  })
+  .strict() // rejects any fields not listed above
 
 const parsed = schema.safeParse(req.body)
 if (!parsed.success) {
@@ -154,7 +183,12 @@ Never access `req.body.field` directly without a preceding Zod parse.
 Errors use RFC 9457 Problem Details format — no stack traces, no internal details leak to the client:
 
 ```json
-{ "type": "https://httpstatuses.io/404", "title": "Not Found", "status": 404, "detail": "User 'abc' not found" }
+{
+  "type": "https://httpstatuses.io/404",
+  "title": "Not Found",
+  "status": 404,
+  "detail": "User 'abc' not found"
+}
 ```
 
 - `HttpError` (`backend/src/lib/errors.ts`) is the only error type that reaches the client
@@ -179,14 +213,15 @@ Rules in `firebase/firestore.rules` are the **last line of defence**. Write rule
 ### Helper functions
 
 ```javascript
-isAuthenticated()      // request.auth != null && uid != null
-isOwner(uid)           // isAuthenticated() && request.auth.uid == uid
-isAdmin()              // reads users/{uid}.role == 'admin' (one Firestore read)
-hasCustomClaim(claim)  // request.auth.token[claim] == true (no Firestore read — use for performance)
-notDeleted()           // deletedAt field is null or absent
+isAuthenticated() // request.auth != null && uid != null
+isOwner(uid) // isAuthenticated() && request.auth.uid == uid
+isAdmin() // reads users/{uid}.role == 'admin' (one Firestore read)
+hasCustomClaim(claim) // request.auth.token[claim] == true (no Firestore read — use for performance)
+notDeleted() // deletedAt field is null or absent
 ```
 
 Use `hasCustomClaim('admin')` in high-read collections to avoid the Firestore read that `isAdmin()` triggers. Set custom claims via Admin SDK:
+
 ```typescript
 await adminAuth.setCustomUserClaims(uid, { admin: true })
 ```
@@ -206,6 +241,7 @@ Never deploy rules from a local machine in production — use the CI deploy work
 `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` is a base64-encoded service account JSON.
 
 **Rules:**
+
 - Never commit this value to version control
 - Never use a `NEXT_PUBLIC_` prefix (exposes it to the browser)
 - Store in Cloud Functions environment config for production
@@ -213,23 +249,25 @@ Never deploy rules from a local machine in production — use the CI deploy work
 - Rotate immediately if accidentally exposed: Firebase Console → Project Settings → Service Accounts → Revoke key
 
 **GCP Secret Manager (recommended for production):**
+
 ```typescript
 // Instead of env var, fetch from Secret Manager at cold start
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager'
 ```
+
 Document this as a per-client hardening step in the forking guide.
 
 ---
 
 ## Environment Variables
 
-| Classification | Rule |
-|----------------|------|
-| `NEXT_PUBLIC_*` | Safe for the browser — Firebase client config only |
-| Server secrets | Never use `NEXT_PUBLIC_` prefix — enforced by Claude Code hook |
-| `.env.local` / `.env` | Gitignored — never commit |
-| `.env.example` | Committed with empty values — safe |
-| `*.pem`, `*.p12`, `*.key` | Blocked from Claude Code reads via `permissions.deny` |
+| Classification            | Rule                                                           |
+| ------------------------- | -------------------------------------------------------------- |
+| `NEXT_PUBLIC_*`           | Safe for the browser — Firebase client config only             |
+| Server secrets            | Never use `NEXT_PUBLIC_` prefix — enforced by Claude Code hook |
+| `.env.local` / `.env`     | Gitignored — never commit                                      |
+| `.env.example`            | Committed with empty values — safe                             |
+| `*.pem`, `*.p12`, `*.key` | Blocked from Claude Code reads via `permissions.deny`          |
 
 ---
 
@@ -253,15 +291,15 @@ Dependabot opens weekly PRs for outdated packages in `/backend`, `/frontend`, an
 
 The `.claude/settings.json` hooks enforce security patterns automatically:
 
-| Hook | What it blocks |
-|------|---------------|
-| `permissions.deny` | `rm -rf`, force push, `--no-verify`, `npm`/`yarn`, `curl \| bash`, `wget \| bash`, reading `~/.ssh/**`, `~/.aws/**`, `*.pem`, `*.p12`, `*.key` |
-| PostToolUse — `any` block | TypeScript `any` in all forms: `: any`, `as any`, `any[]`, `Promise<any>`, `Record<string, any>` |
-| PostToolUse — secret prefix | `NEXT_PUBLIC_` on service accounts, admin keys, or private keys |
-| PostToolUse — env files | Blocks writing `.env.local`, `.env.production`, `.env.staging` (only `.env.example` is safe) |
-| PostToolUse — admin.ts | Blocks `'use client'` in `lib/firebase/admin.ts` |
-| PreToolUse — firebase deploy | Blocks `firebase deploy` — requires explicit user approval |
-| PreToolUse — git push | Blocks direct pushes to `main` |
+| Hook                         | What it blocks                                                                                                                                 |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `permissions.deny`           | `rm -rf`, force push, `--no-verify`, `npm`/`yarn`, `curl \| bash`, `wget \| bash`, reading `~/.ssh/**`, `~/.aws/**`, `*.pem`, `*.p12`, `*.key` |
+| PostToolUse — `any` block    | TypeScript `any` in all forms: `: any`, `as any`, `any[]`, `Promise<any>`, `Record<string, any>`                                               |
+| PostToolUse — secret prefix  | `NEXT_PUBLIC_` on service accounts, admin keys, or private keys                                                                                |
+| PostToolUse — env files      | Blocks writing `.env.local`, `.env.production`, `.env.staging` (only `.env.example` is safe)                                                   |
+| PostToolUse — admin.ts       | Blocks `'use client'` in `lib/firebase/admin.ts`                                                                                               |
+| PreToolUse — firebase deploy | Blocks `firebase deploy` — requires explicit user approval                                                                                     |
+| PreToolUse — git push        | Blocks direct pushes to `main`                                                                                                                 |
 
 ---
 
@@ -285,19 +323,20 @@ Requires App Check initialization in the frontend Firebase SDK. Document the set
 
 ### Content Security Policy
 
-Blocks XSS by restricting which scripts can execute. Requires nonce injection in `proxy.ts` — see the Next.js CSP guide. The `script-src` directive must be tuned to each project's third-party scripts (Google Analytics, Intercom, etc.).
+Blocks XSS by restricting which scripts can execute. `frontend/next.config.ts` already sets a
+`frame-src`/`frame-ancestors` split for the TideCloak silent-SSO page (see HTTP Security above);
+a broader `script-src` policy would need nonce injection via Next.js middleware and must be
+tuned to each project's third-party scripts (Google Analytics, Intercom, etc.). `proxy.ts` no
+longer exists in this project — do not follow older guidance that references it.
 
 ### GCP Secret Manager
 
 Replaces environment variable secrets with Secret Manager references. Recommended for projects with strict compliance requirements (SOC 2, ISO 27001, healthcare).
 
-### Email Enumeration Protection
-
-Enable in Firebase Auth: Authentication → Settings → Email enumeration protection. Returns generic errors for sign-in attempts on non-existent accounts (prevents user discovery).
-
 ### Firestore Field-Level Validation
 
 Add `request.resource.data.size() == N` and field-type checks on write rules for collections that store sensitive data:
+
 ```javascript
 allow create: if request.resource.data.keys().hasOnly(['title', 'uid', '_schemaVersion'])
   && request.resource.data.title is string

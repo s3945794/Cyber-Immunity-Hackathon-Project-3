@@ -4,7 +4,7 @@
 
 Before writing any non-trivial code, always research first:
 
-0. **Check the Codebase Map in CLAUDE.md first** — for standard feature work (collections, pages, actions, routes) it lists every building block and its exports; a worked example lives in `docs/TUTORIAL-WALKTHROUGH.md`. Only fall through to searching when the map doesn't cover what you need.
+0. **Check the Codebase Map in CLAUDE.md first** — for standard feature work (collections, pages, actions, routes) it lists every building block and its exports. Only fall through to searching when the map doesn't cover what you need.
 1. **Search the codebase** — the pattern may already exist (`Grep`, `Glob`)
 2. **Check library docs** — use `context7` MCP ("use context7") for Next.js, Firebase, Tailwind, Zod APIs before guessing
 3. **Check `docs/`** — architecture decisions, schema, env vars, testing conventions are documented
@@ -23,6 +23,7 @@ Before writing any non-trivial code, always research first:
 ## Planning for non-trivial tasks
 
 For tasks that touch more than 3 files or involve architectural decisions:
+
 1. State your plan before writing code
 2. Get confirmation before executing
 3. Use `/checkpoint create` before starting, and after each logical milestone
