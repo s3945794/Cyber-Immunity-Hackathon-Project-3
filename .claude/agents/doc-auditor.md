@@ -38,9 +38,10 @@ For `CLAUDE.md`, check that:
 4. For every code example or file reference in a skill or doc, read the actual source and compare
 5. Check that `frontend/src/lib/firebase/admin.ts` uses `server-only`, matches the admin SDK pattern in docs
 6. Check that `frontend/src/lib/firebase/client.ts` singleton pattern matches documented examples
-7. Check that `frontend/src/middleware.ts` or `frontend/src/proxy.ts` (Next.js 16+) matches documented auth flow
-8. Check that `backend/src/middleware/auth.ts` and `backend/src/middleware/errorHandler.ts` match documented patterns
+7. Check that `frontend/src/providers/AuthProvider.tsx` and `frontend/src/lib/tidecloak/config.ts` match the documented TideCloak auth flow. **Do not assume `frontend/src/proxy.ts` or `frontend/src/middleware.ts` exist** — both have been removed as part of the TideCloak migration; flag any doc/skill that still references either as stale, don't treat their absence as something to fix by recreating them.
+8. Check that `backend/src/middleware/auth.ts` and `backend/src/middleware/errorHandler.ts` match documented patterns — this middleware verifies Firebase ID tokens and is documented as legacy/transitional (`docs/BACKEND.md`); don't flag it as "should already be TideCloak" unless a doc claims it already is
 9. Cross-check that all skills reference correct file paths for this repo structure
+10. Check that no doc or skill instructs recreating removed files/features: `frontend/src/lib/firebase/auth.ts`, `frontend/src/proxy.ts`, `frontend/src/app/api/auth/session/route.ts`, or `frontend/src/features/notes/`
 
 ## Report format
 

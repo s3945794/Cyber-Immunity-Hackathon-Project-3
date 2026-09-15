@@ -14,11 +14,11 @@ Next.js 16 App Router with React 19, TypeScript (strict), and Tailwind CSS v4.
 
 ### Route Groups
 
-| Group | Path | Purpose |
-|-------|------|---------|
-| `(auth)` | `/auth/signin`, `/auth/signup` | Minimal centered layout, no sidebar |
-| `(dashboard)` | `/dashboard`, `/profile`, `/settings` | Full app shell with sidebar + navbar |
-| _(root)_ | `/` | Landing/marketing page |
+| Group         | Path                                             | Purpose                                                                                                                                                             |
+| ------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `(auth)`      | `/auth/signin`, `/auth/signup`, `/auth/redirect` | Minimal centered layout, no sidebar. `signin`/`signup` are "Continue with TideCloak" buttons — no password fields. `/auth/redirect` is the TideCloak PKCE callback. |
+| `(dashboard)` | `/dashboard`, `/profile`, `/settings`            | Full app shell with sidebar + navbar. Gated **client-side only** via `useAuth()` — a UX redirect, not a security boundary.                                          |
+| _(root)_      | `/`                                              | Landing/marketing page                                                                                                                                              |
 
 ### Feature Modules
 
@@ -39,12 +39,12 @@ Use the `/new-feature` skill to scaffold this structure.
 
 ### Data Fetching
 
-| Context | Method | When |
-|---------|--------|------|
-| Server Component | `adminDb.collection(...).get()` | One-time, SSR |
-| Client Component | `useCollection()` hook | Real-time subscription |
-| Server Action | `adminDb` + `requireAuth()` | Mutations |
-| Route Handler | `adminAuth.verifySessionCookie()` | Session management |
+| Context          | Method                            | When                   |
+| ---------------- | --------------------------------- | ---------------------- |
+| Server Component | `adminDb.collection(...).get()`   | One-time, SSR          |
+| Client Component | `useCollection()` hook            | Real-time subscription |
+| Server Action    | `adminDb` + `requireAuth()`       | Mutations              |
+| Route Handler    | `adminAuth.verifySessionCookie()` | Session management     |
 
 ### Styling
 
@@ -59,21 +59,24 @@ import { cn } from '@/lib/utils'
 <div className="bg-white dark:bg-zinc-900" />
 ```
 
-## Authentication UI Flow
+## Authentication UI Flow (TideCloak)
 
 ```
-/ (landing) → /auth/signin → /dashboard
+/ (landing) → /auth/signin → login() redirects to TideCloak → /auth/redirect (PKCE callback) → /dashboard
                   ↓
-             /auth/signup → /dashboard
+             /auth/signup → same TideCloak flow (no password fields — TideCloak owns account creation)
 ```
 
-- `AuthProvider` listens to `onAuthStateChanged` — wraps the root layout
-- `useAuth()` hook accesses auth state in any Client Component
-- `requireAuth()` Server Action gates Server Components in the dashboard layout
+- `AuthProvider` wraps `<TideCloakProvider>` (config from `NEXT_PUBLIC_TIDECLOAK_*`) and bridges the SDK onto `useAuth()`
+- `useAuth()` hook → `{ user: { uid, username, email } | null, authenticated, loading, login, logout }`
+- The `(dashboard)` layout gates **client-side only** via `useAuth()` — spinner while `loading`, calls `login()` when `!authenticated`. This is a UX gate, not server-side security.
+- `requireAuth()` (a Server Action) is currently a **fail-closed stub** — it always redirects to `/auth/signin`. It does not yet verify a real TideCloak session server-side. Server-side verification is `feature/tidecloak-protect`.
+- Removed: Firebase Authentication (client SDK), the `__session` cookie, `proxy.ts`, and `/api/auth/session`.
 
 ## Adding a Page
 
 Use the `/new-page` skill. Key checklist:
+
 - Correct route group (`(auth)` or `(dashboard)`)
 - Export `metadata` object
 - Call `requireAuth()` in protected pages

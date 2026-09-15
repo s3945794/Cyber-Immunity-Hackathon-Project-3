@@ -29,13 +29,21 @@ backend/
 
 ## Routes
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/health` | No | Health check |
+| Method | Path          | Auth | Description  |
+| ------ | ------------- | ---- | ------------ |
+| GET    | `/api/health` | No   | Health check |
 
 Add new routes with the `/add-route` Claude Code skill.
 
-## Authentication
+## Authentication (legacy — transitional)
+
+> **Status:** the frontend now uses TideCloak for authentication (see `docs/ARCHITECTURE.md`,
+> `docs/SECURITY.md`). This backend's auth middleware still verifies **Firebase ID tokens** and
+> has **not** been reconnected to TideCloak. It is kept as-is, unmodified, as a transitional
+> reference — it is not currently reachable from the app's own TideCloak-authenticated sign-in
+> flow. Replacing it with TideCloak JWT verification (EdDSA) and RBAC belongs to
+> `feature/tidecloak-protect`. Do not treat this middleware as protecting anything the frontend
+> actually calls today.
 
 All routes under `/api/` (except `/api/health`) require a valid Firebase ID token:
 
@@ -57,11 +65,14 @@ One error type — `HttpError` from `src/lib/errors.ts`. Always pass errors to `
 ```typescript
 router.get('/:id', async (req, res, next) => {
   try {
-    const doc = await adminDb.collection('items').doc(req.params.id ?? '').get()
+    const doc = await adminDb
+      .collection('items')
+      .doc(req.params.id ?? '')
+      .get()
     if (!doc.exists) return next(HttpError.notFound('Item', req.params.id))
     res.json({ item: doc.data() })
   } catch (error) {
-    next(error)  // ← unknown errors become a generic 500
+    next(error) // ← unknown errors become a generic 500
   }
 })
 ```

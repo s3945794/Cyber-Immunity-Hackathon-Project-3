@@ -1,91 +1,49 @@
 ---
-description: Add a new OAuth provider to Firebase Authentication — updates Firebase config, creates a sign-in button component, and adds it to the login/register pages. Use when adding Google, GitHub, Apple, or other OAuth sign-in.
-argument-hint: "[provider e.g. github|apple|microsoft]"
+description: Explains how to add or configure an identity provider for this project. Frontend authentication is TideCloak, not Firebase Authentication — providers are configured in the TideCloak realm admin console, not in application code. Use when asked to add Google, GitHub, or another sign-in method.
+argument-hint: '[provider e.g. github|google|microsoft]'
 ---
 
 # Skill: /add-auth-provider
 
-Add a new OAuth provider to the Firebase authentication system.
+**This project's frontend authentication is TideCloak, not Firebase Authentication.** The
+Firebase Authentication client SDK, `frontend/src/lib/firebase/auth.ts`, and the old
+`signInWithGoogle`/`signInWithPopup` pattern have been **removed** from this codebase. Do not
+recreate them.
 
-## Supported providers
+## How identity providers work in this project
 
-| Provider | Class | Scope examples |
-|---------|-------|----------------|
-| Google | `GoogleAuthProvider` | already included |
-| GitHub | `GithubAuthProvider` | `repo`, `user:email` |
-| Microsoft | `OAuthProvider('microsoft.com')` | `User.Read` |
-| Apple | `OAuthProvider('apple.com')` | `email`, `name` |
-| Facebook | `FacebookAuthProvider` | `email`, `public_profile` |
-| Twitter/X | `TwitterAuthProvider` | _(no scopes)_ |
+TideCloak's frontend integration is `frontend/src/providers/AuthProvider.tsx` (wraps
+`<TideCloakProvider>`) plus `frontend/src/lib/tidecloak/config.ts`. The app never talks to an
+OAuth provider directly — TideCloak's realm brokers sign-in, and the app only ever calls
+`login()` / `logout()` from `useAuth()` (see `frontend/src/hooks/useAuth.ts`).
 
-## Step 1 — Prerequisites (user must do this manually)
+Adding or configuring an identity provider (Google, GitHub, Microsoft, etc.) is **realm
+configuration**, not application code:
 
-Instruct the user to:
-1. Open **Firebase Console → Authentication → Sign-in method**
-2. Click **Add new provider** and select the provider
-3. Copy the **Client ID** and **Client Secret** into the Firebase Console form
-4. For GitHub: register an OAuth App at github.com/settings/developers
-5. For Apple: requires a paid Apple Developer account
+1. Open the TideCloak admin console for the local realm (see `docs/TIDECLOAK-LOCAL.md` for how
+   to reach it and sign in with the bootstrap administrator).
+2. Configure the identity provider under the realm's **Identity Providers** settings, following
+   TideCloak/Keycloak's standard identity broker configuration for that provider (client ID,
+   client secret, redirect URI supplied by TideCloak).
+3. Any realm change that requires a QEA (governed-change) approval must be reviewed and
+   authorized in the admin console before it takes effect — see `docs/TIDECLOAK-LOCAL.md` for
+   what QEA approval means in this project.
+4. No changes to `frontend/src/lib/tidecloak/config.ts`, `AuthProvider.tsx`, or `useAuth()` are
+   needed to add a provider — the existing `login()` call already redirects to whatever sign-in
+   options the realm offers.
 
-## Step 2 — Add sign-in function to `frontend/src/lib/firebase/auth.ts`
+## What NOT to do
 
-```typescript
-import { GithubAuthProvider, signInWithPopup } from 'firebase/auth'
-import { getClientAuth } from './client'
+- Do not add `firebase/auth` imports, `signInWithPopup`, `GoogleAuthProvider`, or any Firebase
+  Authentication code — that surface has been removed and reintroducing it creates a second,
+  competing auth system.
+- Do not add a `{Provider}SignInButton` component that bypasses TideCloak's `login()` flow.
+- Do not hard-code provider client secrets anywhere in the repo — provider credentials belong in
+  the TideCloak realm configuration, never in application code or `.env`.
 
-export async function signInWithGithub() {
-  const provider = new GithubAuthProvider()
-  // provider.addScope('user:email')
-  const result = await signInWithPopup(getClientAuth(), provider)
-  return result.user
-}
-```
+## If server-side identity is needed for a new provider's claims
 
-Match the existing helpers in that file (`signInWithGoogle` uses the same `getClientAuth()` lazy pattern).
-
-## Step 3 — Create sign-in button component
-
-Create `frontend/src/components/auth/{Provider}SignInButton.tsx`:
-```typescript
-'use client'
-
-import { signInWith{Provider} } from '@/lib/firebase/auth'
-
-interface {Provider}SignInButtonProps {
-  onSuccess?: () => void
-  onError?: (error: Error) => void
-}
-
-export function {Provider}SignInButton({ onSuccess, onError }: {Provider}SignInButtonProps) {
-  const handleClick = async () => {
-    try {
-      await signInWith{Provider}()
-      onSuccess?.()
-    } catch (error) {
-      onError?.(error instanceof Error ? error : new Error('Sign-in failed'))
-    }
-  }
-
-  return (
-    <button type="button" onClick={handleClick} className="...">
-      Continue with {Provider}
-    </button>
-  )
-}
-```
-
-## Step 4 — Add button to login and register pages
-
-Import and render `<{Provider}SignInButton>` in:
-- `frontend/src/app/(auth)/auth/signin/page.tsx`
-- `frontend/src/app/(auth)/auth/signup/page.tsx`
-
-## Step 5 — Update CLAUDE.md
-
-Add the new provider to the "Auth Providers" list.
-
-## Notes
-
-- This boilerplate uses `signInWithPopup`. For mobile-heavy apps, consider `signInWithRedirect` + `getRedirectResult`
-- For Microsoft, configure tenant if restricting to org accounts: `provider.setCustomParameters({ tenant: 'your-tenant-id' })`
-- Apple Sign-In requires the domain to be verified in Apple Developer Console
+Reading additional identity-provider-specific claims server-side (e.g. a GitHub username) would
+require server-side TideCloak JWT verification, which is **not yet implemented** in this project
+— see `feature/tidecloak-protect`. Do not attempt to read those claims through the current
+`getServerSession()`/`requireAuth()` stubs; they always fail closed.

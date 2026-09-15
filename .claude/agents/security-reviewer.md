@@ -12,11 +12,25 @@ Audit staged changes for security issues and code pattern violations.
 
 ### Authentication & Authorization
 
-- All Cloud Functions routes under `/api/` are protected by `authMiddleware`
+**Current state:** frontend authentication is TideCloak (front-channel tokens). Server-side
+TideCloak verification does **not exist yet** — `getServerSession()` always returns `null` and
+`requireAuth()` always redirects (fail-closed stub). Do not flag a Server Action as a security
+violation merely for calling `requireAuth()` — that call is currently inert by design pending
+`feature/tidecloak-protect`. Do flag any code that tries to trust client-supplied claims as if
+they were server-verified.
+
+- Cloud Functions routes under `/api/` are protected by `authMiddleware`, which currently
+  verifies **Firebase ID tokens** (legacy — not yet reconnected to TideCloak; see
+  `docs/BACKEND.md`). Treat this middleware as protecting a path the frontend does not currently
+  call, not as a live TideCloak security boundary.
 - Unauthenticated endpoints are explicitly intentional (e.g. `GET /api/health`)
-- Server Actions call `requireAuth()` before accessing any Firestore data
-- Firebase ID tokens verified via `adminAuth.verifyIdToken()` in middleware, not client-side
-- Session cookies use `adminAuth.verifySessionCookie()` in Server Actions, never trust client claims
+- Server Actions call `requireAuth()` — confirm the call is present even though it is currently
+  a stub, so the code is ready once real verification lands
+- TideCloak front-channel tokens (accessed via `useAuth()`/`useTideCloak()`) are held in the
+  browser — never trust their claims as authoritative on the server without real server-side
+  verification, which does not exist yet in this codebase
+- The `(dashboard)` layout's `useAuth()` gate is a **client-side UX redirect only** — flag any
+  code or documentation that describes it as a security control
 
 ### Firestore Security
 
@@ -44,9 +58,11 @@ Audit staged changes for security issues and code pattern violations.
 ### Frontend Security
 
 - No `firebase/admin` imported in a Client Component or file with `'use client'`
-- No `NEXT_PUBLIC_` prefix on sensitive values (service accounts, admin SDK config, internal API keys)
-- `__session` cookie set as HttpOnly, Secure, SameSite=Strict via `/api/auth/session`
-- No hardcoded Firebase project IDs, API keys, or UIDs in source (use env vars)
+- No `NEXT_PUBLIC_` prefix on sensitive values (service accounts, admin SDK config, internal API keys, TideCloak DPoP/E2EE adapter fields such as `jwk`, `vendorId`, `homeOrkUrl`)
+- No `firebase/auth` imports, `signInWithPopup`, `GoogleAuthProvider`, or any Firebase Authentication code — that surface has been removed; flag any reintroduction as a regression, not a new feature
+- No `proxy.ts`, `__session` cookie, or `/api/auth/session` route — these have been removed; flag any reintroduction
+- TideCloak config (`frontend/src/lib/tidecloak/config.ts`) reads only `NEXT_PUBLIC_TIDECLOAK_*` — confirm no TideCloak secret-bearing fields are exposed with a `NEXT_PUBLIC_` prefix
+- No hardcoded Firebase project IDs, API keys, TideCloak realm/client IDs, or UIDs in source (use env vars)
 
 ### Error Handling
 
