@@ -21,6 +21,9 @@ importers:
       next:
         specifier: 16.3.3
         version: 16.3.3(@babel/core@7.29.7(supports-color@7.2.0))(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      prettier:
+        specifier: ^3.5.3
+        version: 3.9.6
 
   backend:
     dependencies:
@@ -91,6 +94,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^4.1.3
         version: 4.1.3(react-hook-form@7.83.0(react@19.2.4))
+      '@tidecloak/nextjs':
+        specifier: 0.14.20
+        version: 0.14.20(next@16.3.3(@babel/core@7.29.7(supports-color@7.2.0))(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -1429,6 +1435,31 @@ packages:
     peerDependencies:
       '@testing-library/dom': '>=7.21.4'
 
+  '@tidecloak/js@0.14.20':
+    resolution: {integrity: sha512-CNedLIPm9QSLK4VYUsXd0Twkjy38wfBH0lIKq2XqkCNnaBvnP5TyP/7kFoIA6M2Eo38QS83i91EiPz2qIFy1iA==}
+    peerDependencies:
+      '@tidecloak/policy': ^0.14.20
+    peerDependenciesMeta:
+      '@tidecloak/policy':
+        optional: true
+
+  '@tidecloak/nextjs@0.14.20':
+    resolution: {integrity: sha512-NVzsBPR4Ua5pNrkOCVntaM3UocqxwPK3IuJZn0/C0G5lSrkpNYGjbyDrKY/32b8xFPUAKXXOb3b4bai6aMwcMg==}
+    peerDependencies:
+      next: '>=13.5.0'
+      react: '>=18.0.0'
+
+  '@tidecloak/react@0.14.20':
+    resolution: {integrity: sha512-9caGbkox45BG/SzMb4Tx0CWjRNFzaCzW3/tMKApIClHcj57olv+AdGKfJZElwKL6HsyKHFRDflWX+kjklYATbg==}
+    peerDependencies:
+      react: '>=18.0.0'
+
+  '@tidecloak/verify@0.14.20':
+    resolution: {integrity: sha512-9+RyYufVhim+iOWGJrNzLk6tzKy0rvENMyeEDC9kjThfrzIuS4WTBuMIR4pJxa41NCgjsY2VR2c7417UBgT+Cg==}
+
+  '@tideorg/js@0.14.25':
+    resolution: {integrity: sha512-Hedsg356/CDhed0mCgiLwv87fhegrOYgAdRZ7KE7icj1ADk/EYnNpk5VOM/lbcFuA7CmPwnIb67r7iaAK3RtUg==}
+
   '@tootallnate/once@2.0.1':
     resolution: {integrity: sha512-HqmEUIGRJ5fSXchkVgR5F7qn48bDBzv0kWj/Kfu5e6uci4UlEeng4331LnBkWffb++Ei3FOVLxo8JJWMFBDMeQ==}
     engines: {node: '>= 10'}
@@ -2691,6 +2722,9 @@ packages:
     resolution: {integrity: sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==}
     engines: {node: '>= 0.4'}
 
+  heimdall-tide@0.14.20:
+    resolution: {integrity: sha512-Bh1qrQWM3C+2x5Xf5Xh8/QC3AfVec5c/sVnr1n2MQWl8HFnFHyk3hL9GBBYS9mMOP3elLIwGxV/HujCvvifymg==}
+
   helmet@8.3.0:
     resolution: {integrity: sha512-Qgpiaws3Sm30Av8Eah6sjMCZZwjlBu+E68rhpCWBshY1lb09HtLwj5GviX0OyQIn+ulUS0iX0AxN5n3tLZzz1w==}
     engines: {node: '>=18.0.0'}
@@ -2943,6 +2977,9 @@ packages:
 
   jose@4.15.9:
     resolution: {integrity: sha512-1vUQX+IdDMVPj4k8kOxgUqlcK518yluMuGZwqlr44FS1ppZB/5GWh4rZG89erpOBOJjU/OBsnCVFfapsRz6nEA==}
+
+  jose@5.10.0:
+    resolution: {integrity: sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg==}
 
   js-tokens@10.0.0:
     resolution: {integrity: sha512-lM/UBzQmfJRo9ABXbPWemivdCW8V2G8FHaHdypQaIy523snUjog0W71ayWXTjiR+ixeMyVHN2XcpnTd/liPg/Q==}
@@ -5498,6 +5535,33 @@ snapshots:
     dependencies:
       '@testing-library/dom': 10.4.1
 
+  '@tidecloak/js@0.14.20':
+    dependencies:
+      '@tideorg/js': 0.14.25
+      heimdall-tide: 0.14.20
+
+  '@tidecloak/nextjs@0.14.20(next@16.3.3(@babel/core@7.29.7(supports-color@7.2.0))(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)':
+    dependencies:
+      '@tidecloak/react': 0.14.20(react@19.2.4)
+      '@tidecloak/verify': 0.14.20
+      next: 16.3.3(@babel/core@7.29.7(supports-color@7.2.0))(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react: 19.2.4
+    transitivePeerDependencies:
+      - '@tidecloak/policy'
+
+  '@tidecloak/react@0.14.20(react@19.2.4)':
+    dependencies:
+      '@tidecloak/js': 0.14.20
+      react: 19.2.4
+    transitivePeerDependencies:
+      - '@tidecloak/policy'
+
+  '@tidecloak/verify@0.14.20':
+    dependencies:
+      jose: 5.10.0
+
+  '@tideorg/js@0.14.25': {}
+
   '@tootallnate/once@2.0.1':
     optional: true
 
@@ -7218,6 +7282,10 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
+  heimdall-tide@0.14.20:
+    dependencies:
+      '@tideorg/js': 0.14.25
+
   helmet@8.3.0: {}
 
   hermes-estree@0.25.1: {}
@@ -7486,6 +7554,8 @@ snapshots:
   jiti@2.7.0: {}
 
   jose@4.15.9: {}
+
+  jose@5.10.0: {}
 
   js-tokens@10.0.0: {}
 

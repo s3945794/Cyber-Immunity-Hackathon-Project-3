@@ -1,0 +1,1082 @@
+============================================================
+TIDE DEVELOPMENT LEARNING LOG
+=============================
+
+Purpose:
+This file records only high-value findings about Tide, Tide MCP, TideCloak or
+the Tide Cybersecurity Fabric - not every development problem. Each entry must
+be worth re-using later, worth reading by a future Tide developer, and worth
+review by the client (Tide), so Tide can improve its MCP tools, documentation,
+playbooks or examples.
+
+Recording standard (four-part high-value recording gate):
+Create an entry only when ALL four are true.
+  1. The issue is directly connected to Tide, Tide MCP, TideCloak or the Tide
+     Cybersecurity Fabric.
+  2. There is clear evidence: an error, an unexpected tool result, a missing
+     instruction, or a repeatable behaviour.
+  3. The issue has a meaningful effect on security, correctness, development
+     time, or future Tide integrations.
+  4. The entry gives a useful workaround, solution, or actionable improvement
+     for Tide.
+Important security problems may be recorded immediately, even if found quickly.
+Do NOT record: spelling or typing mistakes, wrong commands typed by the user,
+working in the wrong directory, forgetting to start a service, missing local
+software, ordinary application bugs in this project's own code, a first failed
+coding attempt, simple errors solved quickly, general unfamiliarity, Claude Code
+or Kiro problems unrelated to Tide, or local Windows / Docker / network problems
+unless a Tide instruction directly caused them.
+
+Security:
+Never record passwords, tokens, cookies, private keys, client secrets, session
+values, or any other secret. Never record private AI reasoning. Record only the
+shape of a problem and the evidence needed to understand it.
+
+Status values:
+  * Investigating        - Evidence exists, but the cause or solution is not confirmed.
+  * Workaround available  - The project can continue, but the Tide issue remains.
+  * Resolved             - The cause was confirmed and the solution was tested.
+  * Open for Tide        - The project has a workaround, but Tide could still
+                           improve the product or guidance.
+
+============================================================
+ISSUE 001 - Scenario selector included an out-of-scope IGA workflow
+==================================================================
+
+Date: 2026-09-09
+Project feature: TideCloak authentication and RBAC for this branch (feature/tidecloak-auth)
+Tide component: Tide MCP scenario / playbook selection (tide_choose_scenario, tide_choose_playbook)
+Status: Workaround available and Open for Tide
+Impact: Correctness and development time - risk of scope creep
+Priority for Tide: Medium
+
+1. What happened
+The Tide scenario tools recommended the "iga-admin-governance" scenario for a
+task that was explicitly authentication-and-RBAC only. The request stated that
+this branch covers only TideCloak login, logout, protected routes, protected
+APIs and four roles, and that IGA and approval functionality were out of scope.
+The suggested playbook chain still included "setup-iga-admin-panel".
+
+2. How to reproduce or observe it
+Ask the Tide MCP scenario selector (tide_choose_scenario, then
+tide_choose_playbook) for a plan, stating that the work is limited to TideCloak
+login, logout, protected routes, protected APIs and four fixed roles, with no
+IGA and no approval workflows.
+
+3. Evidence
+Both the scenario result and the playbook selection result returned the
+IGA-focused workflow. The returned playbook chain contained
+"setup-iga-admin-panel" even though IGA had been excluded in the request.
+
+4. Root cause
+Root cause not confirmed.
+Likely explanation (inference): the scenario selector maps "roles / admin /
+access management" language onto the IGA governance scenario and has no
+authentication-and-RBAC-only scenario to fall back to, and no way to pass an
+exclusion list.
+
+5. Investigation
+  * Reviewed the returned scenario against the stated scope - the IGA admin
+    panel step was not needed for login, logout, route/API protection or role
+    checks.
+  * Checked whether a narrower scenario existed that covered only auth + RBAC -
+    none was offered by the selector for this request.
+  * Manually reduced the playbook chain to the auth + RBAC steps only.
+
+6. Solution or workaround
+The developer manually removed the IGA step and kept only:
+  * start-tidecloak-dev
+  * bootstrap-realm-from-template
+  * initialize-admin-and-link-account
+  * add-auth-nextjs-existing
+  * protect-routes-nextjs
+  * protect-api-nextjs
+  * verify-jwt-server-side
+  * add-rbac-nextjs
+
+7. Verification
+The final authentication plan was reviewed and contains no IGA administration
+step and no approval workflow. All remaining steps map directly to a stated
+requirement (login, logout, protected routes, protected APIs, four roles).
+
+8. Value for Tide
+  * Why it matters: following the full recommendation would add an admin panel
+    and governance surface that the client did not ask for, increasing scope,
+    review burden and attack surface.
+  * What could improve: the scenario selector could offer an
+    authentication-and-RBAC-only scenario, or accept an "exclude" parameter so
+    a caller can remove IGA / approvals / other modules from the recommended
+    chain.
+  * Suggested improvement: add an "auth + RBAC only" scenario and support an
+    exclusions argument on tide_choose_scenario / tide_choose_playbook.
+  * How it helps others: developers doing a minimal auth integration get a
+    plan that matches their scope without hand-editing the playbook chain.
+
+============================================================
+ISSUE 002 - Express backend guidance was difficult to locate
+===========================================================
+
+Date: 2026-09-09
+Project feature: Server-side JWT verification for the Express backend (backend/ Cloud Functions fat-lambda)
+Tide component: Tide MCP playbooks / canon (verify-jwt-server-side)
+Status: Workaround available and Open for Tide
+Impact: Security and correctness - risk of a weak or wrong verifier
+Priority for Tide: High
+
+1. What happened
+This project has an Express backend, but Tide MCP did not surface a clearly
+named Express playbook or a generic Node integration guide. The relevant
+Express middleware guidance was located inside Step 6 of the
+"verify-jwt-server-side" playbook rather than under an Express-specific or
+framework-level entry.
+
+2. How to reproduce or observe it
+Ask Tide MCP for server-side token verification guidance for an Express / Node
+backend. The response points to "verify-jwt-server-side", whose earlier steps
+are framed around Next.js; the Express-applicable detail is only in a later
+step.
+
+3. Evidence
+The Express middleware pattern (jose, embedded local JWK, issuer / azp / expiry
+checks, server-side role extraction) appears within Step 6 of
+verify-jwt-server-side. No playbook named for Express or generic Node was
+returned by the selector.
+
+4. Root cause
+Root cause not confirmed.
+Likely explanation (inference): the canon currently organises server-side
+verification around Next.js as the primary framework, with other frameworks
+covered as sub-steps rather than first-class playbooks.
+
+5. Investigation
+  * Searched the returned playbook list for an Express or Node entry - none
+    found.
+  * Read verify-jwt-server-side end to end and found the Express-applicable
+    material in Step 6.
+  * Confirmed the key security requirements that a Next.js-only reading could
+    miss: EdDSA (Ed25519) support in the JWT library, use of the embedded
+    local JWK instead of a remote JWKS fetch, and issuer + azp + expiry checks.
+
+6. Solution or workaround
+Apply Tide's server-side verification pattern in the Express backend using:
+  * the jose library (has EdDSA / Ed25519 support)
+  * Tide's embedded local JWK (no remote JWKS dependency)
+  * issuer validation
+  * azp validation
+  * expiry validation
+  * server-side role extraction from the verified token
+  * an Express authentication middleware that runs this before protected routes
+
+7. Verification
+The technical plan for the backend now names the required Express middleware,
+the token validation checks, and role enforcement at the route layer. (Code
+not written under this task - plan-level verification only.)
+
+8. Value for Tide
+  * Why it matters: JWT verification is security-critical. A developer who
+    reads only the Next.js framing could apply an Edge/middleware example that
+    does not fit Express, reach for a remote JWKS, or pick a JWT library with
+    no EdDSA support (for example Node "jsonwebtoken"), producing a verifier
+    that either fails closed on every request or fails open.
+  * What could improve: a dedicated Express / generic Node playbook, listed by
+    the selector, with a complete middleware example, EdDSA verification, and
+    tests.
+  * Suggested improvement: promote the Express content to its own playbook and
+    cross-link it from verify-jwt-server-side.
+  * How it helps others: Node/Express is a common backend choice; a
+    first-class playbook removes the risk of a mis-applied Next.js example.
+
+============================================================
+ISSUE 003 - No Firebase Authentication migration guide
+=====================================================
+
+Date: 2026-09-09
+Project feature: Replacing Firebase Authentication with TideCloak while keeping Firestore
+Tide component: Tide MCP playbook (migrate-from-existing-auth)
+Status: Workaround available and Open for Tide
+Impact: Security and correctness - risk of a second auth authority left active
+Priority for Tide: High
+
+1. What happened
+This project uses Firebase Authentication. The "migrate-from-existing-auth"
+playbook did not provide a Firebase-specific migration path. It covered
+Keycloak and standard OIDC providers such as Auth0 and Okta, where migration is
+largely an issuer / client swap. Firebase Authentication cannot be migrated
+that way.
+
+2. How to reproduce or observe it
+Ask Tide MCP how to migrate an app that authenticates with Firebase
+Authentication (Firebase client SDK on the frontend, Firebase Admin SDK and
+session cookies on the backend) to TideCloak.
+
+3. Evidence
+The playbook content addressed Keycloak and OIDC providers. It did not address
+the Firebase client SDK, the Firebase Admin SDK, Firebase session cookies, or
+how to keep Firestore while removing Firebase as an auth authority.
+
+4. Root cause
+Root cause not confirmed.
+Likely explanation (inference): the migration playbook assumes the source
+system is an OIDC-compliant IdP. Firebase Auth is not a drop-in OIDC IdP for
+this purpose, so the "swap issuer and client" model does not apply.
+
+5. Investigation
+  * Read migrate-from-existing-auth and confirmed it targets Keycloak / OIDC.
+  * Inspected this repo for the Firebase auth surface: client sign-in helpers,
+    server session helpers, and the session cookie API route
+    (frontend/src/lib/firebase/auth.ts, frontend/src/actions/auth.actions.ts,
+    frontend/src/lib/firebase/admin.ts, frontend/src/app/api/auth/session/route.ts).
+  * Confirmed Firestore access does not require Firebase Auth and can stay.
+
+6. Solution or workaround
+Replace Firebase Authentication completely; keep Firestore as the application
+database. Planned migration:
+  * Remove Firebase login and logout functions.
+  * Remove Firebase session-cookie creation and verification.
+  * Add TideCloakProvider on the frontend.
+  * Add the TideCloak redirect handler.
+  * Protect frontend routes with TideCloak.
+  * Verify TideCloak JWTs in the Express backend (see ISSUE 002).
+  * Keep only the Firebase functionality required for Firestore.
+
+7. Verification
+The repository inspection identified the exact Firebase authentication files
+and exports that must be removed or rewritten, and confirmed that Firestore
+access can be retained without Firebase Auth. (Plan-level verification - no
+auth code changed under this task.)
+
+8. Value for Tide
+  * Why it matters: without explicit guidance a developer may treat Firebase
+    as a standard OIDC provider, or leave Firebase session-cookie verification
+    in place next to TideCloak, creating two auth authorities and a bypass
+    path.
+  * What could improve: a Firebase Authentication migration section covering
+    the frontend SDK, the backend Admin SDK, session cookies, and safe
+    Firestore retention.
+  * Suggested improvement: add "Migrating from Firebase Authentication" to
+    migrate-from-existing-auth, including a checklist of Firebase auth surfaces
+    to remove and a note that Firestore/other Firebase services can stay.
+  * How it helps others: Firebase + Firestore is a very common stack for the
+    student and startup projects this boilerplate targets.
+
+============================================================
+ISSUE 004 - Large Tide canon responses were difficult to retrieve efficiently
+============================================================================
+
+Date: 2026-09-09
+Project feature: Research phase for the TideCloak auth integration plan
+Tide component: Tide MCP canon retrieval (tide_canon and related tools)
+Status: Workaround available and Open for Tide
+Impact: Reading effort and token cost; harder to find one critical instruction in a large document
+Priority for Tide: Medium
+
+1. What happened
+At least one Tide canon response was large enough that it could not be shown
+inline and had to be written to a scratch file and searched before the needed
+guidance could be used.
+
+2. How to reproduce or observe it
+Request a full canon document from Tide MCP during research. The response can be
+large enough that it must be written out and then searched, rather than read
+inline in one pass.
+
+3. Evidence
+Observed Tide MCP behaviour:
+  * A canon response was large enough to require saving to a file and searching
+    it locally instead of a single inline read.
+
+Claude-side context (NOT attributable to Tide):
+  * The overall research phase ran more than 11 minutes and used roughly
+    170,000 tokens. That figure covers all of Claude's work in that phase -
+    reading, narrowing searches, and background sub-agent runs - not the canon
+    tools alone. It is recorded to show the scale of the research effort, not
+    as a measured cost of any Tide MCP tool.
+
+4. Root cause
+Confirmed: at least one canon document was large enough to require saving and
+local searching rather than a single inline read.
+Root cause of that size is not confirmed.
+Likely explanation (inference): the canon retrieval tools return a whole
+document rather than only the section that answers the question.
+
+5. Investigation
+  * Observed that a single canon call returned more content than the question
+    needed.
+  * Switched to narrower, named requests and short output limits.
+  * Stopped each sub-search once enough evidence had been collected instead of
+    reading the whole document.
+
+6. Solution or workaround
+For future research: request named playbooks or narrow topics, set short output
+limits, and stop once enough evidence has been collected. Save a large response
+to a scratch file once and grep it locally rather than re-requesting it.
+
+7. Verification
+The authentication guidance needed for the plan (scenario chain, Express
+verification, Firebase migration approach) was successfully extracted using
+these narrower requests, with no repository changes.
+
+8. Value for Tide
+  * Why it matters: returning a whole document when a named section would do
+    adds avoidable reading and token cost, and makes it easier to miss a
+    single security-critical line inside a long document.
+  * What could improve: section-level retrieval, pagination, focused search
+    results, or a short summary mode for large canon documents.
+  * Suggested improvement: add a section or query parameter to the canon tools
+    so a caller can fetch one named section, and return a short summary plus a
+    table of contents for large documents.
+  * How it helps others: every developer using the pack does a research phase
+    first; faster, more targeted retrieval saves time and tokens on every
+    integration.
+
+============================================================
+ISSUE 005 - Canonical realm template not retrievable through Tide MCP; the
+            built-in TideCloak realm wizard is the working local-dev path
+============================================================================
+
+Date: 2026-09-09
+Updated: 2026-09-09 (after a successful manual runtime test - see section 7)
+Project feature: SOC Incident Report Protection PoC - local TideCloak setup
+                 (feature/tidecloak-auth)
+Tide component: Tide MCP resources (tide_playbook bootstrap-realm-from-template,
+                tide_scenario_bootstrap, tide_list); the Tide pack
+                templates/shared/ directory; the built-in TideCloak
+                "Create a Tide realm" wizard
+Status: Resolved with workaround
+Impact: Development time and reproducibility - interactive local setup works;
+        scripted/automated setup for another machine is still not possible
+Priority for Tide: Medium (was High before the wizard path was confirmed)
+
+1. What happened
+The playbook "bootstrap-realm-from-template" (Step 2) requires a full canonical
+realm template file:
+    cp templates/shared/realm.json.template "$TMP_REALM"
+and its Common Failures table states that a minimal, hand-written realm.json is
+NOT acceptable ("Missing link-tide-account-action | Minimal realm template used
+| Use full template from templates/shared/realm.json.template"). No Tide MCP
+resource returns the contents of that template. The initial conclusion was that
+local realm creation was blocked. That conclusion turned out to be wrong: the
+installed TideCloak version ships a built-in "Create a Tide realm" wizard that
+provisions the realm interactively without any downloaded template.
+
+2. How to reproduce or observe it
+  * Read playbook "bootstrap-realm-from-template" - it references
+    templates/shared/realm.json.template but does not contain it.
+  * Make a direct, focused request to tide_scenario_bootstrap (scenario
+    "organisation-password-manager"). The result is a bootstrap PROCEDURE that
+    lists what the template must declare ("Template must declare: realm name,
+    OIDC client, _tide_enabled role, self-encryption roles, default-roles
+    composite, protocol mappers") but ships no template file.
+  * Enumerate the MCP surface: tide_list categories are canon, playbooks,
+    skills, prompts, adapters, scenarios - there is no "templates" category and
+    no tide_template tool. The playbook / skill / prompt name lists contain no
+    template entry, and none of them tell the developer to use the built-in
+    realm wizard as the interactive fallback.
+  * Sign in to the local TideCloak admin console with the bootstrap admin and
+    open "Create a Tide realm" - the wizard provisions realm, Tide connection,
+    licence, linked admin, application client and QEA workflow.
+
+3. Evidence
+  * tide_scenario_bootstrap("organisation-password-manager") Phase 2 Step 3:
+    "Import realm template - POST /admin/realms with realm.json. Template must
+    declare: ...". Describes contents; provides no file.
+  * bootstrap-realm-from-template Step 2 + Common Failures row quoted above.
+  * tide_list category enum (from the tool schema): canon | playbooks | skills
+    | prompts | adapters | scenarios | all. No templates.
+  * Local filesystem search for realm.json.template / tide templates dirs:
+    nothing present in the consumer environment.
+  * Manual runtime test: the built-in wizard created realm
+    "soc-incident-report-protection" with client "soc-incident-report-protection-app",
+    including the Tide connection, licence and QEA workflow, with no separately
+    downloaded template. Realm and client survived a container stop/restart.
+
+  Note on scope: an earlier phase deliberately restricted Tide MCP use to four
+  resources. The template gap is NOT an artefact of that restriction - a
+  direct, unrestricted tide_scenario_bootstrap request still did not yield a
+  template, and no MCP resource pointed to the built-in wizard.
+
+4. Root cause
+Root cause of the missing template access is not confirmed.
+Likely explanation (inference): the Tide pack keeps shared templates as files
+in templates/shared/ on the server side and exposes playbooks/canon/scenarios
+as text through MCP, with no tool that serves template files to the caller; and
+the playbooks are written for the scripted path, so they do not mention the
+interactive wizard that the current TideCloak build provides.
+
+5. Investigation
+  * Read bootstrap-realm-from-template and initialize-admin-and-link-account in
+    full; confirmed the scripted realm import depends on the external template
+    and that a minimal substitute is explicitly disallowed.
+  * Issued one focused tide_scenario_bootstrap request; confirmed it returns a
+    procedure, not a template, and does not mention the wizard.
+  * Confirmed no other retrieval path (tool categories, name enums, local
+    filesystem).
+  * Did NOT hand-write a replacement template.
+  * Used the built-in "Create a Tide realm" wizard instead and verified the
+    result with a manual start / provision / stop / restart test.
+
+6. Solution or workaround (confirmed)
+  * Use the built-in TideCloak "Create a Tide realm" wizard for interactive
+    local setup. Sign in with the local bootstrap admin, run the wizard, link a
+    Tide account during enrollment, configure the application client, and
+    authorize the QEA changes it generates.
+  * The wizard created the realm and client WITHOUT a separately downloaded
+    realm template.
+  * The realm and client SURVIVED a container stop/restart (state persists in
+    the gitignored ./data bind mount).
+  * This is the confirmed local-development setup path for this project.
+
+  Remaining limitation:
+  * The Tide MCP guidance did not expose the canonical template and did not
+    clearly identify the built-in wizard as the interactive fallback.
+  * Automated / scripted setup so another developer can recreate the realm on a
+    clean machine remains unresolved - it still needs an exportable template or
+    a documented automation path from Tide.
+  * Do not hand-write a realm.json.
+
+7. Verification
+  * tide_scenario_bootstrap output re-checked: still a procedure, no template.
+  * Manual runtime test (local machine, single developer):
+      - pnpm run tidecloak:start -> container
+        liangjiecheng-garage-boilerplate-tidecloak-1 started; TideCloak
+        answered at http://localhost:8080 (readiness probe HTTP 302); the older
+        unrelated global container named "tidecloak" was not touched.
+      - Built-in wizard provisioned realm "soc-incident-report-protection" and
+        client "soc-incident-report-protection-app"; Ragnarok/offboarding left
+        disabled; five QEA changes reviewed and authorized.
+      - pnpm run tidecloak:stop stopped only the project container and kept
+        ./data; a second start showed the realm and client still present.
+  * Not verified: end-to-end login (requires the Next.js auth code, not yet
+    written); scripted realm recreation on another machine.
+
+8. Value for Tide
+  * Why it matters: builders following bootstrap-realm-from-template hit a hard
+    stop on the missing template and have no signposted alternative, even
+    though the shipped TideCloak build can create the realm interactively. The
+    fix is documentation, not code.
+  * Suggested Tide improvement:
+      - Update the relevant MCP playbook to explain WHEN a developer should use
+        the built-in "Create a Tide realm" wizard (interactive local setup)
+        versus the template-import path.
+      - Document how to obtain the canonical realm template when automation is
+        actually required.
+      - Clearly distinguish interactive setup from automated, reproducible
+        setup in the playbook and scenario docs.
+  * How it helps others: developers doing local PoC work get unblocked
+    immediately via the wizard, and teams that need CI-reproducible realms know
+    up front that they must request the template / automation path.
+
+============================================================
+ISSUE 006 - Realm wizard "Redirect URI" field behaved like a base URL
+====================================================================
+
+Date: 2026-09-09
+Project feature: SOC Incident Report Protection PoC - application client setup
+                 in the built-in TideCloak realm wizard (feature/tidecloak-auth)
+Tide component: TideCloak built-in "Create a Tide realm" wizard - application
+                client / redirect URI configuration step
+Status: Workaround available and Open for Tide
+Impact: Security and correctness - wrong redirect URIs and web origin cause
+        authentication redirect failures and CORS failures
+Priority for Tide: High
+
+1. What happened
+In the realm wizard the field was labelled "Redirect URI". The exact callback
+    http://localhost:3000/auth/redirect
+was entered. The generated client configuration then contained:
+    http://localhost:3000/auth/redirect/*
+    http://localhost:3000/auth/redirect/auth/redirect
+    http://localhost:3000/auth/redirect/silent-check-sso.html
+    http://localhost:3000/auth/redirect
+and the generated web origin was:
+    http://localhost:3000/auth/redirect
+The duplicated segment "/auth/redirect/auth/redirect" shows the wizard treated
+the supplied value as an application BASE URL and appended callback / silent-SSO
+paths to it, rather than storing it as an exact redirect URI.
+
+2. How to reproduce or observe it
+  * Run the built-in "Create a Tide realm" wizard.
+  * At the application-client step, put an exact callback path (for example
+    http://localhost:3000/auth/redirect) into the "Redirect URI" field.
+  * Finish the wizard and inspect the generated client: valid redirect URIs and
+    web origin are derived by appending paths to the value entered, producing
+    duplicated-path entries.
+
+3. Evidence
+  * Generated valid redirect URIs (verbatim):
+      http://localhost:3000/auth/redirect/*
+      http://localhost:3000/auth/redirect/auth/redirect
+      http://localhost:3000/auth/redirect/silent-check-sso.html
+      http://localhost:3000/auth/redirect
+  * Generated web origin (verbatim):
+      http://localhost:3000/auth/redirect
+  * The "/auth/redirect/auth/redirect" entry is only explicable if the field
+    value was used as a base URL with "/auth/redirect" appended.
+
+4. Root cause
+Root cause not confirmed.
+Likely explanation (inference, clearly marked as such): the field LABEL
+("Redirect URI") tells the developer to enter an exact callback URL, but the
+GENERATION behaviour expects an application base URL and appends the callback
+and silent-SSO paths itself. Label and behaviour disagree.
+
+5. Investigation
+  * Compared the entered value with the generated client configuration.
+  * Identified that every generated entry is "<entered value>" + a known suffix
+    ("/*", "/auth/redirect", "/silent-check-sso.html", or unchanged).
+  * Concluded the field is effectively a base-URL field.
+
+6. Solution or workaround (confirmed)
+  * Set the application BASE URL to:  http://localhost:3000
+  * Manually correct the valid redirect URIs to:
+      http://localhost:3000/*
+      http://localhost:3000/auth/redirect
+      http://localhost:3000/silent-check-sso.html
+      http://localhost:3000
+  * Manually correct the web origin to:  http://localhost:3000
+  * Keep the client public.
+  * Keep Standard flow / Authorization Code enabled.
+  * Keep Direct access grants disabled.
+  * Authorize the QEA changes the save generates.
+
+7. Verification
+  * The corrected redirect URIs and web origin were displayed before saving.
+  * Saving generated five related QEA changes, all authorized:
+      update protocol mapper; set client attribute; update client web origins;
+      update client redirect URIs; update client property.
+  * The application client and its display name "SOC Incident Report Protection"
+    were still present after the TideCloak container was stopped and restarted.
+  * Not verified: full end-to-end login. That can only be checked after the
+    Next.js authentication code is implemented.
+
+8. Value for Tide
+  * Why it matters: a mislabelled field silently produces invalid redirect URIs
+    and an invalid web origin. In OIDC that means the IdP rejects the callback
+    (login fails) and the browser blocks token/userinfo calls (CORS fails). A
+    developer who trusts the wizard output ships a broken client.
+  * Suggested Tide improvement:
+      - Rename the field to "Application base URL", or state inline that
+        TideCloak will append the callback and silent-SSO paths.
+      - Show a preview of the generated redirect URIs and web origin before
+        provisioning.
+      - Reject or warn on duplicated path segments such as
+        "/auth/redirect/auth/redirect".
+  * How it helps others: every builder using the wizard gets correct redirect
+    URIs and web origins on the first pass, without needing to know that the
+    field is really a base URL.
+
+============================================================
+ISSUE 007 - @tidecloak/js postinstall script blocks `pnpm install` on pnpm 10+
+============================================================================
+
+Date: 2026-09-10
+Project feature: SOC Incident Report Protection PoC - frontend TideCloak auth
+                 integration (feature/tidecloak-auth); adding the
+                 @tidecloak/nextjs SDK
+Tide component: @tidecloak/js npm package (transitive dependency of
+                @tidecloak/nextjs) - its "postinstall" lifecycle script
+Status: Workaround available and Open for Tide
+Impact: Development time / CI - after adding the SDK, `pnpm install` and every
+        `pnpm run <script>` (typecheck, lint, test, build) fail until a human
+        resolves a build-script approval. Not obvious from the error.
+Priority for Tide: Medium
+
+1. What happened
+`pnpm --filter frontend add @tidecloak/nextjs@0.14.20` installed the packages
+but ended with:
+    [ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: @tidecloak/js@0.14.20
+    Run "pnpm approve-builds" to pick which dependencies should be allowed to
+    run scripts.
+pnpm 11.20.0 also appended an unresolved placeholder line to the workspace's
+`pnpm-workspace.yaml` under its `allowBuilds:` map:
+    '@tidecloak/js': set this to true or false
+With that placeholder unresolved, the next plain `pnpm install` exited with
+code 1, and `pnpm run typecheck` also failed - its dependency-status precheck
+shells out to `pnpm install` internally, so the non-zero exit propagated to
+every `pnpm run` script in the repo.
+
+2. How to reproduce or observe it
+  * Use pnpm 10 or 11 (build-script execution is opt-in by default since pnpm
+    10; this repo also pins pnpm >=10).
+  * Add @tidecloak/nextjs (which depends on @tidecloak/js) to a workspace.
+  * Run `pnpm install` again, or any `pnpm run <script>`.
+  * Observe the non-zero exit and the ERR_PNPM_IGNORED_BUILDS / unresolved
+    `allowBuilds` placeholder.
+
+3. Evidence
+  * Install output (verbatim):
+      [ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: @tidecloak/js@0.14.20
+  * `git diff pnpm-workspace.yaml` after `pnpm add`:
+      +  '@tidecloak/js': set this to true or false
+  * `pnpm install` then: "Command failed with exit code 1" with a stack through
+    runDepsStatusCheck -> runPnpmCli('install').
+  * @tidecloak/js@0.14.20 package.json:  "postinstall": "node ./scripts/postinstall.cjs"
+  * scripts/postinstall.cjs only does: copy the package's bundled
+    silent-check-sso.html into <consumer>/public/silent-check-sso.html
+    (no-op if there is no public/ directory).
+  * The package ships a prebuilt dist/ ("files": ["dist", ...]); the "prepare"
+    build script runs only for git installs, not for the npm tarball.
+
+4. Root cause
+Confirmed for the mechanism: @tidecloak/js declares a "postinstall" script;
+pnpm 10+ does not run unlisted dependency build scripts and (pnpm 11) forces
+the user to record an explicit allow/deny, failing `install` until they do.
+Not a defect in pnpm - it is the documented supply-chain default.
+
+5. Investigation
+  * Read @tidecloak/js/scripts/postinstall.cjs - it is a convenience file-copy,
+    not a build step; nothing is compiled.
+  * Confirmed dist/ (cjs, esm, types) and silent-check-sso.html are already
+    present in the installed package before any script runs.
+  * The add-auth-nextjs playbook (Step 5) already instructs the developer to
+    create public/silent-check-sso.html by hand, so the postinstall duplicates
+    a manual step the playbook owns.
+
+6. Solution or workaround (confirmed)
+  * In pnpm-workspace.yaml set:  '@tidecloak/js': false   (under allowBuilds)
+    - i.e. deny the script; nothing of value is lost.
+  * Create frontend/public/silent-check-sso.html manually (playbook Step 5).
+  * `pnpm install`, `pnpm run typecheck|lint|test:all` then pass.
+  * `true` also works (the copy is harmless) but running an unaudited
+    third-party postinstall is unnecessary here.
+
+7. Verification
+  * After setting the flag to false: `pnpm install` exits 0.
+  * `pnpm run typecheck`, `pnpm run lint`, `pnpm run test:all`,
+    `pnpm run validate` all pass.
+  * `pnpm audit --audit-level=high` exits 0 (the @tidecloak/* packages add no
+    new advisories).
+
+8. Value for Tide
+  * Why it matters: the very first thing a pnpm user does after
+    `npm/pnpm add @tidecloak/nextjs` is hit a hard failure with a message that
+    names a transitive package, not the SDK. On CI it breaks the pipeline. The
+    playbook does not mention it.
+  * Suggested Tide improvement:
+      - Drop the postinstall from @tidecloak/js. The playbook already owns the
+        "create public/silent-check-sso.html" step, and the SDK could instead
+        expose the file at a stable import path or via a documented copy CLI
+        (`npx @tidecloak/js copy-assets`) that the user runs deliberately.
+      - If the postinstall stays, add a note to add-auth-nextjs-* (and the
+        migration playbook) telling pnpm users to allow or deny the
+        `@tidecloak/js` build script, with the one-liner for
+        pnpm-workspace.yaml / package.json `pnpm.onlyBuiltDependencies`.
+  * How it helps others: pnpm is one of the three package managers the fresh
+    playbook lists; every pnpm user currently hits this with no guidance.
+
+============================================================
+ISSUE 008 - Dynamic Next.js environment lookup caused TideCloak to
+            request /adapter.json
+============================================================================
+
+Date: 2026-09-10
+Project feature: Frontend TideCloak authentication on feature/tidecloak-auth.
+Tide component: @tidecloak/nextjs configuration and adapter fallback
+                behaviour.
+Status: Resolved and Open for Tide
+Impact: Correctness and development time - the real missing-configuration
+        problem was hidden behind an unrelated /adapter.json 404.
+Priority for Tide: Medium
+
+1. What happened
+The application loaded, but TideCloak initialization tried to load
+/adapter.json and received HTTP 404.
+
+Exact useful error:
+    Failed to fetch config from /adapter.json: 404
+
+2. How to reproduce or observe it
+  * In a Next.js app, read NEXT_PUBLIC_* configuration values through a
+    dynamic key (similar to process.env[key]) instead of by their full
+    literal names.
+  * Pass the resulting object to the @tidecloak/nextjs provider.
+  * Start the app: the browser configuration object holds empty server
+    values, and the SDK requests /adapter.json, which does not exist.
+
+3. Evidence
+  * Browser console: Failed to fetch config from /adapter.json: 404
+  * frontend/src/lib/tidecloak/config.ts accessed the public environment
+    variables dynamically with a variable key (similar to process.env[key]).
+  * The required values were present in the local environment file, but the
+    browser configuration object received empty values.
+  * No environment values are recorded here.
+
+4. Root cause
+Confirmed. Next.js only includes NEXT_PUBLIC_* values in browser code when
+they are referenced statically by their full name. The dynamic lookup was
+not bundled, so the TideCloak configuration values were empty, and the SDK
+fell back to /adapter.json.
+
+5. Investigation
+  * Confirmed the required values existed in the local environment file.
+  * Confirmed the browser configuration object received empty values.
+  * Confirmed the SDK requested /adapter.json.
+  * Replaced the dynamic environment access with direct references such as
+    process.env.NEXT_PUBLIC_TIDECLOAK_AUTH_SERVER_URL for every
+    NEXT_PUBLIC_TIDECLOAK_* variable.
+  * No environment values are recorded here.
+
+6. Solution or workaround
+Use direct, static references for every NEXT_PUBLIC_TIDECLOAK_* variable in
+frontend/src/lib/tidecloak/config.ts. Do not add public/adapter.json.
+
+7. Verification
+  * The application stopped requesting /adapter.json.
+  * / and /auth/signin returned HTTP 200.
+  * "Continue with TideCloak" redirected to the Tide authentication service.
+
+8. Value for Tide
+  * Why it matters: the SDK fallback hid the actual missing-configuration
+    problem behind an unrelated /adapter.json 404, sending the developer to
+    debug a missing file instead of an empty configuration object.
+  * Suggested Tide improvement:
+      - Tide's Next.js guidance should show static
+        process.env.NEXT_PUBLIC_... references, not a dynamic lookup helper.
+      - The SDK should fail early with a clear message naming the missing
+        configuration field before it tries to fetch /adapter.json.
+  * How it helps others: any Next.js integrator that centralises config in a
+    helper risks the same dynamic-access mistake and the same misleading 404.
+
+============================================================
+ISSUE 009 - Local TideCloak user credentials were confused with the
+            external Tide account
+============================================================================
+
+Date: 2026-09-10
+Project feature: Signing in through the Tide-hosted authentication page
+                 (feature/tidecloak-auth).
+Tide component: TideCloak local realm users, the Tide Authorization Key, and
+                external Tide account sign-in.
+Status: Resolved with workaround and Open for Tide
+Impact: Development time - time lost trying to authenticate a local realm
+        identity on the external Tide sign-in page.
+Priority for Tide: Medium
+
+1. What happened
+A password credential was added to the local TideCloak realm user. That
+local username and password were then entered on the external Tide-hosted
+sign-in page, which returned:
+    Invalid username or password.
+The developer's existing Tide account worked on that same page and returned
+the browser to the application callback.
+
+2. How to reproduce or observe it
+  * Open a user in the local TideCloak realm that is linked through a Tide
+    Authorization Key.
+  * Add a local Password credential to that user.
+  * On the external Tide-hosted sign-in page, enter that local user's name
+    and the new local password.
+  * The page rejects the credentials.
+
+3. Evidence
+  * External Tide sign-in page response: Invalid username or password.
+  * The local realm user was enabled and had a Tide Authorization Key.
+  * The developer's existing Tide account authenticated successfully on the
+    same page and redirected to /auth/redirect.
+  * No username, email address or password is recorded here.
+
+4. Root cause
+Root cause not officially confirmed.
+Likely explanation (inference, clearly marked as such): the external
+Tide-hosted page authenticates the developer's Tide account, while the user
+shown in the local TideCloak realm is a separate local identity linked
+through its Tide Authorization Key. Adding a local password does not change
+the external Tide account password.
+
+5. Investigation
+  * Confirmed the local realm user was enabled and had a Tide Authorization
+    Key.
+  * Added a local Password credential; it did not work on the external Tide
+    sign-in page.
+  * Used the developer's existing Tide account instead; external
+    authentication succeeded and redirected to /auth/redirect.
+  * The later callback failure is NOT evidence that the Tide account
+    credentials were wrong - that failure had a separate DPoP cause recorded
+    in ISSUE 010.
+  * No username, email address or password is recorded here.
+
+6. Solution or workaround
+  * Use the existing Tide account on the external Tide sign-in page.
+  * Do not create a local Password credential for the purpose of
+    authenticating on that external page.
+  * The unnecessary local Password credential should later be removed. Keep
+    the Tide Authorization Key. Do not delete the user or the Tide
+    Authorization Key.
+
+7. Verification
+The existing Tide account successfully passed the external sign-in page and
+returned the browser to the local application callback.
+
+8. Value for Tide
+  * Why it matters: without a clear explanation of the two identity types, a
+    developer can spend time trying to authenticate a local realm identity on
+    a page that only accepts the external Tide account, and may add a local
+    password that has no effect there.
+  * Suggested Tide improvement:
+      - Explain the difference between a local TideCloak realm user and the
+        external Tide account, and which credentials each page expects.
+      - Warn that adding a local Password credential does not reset the
+        external Tide account password.
+      - Document the correct recovery process for each account type.
+  * How it helps others: every developer who links a local realm user to a
+    Tide account meets both identities during enrollment and can confuse
+    them.
+
+============================================================
+ISSUE 010 - TideCloak client required DPoP, but the frontend token
+            exchange sent no proof
+============================================================================
+
+Date: 2026-09-10
+Updated: 2026-09-15 (verified: setting change confirmed on the server side,
+         and end-to-end login now succeeds - see section 7)
+Project feature: End-to-end frontend TideCloak login callback on
+                 feature/tidecloak-auth.
+Tide component: TideCloak client configuration, the authorization-code token
+                exchange, and @tidecloak/nextjs.
+Status: Resolved
+Impact: Correctness and security - login completed at the Tide sign-in page,
+        but the application callback failed and looped back to /auth/signin.
+Priority for Tide: High
+
+1. What happened
+External Tide authentication succeeded and returned the browser to
+/auth/redirect, but TideCloak initialization failed and the application
+returned to /auth/signin. Repeating "Continue with TideCloak" three times
+produced the same loop.
+
+The frontend displayed only:
+    [IAMService] TideCloak init error: Error: Server responded with an invalid status.
+
+The TideCloak server log contained the specific cause:
+    type="CODE_TO_TOKEN_ERROR"
+    error="invalid_dpop_proof"
+    reason="DPoP proof is missing"
+    grant_type="authorization_code"
+    client_auth_method="client-secret"
+
+2. How to reproduce or observe it
+  * Configure a TideCloak client that requires DPoP-bound tokens.
+  * Complete login with a frontend whose authorization-code token request
+    does not attach a DPoP proof (the @tidecloak/nextjs front-channel flow
+    used on this branch).
+  * The token endpoint rejects the code exchange; the app returns to the
+    sign-in page and loops on retry.
+
+3. Evidence
+  * Frontend error (verbatim):
+      [IAMService] TideCloak init error: Error: Server responded with an invalid status.
+  * TideCloak server event (verbatim fields):
+      type="CODE_TO_TOKEN_ERROR"
+      error="invalid_dpop_proof"
+      reason="DPoP proof is missing"
+      grant_type="authorization_code"
+      client_auth_method="client-secret"
+  * git grep -n -i "dpop.bound.access.tokens" returned no tracked project
+    configuration.
+  * The client's returned attributes did not visibly contain a DPoP entry.
+  * The realm client-policy query returned an empty profile list.
+  * The setting was found in the Admin Console at: Clients ->
+    soc-incident-report-protection-app -> Settings -> Capability config ->
+    Require DPoP bound tokens.
+
+4. Root cause
+Confirmed from the TideCloak server event: the token endpoint rejected the
+authorization-code exchange because the required DPoP proof was missing.
+The origin of the DPoP requirement on this client is NOT confirmed - do not
+claim that the realm wizard enabled it.
+
+5. Investigation
+  * The first callback was also affected by a Next.js development
+    chunk-loading timeout; a hard refresh removed that separate symptom, but
+    TideCloak initialization still failed. (Recorded as a sub-step only, not
+    as a Tide issue.)
+  * Three warmed login attempts returned to /auth/signin.
+  * The TideCloak server log exposed the exact invalid_dpop_proof error.
+  * git grep -n -i "dpop.bound.access.tokens" returned no tracked project
+    configuration.
+  * The client's returned attributes did not visibly contain a DPoP entry.
+  * The realm client-policy query returned an empty profile list.
+  * Two Admin CLI update attempts returned "Cannot parse the JSON
+    [unknown_error]". Recorded as an attempted step only - not a separate
+    Tide defect and not a confirmed cause.
+  * The correct UI setting was located at Clients ->
+    soc-incident-report-protection-app -> Settings -> Capability config ->
+    Require DPoP bound tokens, and changed to Off for local development.
+  * "Require PKCE" remains On and "PKCE Method" remains S256.
+
+6. Solution or workaround
+  * The client setting "dpop.bound.access.tokens" was changed to false. This
+    change was made through Tide's change-request authorization process (not
+    by a direct, unauthorized edit).
+  * The effective client configuration was then checked using the Keycloak
+    administration command. The command returned:
+        "dpop.bound.access.tokens" : "false"
+    confirming the change took effect on the server, not only in the Admin
+    Console display.
+  * Disabling DPoP reduces replay protection and is not the intended final
+    production configuration.
+  * Proper DPoP implementation remains deferred to feature/tidecloak-protect.
+
+What DPoP means (plain English):
+DPoP stands for Demonstrating Proof of Possession. It is a way for the
+frontend to prove to the token server that it is the same client that
+started the login, by attaching a signed proof to the token request. In this
+local browser integration, requiring DPoP blocked the normal
+authorization-code token exchange, because the frontend was not sending the
+DPoP proof the server required.
+
+7. Verification (confirmed)
+  * After "dpop.bound.access.tokens" was set to false and confirmed via the
+    Keycloak administration command, retried logins produced NO new
+    "invalid_dpop_proof" and NO new "CODE_TO_TOKEN_ERROR" events on the
+    TideCloak server. The DPoP token-exchange failure is cleared.
+  * The token exchange succeeded after this change.
+  * The user successfully signed in and reached /dashboard.
+  * A separate, unrelated problem (the silent-SSO iframe being blocked by the
+    app's global "X-Frame-Options: DENY" header) was found and fixed; see
+    ISSUE 011.
+  * End-to-end browser login (external login window -> callback ->
+    authenticated app -> /dashboard, with no bounce back to /auth/signin) is
+    verified.
+
+8. Value for Tide
+  * Why it matters: the frontend showed only a generic invalid-status
+    message, while the server log held the useful OAuth error code and
+    reason. A developer without server-log access cannot diagnose this.
+  * Suggested Tide improvement:
+      - State in the Next.js integration guidance whether the example
+        supports DPoP.
+      - Include a compatibility check between the client's "Require DPoP
+        bound tokens" setting and the SDK token-exchange implementation.
+      - Have the SDK safely surface the OAuth error code and reason without
+        exposing tokens.
+      - Document when DPoP may be temporarily disabled for local development,
+        and how to implement it correctly before production.
+  * How it helps others: any builder using the front-channel SDK against a
+    DPoP-required client hits this loop with only a generic error to go on.
+
+============================================================
+ISSUE 011 - Global X-Frame-Options DENY blocked TideCloak silent SSO
+============================================================================
+
+Date: 2026-09-10
+Updated: 2026-09-15 (verified: response headers checked directly, and
+         end-to-end login now succeeds - see section 7)
+Project feature: End-to-end frontend TideCloak browser login on
+                 feature/tidecloak-auth (found straight after ISSUE 010's
+                 DPoP setting change).
+Tide component: @tidecloak/nextjs silent-SSO hidden iframe
+                (/silent-check-sso.html) vs. application security headers.
+Status: Resolved
+Impact: Correctness - the "Continue with TideCloak" button appeared to reload
+        /auth/signin without opening the external login window, because the
+        silent session check could not complete.
+Priority for Tide: Medium
+
+1. What happened
+The application's global "X-Frame-Options: DENY" header also applied to
+/silent-check-sso.html. The TideCloak SDK loads that file in a hidden
+SAME-ORIGIN iframe for the silent session check, and Chrome blocked it.
+With the silent check unable to run, the sign-in page appeared to just
+reload and the external login window never opened.
+
+2. How to reproduce or observe it
+  * Serve a Next.js app that applies "X-Frame-Options: DENY" to all routes
+    (a single headers() rule with source "/(.*)").
+  * Integrate @tidecloak/nextjs, whose SDK loads /silent-check-sso.html in a
+    hidden iframe.
+  * Request the file directly: it returns HTTP 200 with
+    "X-Frame-Options: DENY".
+  * In the browser, the silent-check iframe is blocked and login does not
+    progress past /auth/signin.
+
+3. Evidence
+  * curl.exe -I http://localhost:3000/silent-check-sso.html returned HTTP 200
+    (the file exists) and its response contained "X-Frame-Options: DENY".
+  * curl.exe -I http://localhost:3000/ also returned HTTP 200 with
+    "X-Frame-Options: DENY".
+  * Chrome displayed: Refused to display 'http://localhost:3000/' in a frame
+    because it set 'X-Frame-Options' to 'deny'.
+  * The Network tab showed: silent-check-sso.html (blocked:other).
+  * The TideCloak server produced no new DPoP / token-exchange error during
+    this attempt (ISSUE 010's DPoP failure was already cleared).
+
+4. Root cause
+Confirmed. /silent-check-sso.html inherited the application's global
+"X-Frame-Options: DENY" header (frontend/next.config.ts, the one headers()
+rule with source "/(.*)", which also covers static files in public/).
+TideCloak loads this file in a hidden iframe; "DENY" forbids all framing, so
+Chrome blocked it. "X-Frame-Options" / "frame-ancestors" control who may
+FRAME a response - the opposite direction from "frame-src".
+
+5. Investigation
+  * Confirmed frontend/next.config.ts is the only source of the header (no
+    proxy.ts, no middleware, no route handlers).
+  * Confirmed the single headers() rule used source "/(.*)", which matches
+    static files in public/ including /silent-check-sso.html.
+  * Verified with curl that both / and /silent-check-sso.html returned
+    "X-Frame-Options: DENY".
+  * Modelled the replacement source patterns with Next's path-to-regexp:
+    each route matches exactly one header rule (no duplicate headers).
+
+6. Solution or workaround
+  * In frontend/next.config.ts, split the headers() config into two rules:
+      - source "/((?!silent-check-sso\\.html).*)" -> normal application
+        headers, keeps "X-Frame-Options: DENY" (this covers / and every app
+        route).
+      - source "/silent-check-sso.html" -> the same base security headers
+        (nosniff, referrer-policy, permissions-policy) but
+        "X-Frame-Options: SAMEORIGIN" and
+        "Content-Security-Policy: frame-ancestors 'self'".
+  * The negative lookahead guarantees the silent-SSO response carries exactly
+    one "X-Frame-Options" header (SAMEORIGIN) and never "DENY".
+  * Normal application routes are unchanged: "X-Frame-Options: DENY". Iframe
+    protection is not weakened globally.
+  * The obsolete "ALLOW-FROM" value was not used. The silent-check HTML was
+    not changed (inspection showed no change was needed).
+
+7. Verification (confirmed)
+Header checks (the running dev server hot-reloaded next.config.ts; no manual
+restart was required):
+  * http://localhost:3000/silent-check-sso.html -> HTTP 200; exactly one
+    "X-Frame-Options" header with value "SAMEORIGIN";
+    "Content-Security-Policy: frame-ancestors 'self'"; no "DENY".
+  * http://localhost:3000/ -> HTTP 200; "X-Frame-Options: DENY".
+  * http://localhost:3000/auth/signin and /auth/redirect -> HTTP 200;
+    "X-Frame-Options: DENY".
+  * Normal application pages keep "X-Frame-Options: DENY". Only
+    /silent-check-sso.html uses "X-Frame-Options: SAMEORIGIN" together with
+    "Content-Security-Policy: frame-ancestors 'self'". These response
+    headers were verified directly.
+  * eslint next.config.ts and prettier: clean. Frontend unit tests: 16/16
+    pass.
+  * pnpm run typecheck currently fails with a pre-existing, unrelated error
+    (TS6053 for a .next/dev/types/... file generated by the running dev
+    server); it fails identically with this change reverted.
+  * End-to-end TideCloak login succeeded: external login window -> callback
+    -> authenticated app -> /dashboard, with no bounce back to /auth/signin.
+
+8. Value for Tide
+  * Why it matters: "X-Frame-Options: DENY" is a standard, widely recommended
+    security header. Any integrator who has it will hit this, and the only
+    visible symptom - the sign-in page appearing to reload - gives no hint
+    that an iframe was blocked.
+  * Suggested Tide improvement:
+      - The Next.js authentication guidance should warn that
+        /silent-check-sso.html must be allowed inside TideCloak's same-origin
+        hidden iframe, and that a global "X-Frame-Options: DENY" will block
+        it.
+      - Provide a secure Next.js headers() example that keeps clickjacking
+        protection on normal pages while allowing only the silent-check page
+        to be framed same-origin.
+      - The SDK should report that its silent-check iframe was blocked (for
+        example an init warning), instead of the sign-in page appearing to
+        reload silently with no explanation.
+  * How it helps others: developers get a working, still-secure header
+    configuration on the first pass, and a clear signal when the silent
+    check is blocked.
+
+============================================================
+END OF LOG
+==========

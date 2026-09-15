@@ -18,11 +18,23 @@
     "typecheck": "pnpm -r typecheck",
     "bootstrap": "node scripts/bootstrap.js",
     "validate": "node scripts/validate-placeholders.js",
+    "tidecloak:start": "node scripts/tidecloak.js start",
+    "tidecloak:stop": "node scripts/tidecloak.js stop",
+    "tidecloak:status": "node scripts/tidecloak.js status",
+    "tidecloak:logs": "node scripts/tidecloak.js logs",
     "hooks": "lefthook install",
     "prepare": "lefthook install"
   },
   "devDependencies": {
     "lefthook": "^1.11.13",
-    "next": "16.3.3"
+    "next": "16.3.3",
+    "prettier": "^3.5.3"
+  },
+  "prettier": {
+    "semi": false,
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "es5",
+    "printWidth": 100
   }
 }

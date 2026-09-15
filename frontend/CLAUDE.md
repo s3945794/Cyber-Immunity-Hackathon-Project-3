@@ -10,6 +10,7 @@ This is **Next.js 16** — APIs, file conventions, and routing differ from earli
 Before writing any Next.js code, check `node_modules/next/dist/docs/` for breaking changes.
 
 Key Next.js 16 changes from training data:
+
 - `middleware.ts` is deprecated — use `proxy.ts` with `export function proxy()`
 - App Router is the only supported router
 - Server Actions are stable and the preferred mutation pattern
@@ -19,17 +20,20 @@ Key Next.js 16 changes from training data:
 ## Server vs Client Components
 
 **Default: Server Component.** Add `'use client'` only when you need:
+
 - React hooks (`useState`, `useEffect`, `useContext`, etc.)
 - Event handlers (`onClick`, `onChange`, etc.)
 - Browser APIs (`window`, `localStorage`, `navigator`, etc.)
 - Third-party client-only libraries
 
 **Never add `'use client'` to:**
+
 - Files that only fetch data and render HTML
 - Files that only import server-only libraries
 - Layout files unless they truly need client state
 
 **Never import in a Server Component:**
+
 - `firebase/auth`, `firebase/firestore` (client SDK)
 - `@/lib/firebase/client` (client SDK)
 - Any hook from `@/hooks/` (they're all client hooks)
@@ -43,10 +47,9 @@ Key Next.js 16 changes from training data:
 ```
 src/
 ├── app/
-│   ├── (auth)/           # Login, register — no auth required
-│   ├── (dashboard)/      # Protected pages — requireAuth() in layout
-│   ├── api/auth/session/ # Session cookie route handler
-│   ├── layout.tsx        # Root layout — Server Component
+│   ├── (auth)/           # signin / signup (→ TideCloak) + auth/redirect callback
+│   ├── (dashboard)/      # Pages gated client-side by useAuth() in the layout
+│   ├── layout.tsx        # Root layout — Server Component (mounts <Providers>)
 │   └── page.tsx          # Landing page — Server Component
 ├── components/
 │   ├── layout/           # DashboardShell, Sidebar, Navbar, PageHeader
@@ -72,6 +75,7 @@ src/
 ```
 
 **Import rules:**
+
 - Always use `@/` alias — never `../../` more than one level
 - Features import from `@/lib/`, `@/hooks/`, `@/types/` but not from other features
 - `app/` pages import from `@/components/`, `@/features/`, `@/actions/`
@@ -89,7 +93,7 @@ import { requireAuth } from '@/actions/auth.actions'
 import type { ActionResult } from '@/types'
 
 export async function updateProfile(input: UpdateProfileInput): Promise<ActionResult<void>> {
-  const session = await requireAuth() // redirects to /auth/signin if not authed
+  const session = await requireAuth() // fail-closed placeholder until feature/tidecloak-protect
 
   // validate input with zod
   const parsed = updateProfileSchema.safeParse(input)
@@ -107,26 +111,28 @@ export async function updateProfile(input: UpdateProfileInput): Promise<ActionRe
 ```
 
 - Always return `ActionResult<T>`: `{ success: boolean, error?: string, data?: T }`
-- Always call `requireAuth()` first
+- Always call `requireAuth()` first (currently a fail-closed stub — real server-side TideCloak verification is `feature/tidecloak-protect`)
 - Always validate with Zod before any database operation
 - Never throw from a Server Action — return `{ success: false, error: '...' }`
 
 ---
 
-## Auth Flow
+## Auth Flow (TideCloak — front-channel)
 
-1. User signs in via `@/lib/firebase/auth` (client SDK)
-2. Client calls `POST /api/auth/session` with the Firebase ID token
-3. Server creates an HttpOnly `__session` cookie (Firebase session cookie)
-4. `proxy.ts` checks for the `__session` cookie to gate protected routes
-5. Server Actions call `requireAuth()` which calls `adminAuth.verifySessionCookie()`
-6. **Critical:** The cookie check in proxy.ts is optimistic (presence only). Real verification always happens in Server Actions near the data.
+1. `@/providers/AuthProvider` mounts `<TideCloakProvider>` (config from `NEXT_PUBLIC_TIDECLOAK_*` via `@/lib/tidecloak/config`) and bridges the SDK onto `useAuth()` → `{ user, authenticated, loading, login, logout }`.
+2. `/auth/signin` & `/auth/signup` are "Continue with TideCloak" buttons — `login()` redirects the browser to TideCloak. **This app never collects a password.**
+3. TideCloak redirects back to `/auth/redirect` with a `code`; `useAuthCallback` runs the PKCE token exchange, then sends the user to their original destination.
+4. `(dashboard)/layout.tsx` gates client-side: spinner while `loading`, `login()` when `!authenticated`. UX gating only.
+5. `logout()` ends the TideCloak session and returns to the app.
+
+**Not in this branch** (→ `feature/tidecloak-protect`): server-side JWT verification, route/API protection, RBAC. `actions/auth.actions.ts` (`getServerSession`/`requireAuth`) are fail-closed placeholders, so Server Actions that need identity (e.g. `createNote`) are disabled until then. Client Firestore reads also need a TideCloak↔Firestore bridge (later phase).
 
 ---
 
 ## Design System
 
 See `docs/DESIGN.md` for the full design reference:
+
 - Tailwind v4 CSS-first config, `@theme` tokens
 - Color system, typography scale, spacing
 - Button, input, card, badge patterns

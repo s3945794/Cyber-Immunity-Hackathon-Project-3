@@ -1,5 +1,4 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app'
-import { getAuth, type Auth } from 'firebase/auth'
 import { getFirestore, type Firestore } from 'firebase/firestore'
 
 const firebaseConfig = {
@@ -10,7 +9,7 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }
 
-type Services = { app: FirebaseApp; auth: Auth; db: Firestore }
+type Services = { app: FirebaseApp; db: Firestore }
 
 let _services: Services | undefined
 
@@ -40,19 +39,14 @@ function getServices(): Services {
   }
 
   const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
-  const auth = getAuth(app)
   const db = getFirestore(app)
 
-  _services = { app, auth, db }
+  _services = { app, db }
   return _services
 }
 
 export function getClientApp(): FirebaseApp {
   return getServices().app
-}
-
-export function getClientAuth(): Auth {
-  return getServices().auth
 }
 
 export function getClientDb(): Firestore {

@@ -1,18 +1,31 @@
-import type { User } from 'firebase/auth'
-import type { UserProfile } from './firestore'
-
-export interface AuthContextValue {
-  user: User | null
-  profile: UserProfile | null
-  loading: boolean
-  signInWithEmail: (email: string, password: string) => Promise<void>
-  signUpWithEmail: (email: string, password: string, displayName: string) => Promise<void>
-  signInWithGoogle: () => Promise<void>
-  signOut: () => Promise<void>
+/**
+ * Authenticated user, normalised from the TideCloak ID-token claims.
+ *
+ * `uid` is the token `sub`. TideCloak always asserts a username
+ * (`preferred_username`); depending on the upstream identity provider it may or
+ * may not assert an email.
+ */
+export interface AuthUser {
+  uid: string
+  username: string | null
+  email: string | null
 }
 
-export interface SessionPayload {
-  uid: string
-  email: string
-  expiresAt: number
+/**
+ * Value provided by {@link AuthProvider} and read via `useAuth()`.
+ *
+ * This is a thin, app-shaped wrapper over the TideCloak SDK's `useTideCloak()`
+ * context — it exposes only what the UI needs.
+ */
+export interface AuthContextValue {
+  /** Current user, or `null` while initialising or unauthenticated. */
+  user: AuthUser | null
+  /** `true` once TideCloak confirms an active session. */
+  authenticated: boolean
+  /** `true` while the TideCloak SDK restores/initialises the session. */
+  loading: boolean
+  /** Send the browser to TideCloak to authenticate. */
+  login: () => Promise<void>
+  /** End the TideCloak session and return to the app. */
+  logout: () => Promise<void>
 }

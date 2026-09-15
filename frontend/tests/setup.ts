@@ -1,17 +1,13 @@
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 
-// Mock Firebase client SDK — never call real Firebase in unit tests
+// Never touch real Firebase in unit tests.
 vi.mock('@/lib/firebase/client', () => ({
-  auth: { currentUser: null, onAuthStateChanged: vi.fn() },
-  db: {},
-  app: {},
+  getClientApp: vi.fn(() => ({})),
+  getClientDb: vi.fn(() => ({})),
 }))
 
 vi.mock('@/lib/firebase/admin', () => ({
-  adminAuth: {
-    verifySessionCookie: vi.fn(),
-    createSessionCookie: vi.fn(),
-  },
+  adminAuth: {},
   adminDb: {},
 }))

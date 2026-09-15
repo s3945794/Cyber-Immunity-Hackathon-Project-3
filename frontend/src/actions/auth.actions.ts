@@ -1,51 +1,31 @@
 'use server'
 
-import { adminAuth } from '@/lib/firebase/admin'
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import type { ActionResult } from '@/types'
-
-const SESSION_COOKIE_NAME = '__session'
 
 /**
- * Verify the current session cookie and return the decoded token.
- * Use this in Server Components and Server Actions to authenticate requests.
+ * Server-side session access.
+ *
+ * TideCloak issues front-channel (browser-held) tokens. Verifying them on the
+ * server — reading the `Authorization` header, checking the signature against
+ * the realm JWKS, enforcing roles — is deliberately **deferred to
+ * `feature/tidecloak-protect`** (this branch does the client-side auth flow
+ * only).
+ *
+ * Until then this returns `null`: server code must treat every request as
+ * unauthenticated and fail closed.
  */
-export async function getServerSession() {
-  const cookieStore = await cookies()
-  const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value
-
-  if (!sessionCookie) return null
-
-  try {
-    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true)
-    return decoded
-  } catch {
-    return null
-  }
+export async function getServerSession(): Promise<null> {
+  return null
 }
 
 /**
- * Require authentication in a Server Action or Server Component.
- * Redirects to /login if not authenticated.
+ * Guard a Server Action or Server Component.
+ *
+ * Fails closed by redirecting to sign-in until server-side TideCloak
+ * verification lands in `feature/tidecloak-protect`. The return type describes
+ * the future session shape; this implementation never actually returns
+ * (`redirect()` throws).
  */
-export async function requireAuth() {
-  const session = await getServerSession()
-  if (!session) {
-    redirect('/auth/signin')
-  }
-  return session
-}
-
-/**
- * Server-side sign out: clears the session cookie.
- */
-export async function serverSignOut(): Promise<ActionResult> {
-  try {
-    const cookieStore = await cookies()
-    cookieStore.delete(SESSION_COOKIE_NAME)
-    return { success: true }
-  } catch {
-    return { success: false, error: 'Failed to sign out' }
-  }
+export async function requireAuth(): Promise<{ uid: string; email: string | null }> {
+  redirect('/auth/signin')
 }

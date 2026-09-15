@@ -1,149 +1,56 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { onAuthStateChanged, type User } from 'firebase/auth'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
-import { getClientAuth, getClientDb } from '@/lib/firebase/client'
-import {
-  signInWithEmail as fbSignInWithEmail,
-  signUpWithEmail as fbSignUpWithEmail,
-  signInWithGoogle as fbSignInWithGoogle,
-  signOut as fbSignOut,
-  getIdToken,
-} from '@/lib/firebase/auth'
-import type { AuthContextValue } from '@/types/auth'
-import type { UserProfile } from '@/types/firestore'
+import { createContext, useContext, useMemo, type ReactNode } from 'react'
+import { TideCloakProvider, useTideCloak } from '@tidecloak/nextjs'
+import { getTideCloakConfig } from '@/lib/tidecloak/config'
+import type { AuthContextValue, AuthUser } from '@/types/auth'
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-async function syncUserProfile(user: User): Promise<UserProfile> {
-  const profileRef = doc(getClientDb(), 'users', user.uid)
-  const snap = await getDoc(profileRef)
+function claim(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null
+}
 
-  if (!snap.exists()) {
-    const newProfile: Omit<UserProfile, 'createdAt' | 'updatedAt'> = {
-      uid: user.uid,
-      email: user.email ?? '',
-      displayName: user.displayName,
-      photoURL: user.photoURL,
-      role: 'user',
-      _schemaVersion: 1,
-    }
-    await setDoc(profileRef, {
-      ...newProfile,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    })
-    const createdSnap = await getDoc(profileRef)
-    if (!createdSnap.exists()) {
-      throw new Error('Failed to create user profile document')
-    }
-    return createdSnap.data() as UserProfile
-  }
+/**
+ * Bridges the TideCloak SDK context onto the app's small {@link AuthContextValue}
+ * surface. Must render inside `<TideCloakProvider>`.
+ */
+function AuthBridge({ children }: { children: ReactNode }) {
+  const tc = useTideCloak()
 
-  const existing = snap.data() as UserProfile
-
-  if (!existing.displayName && user.displayName) {
-    await setDoc(
-      profileRef,
-      {
-        displayName: user.displayName,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    )
+  const value = useMemo<AuthContextValue>(() => {
+    const user: AuthUser | null = tc.authenticated
+      ? {
+          uid: claim(tc.getValueFromIdToken('sub')) ?? claim(tc.getValueFromToken('sub')) ?? '',
+          username: claim(tc.getValueFromIdToken('preferred_username')),
+          email: claim(tc.getValueFromIdToken('email')),
+        }
+      : null
 
     return {
-      ...existing,
-      displayName: user.displayName,
+      user,
+      authenticated: tc.authenticated,
+      loading: tc.isInitializing,
+      login: tc.login,
+      logout: tc.logout,
     }
-  }
+    // Re-derive whenever auth state or the tokens change; the SDK accessor
+    // identities are stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tc.authenticated, tc.isInitializing, tc.idToken, tc.token, tc.login, tc.logout])
 
-  return existing
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-async function setSessionCookie(): Promise<void> {
-  const token = await getIdToken()
-  if (!token) return
-  await fetch('/api/auth/session', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token }),
-  })
-}
-
-async function clearSessionCookie(): Promise<void> {
-  await fetch('/api/auth/session', { method: 'DELETE' })
-}
-
+/**
+ * Root client provider: initialises the TideCloak SDK and exposes `useAuth()`.
+ * Wrapped by `@/providers` and mounted once in the root layout.
+ */
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(getClientAuth(), async (firebaseUser) => {
-      if (firebaseUser) {
-        // Treat unverified users as unauthenticated so they cannot access
-        // protected routes or receive a session cookie before verifying.
-        if (!firebaseUser.emailVerified) {
-          setUser(null)
-          setProfile(null)
-          setLoading(false)
-          return
-        }
-        setUser(firebaseUser)
-        const userProfile = await syncUserProfile(firebaseUser)
-        setProfile(userProfile)
-        await setSessionCookie()
-      } else {
-        setUser(null)
-        setProfile(null)
-        await clearSessionCookie()
-      }
-      setLoading(false)
-    })
-
-    return () => unsubscribe()
-  }, [])
-
-  const signInWithEmail = async (email: string, password: string) => {
-    await fbSignInWithEmail(email, password)
-    // Ensure server session cookie exists before caller redirects to protected routes.
-    await setSessionCookie()
-  }
-
-  const signUpWithEmail = async (email: string, password: string, displayName: string) => {
-    await fbSignUpWithEmail(email, password, displayName)
-  }
-
-  const signInWithGoogle = async () => {
-    await fbSignInWithGoogle()
-    await setSessionCookie()
-  }
-
-  const signOut = async () => {
-    // Clear server session cookie first so proxy no longer treats the user as authenticated.
-    await clearSessionCookie()
-    await fbSignOut()
-    setUser(null)
-    setProfile(null)
-  }
-
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        profile,
-        loading,
-        signInWithEmail,
-        signUpWithEmail,
-        signInWithGoogle,
-        signOut,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <TideCloakProvider config={getTideCloakConfig()}>
+      <AuthBridge>{children}</AuthBridge>
+    </TideCloakProvider>
   )
 }
 

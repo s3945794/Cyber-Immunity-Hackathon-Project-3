@@ -21,20 +21,31 @@ pnpm run env:sync       # also runs automatically before `pnpm run dev`
 
 ## Variables (defined in root `.env`)
 
-| Variable | Secret | Required | Description |
-|---------|--------|----------|-------------|
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | No | Yes | Firebase project id — must match `.firebaserc`. Synced under the same name to both frontend and backend. |
-| `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` | **Yes** | Yes | Base64-encoded service account JSON. Synced to both packages; server-only in each. |
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | No | Yes | Firebase web app config → `apiKey` |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | No | Yes | Web app config → `authDomain` |
-| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | No | Yes | Web app config → `messagingSenderId` |
-| `NEXT_PUBLIC_FIREBASE_APP_ID` | No | Yes | Web app config → `appId` |
-| `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` | No | No | Web app config → `measurementId` (only if Analytics is on) |
-| `NEXT_PUBLIC_APP_URL` | No | Yes | Public app URL (`http://localhost:3000` locally) |
-| `NEXT_PUBLIC_APP_NAME` | No | Yes | App display name |
-| `CORS_ORIGIN` | No | No | Allowed CORS origin for the API (empty = deny all cross-origin) |
-| `PORT` | No | No | Local Functions dev server port (default `5001`) |
-| `STITCH_API_KEY` | **Yes** | No | Google Stitch key for the Claude Code MCP (stays in root `.env` only) |
+| Variable                                   | Secret  | Required           | Description                                                                                                                                                             |
+| ------------------------------------------ | ------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID`          | No      | Yes                | Firebase project id — must match `.firebaserc`. Synced under the same name to both frontend and backend.                                                                |
+| `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64`      | **Yes** | Yes                | Base64-encoded service account JSON. Synced to both packages; server-only in each.                                                                                      |
+| `NEXT_PUBLIC_FIREBASE_API_KEY`             | No      | Yes                | Firebase web app config → `apiKey`                                                                                                                                      |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`         | No      | Yes                | Web app config → `authDomain`                                                                                                                                           |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | No      | Yes                | Web app config → `messagingSenderId`                                                                                                                                    |
+| `NEXT_PUBLIC_FIREBASE_APP_ID`              | No      | Yes                | Web app config → `appId`                                                                                                                                                |
+| `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`      | No      | No                 | Web app config → `measurementId` (only if Analytics is on)                                                                                                              |
+| `NEXT_PUBLIC_APP_URL`                      | No      | Yes                | Public app URL (`http://localhost:3000` locally)                                                                                                                        |
+| `NEXT_PUBLIC_APP_NAME`                     | No      | Yes                | App display name                                                                                                                                                        |
+| `CORS_ORIGIN`                              | No      | No                 | Allowed CORS origin for the API (empty = deny all cross-origin)                                                                                                         |
+| `PORT`                                     | No      | No                 | Local Functions dev server port (default `5001`)                                                                                                                        |
+| `STITCH_API_KEY`                           | **Yes** | No                 | Google Stitch key for the Claude Code MCP (stays in root `.env` only)                                                                                                   |
+| `KC_BOOTSTRAP_ADMIN_USERNAME`              | No      | For TideCloak      | Local TideCloak container bootstrap admin username. **No default** — you choose it. Read by `docker-compose.tidecloak.yml` only. See `docs/TIDECLOAK-LOCAL.md`.         |
+| `KC_BOOTSTRAP_ADMIN_PASSWORD`              | **Yes** | For TideCloak      | Local TideCloak container bootstrap admin password. **No default.** Read by `docker-compose.tidecloak.yml` only; never commit a real value or put it on a command line. |
+| `NEXT_PUBLIC_TIDECLOAK_AUTH_SERVER_URL`    | No      | For TideCloak auth | TideCloak base URL (`http://localhost:8080` locally). Used by the browser SDK.                                                                                          |
+| `NEXT_PUBLIC_TIDECLOAK_REALM`              | No      | For TideCloak auth | TideCloak realm name (`soc-incident-report-protection`).                                                                                                                |
+| `NEXT_PUBLIC_TIDECLOAK_CLIENT_ID`          | No      | For TideCloak auth | TideCloak **public** OIDC client id (`soc-incident-report-protection-app`). Not a secret.                                                                               |
+| `NEXT_PUBLIC_TIDECLOAK_SSL_REQUIRED`       | No      | No                 | Adapter `ssl-required` value. Defaults to `external` (correct for localhost).                                                                                           |
+| `NEXT_PUBLIC_TIDECLOAK_REDIRECT_URI`       | No      | No                 | Explicit post-login redirect URI. Defaults to `<app origin>/auth/redirect`.                                                                                             |
+
+`KC_BOOTSTRAP_ADMIN_*` are only needed if you run the local TideCloak container (`pnpm run tidecloak:start`), which requires **both** to be set — there is no default for either. They are consumed directly by Docker Compose (which reads the root `.env` itself) and are intentionally absent from `scripts/sync-env.js`, so they never reach `frontend/.env.local` or `backend/.env`.
+
+The `NEXT_PUBLIC_TIDECLOAK_*` values configure the browser login flow (TideCloak SDK). They are a **public** OIDC client's connection details — not secrets — and reach `frontend/.env.local` through the generic `NEXT_PUBLIC_*` pass-through in `scripts/sync-env.js` (no change to that script needed). The Tide-specific adapter fields (`jwk`, `vendorId`, `homeOrkUrl`) used for DPoP / E2EE / server-side verification are **not** used yet — they arrive with `feature/tidecloak-protect`. The adapter JSON export (`data/tidecloak.json`) stays out of git.
 
 `NEXT_PUBLIC_*` values are compiled into the browser bundle — that prefix must **never** appear on a secret (a Claude Code hook blocks this).
 
