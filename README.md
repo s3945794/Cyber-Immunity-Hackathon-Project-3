@@ -1,221 +1,494 @@
 # SOC Incident Report Protection
 
-> Next.js + TideCloak + Firestore application for protecting SOC incident reports. Originally forked from a Firebase-based student boilerplate; authentication has been migrated to TideCloak.
+A proof-of-concept website being developed to protect sensitive Security Operations Centre (SOC) incident reports.
 
-**New here? Read the [step-by-step guide](docs/GUIDE.md)** — it walks through the current setup. The system diagrams are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The project uses Next.js, TideCloak and Firestore. It started from the RMIT Garage boilerplate and is being developed with help from Kiro and AI coding tools.
 
-**Note for the PR** if you cannot merge your pr is because there is a high veulnerability and the system doesn't allow for pr with high vulnerabilities to be merged. Instructions are below to fix this.
+Frontend login and logout are working. Backend TideCloak token verification, role enforcement and incident-report protection are still planned.
 
-## Stack
+> This project is under development. Do not use it to store real sensitive incident reports yet.
 
-|                           |                                                                                                                                                                          |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Frontend**              | Next.js 16 (App Router) · React 19 · TypeScript 5 · Tailwind v4                                                                                                          |
-| **Backend**               | Firebase Cloud Functions v2 · Express (single "fat lambda")                                                                                                              |
-| **Database**              | Firestore                                                                                                                                                                |
-| **Auth (frontend)**       | TideCloak — login, logout, callback and silent SSO are implemented. Server-side JWT verification and RBAC are **not yet implemented** — see `feature/tidecloak-protect`. |
-| **Local identity server** | TideCloak runs in a single local Docker container for development — see [docs/TIDECLOAK-LOCAL.md](docs/TIDECLOAK-LOCAL.md)                                               |
-| **Package manager**       | pnpm workspaces — always `pnpm`, never `npm`/`yarn`                                                                                                                      |
-| **Testing**               | Vitest · Testing Library · supertest                                                                                                                                     |
-| **Quality gates**         | Lefthook (Conventional Commits, lint, format) · GitHub Actions CI                                                                                                        |
+New to the project? Start with the [setup guide](docs/GUIDE.md). See [the architecture document](docs/ARCHITECTURE.md) for component descriptions and system diagrams.
 
-Firestore is used directly by the frontend (client SDK) and the Admin SDK (server-side) — there's no local Firestore emulator, so the app always talks to a real Firebase project. Firebase Cloud Storage isn't used either; store file metadata in Firestore or use a free third-party host if a feature needs uploads.
+## Project Purpose
+
+The planned website will allow SOC users to work with sensitive incident reports while limiting who can access them.
+
+The planned features include:
+
+- TideCloak login and logout.
+- Access rules based on four SOC roles.
+- Incident-report creation and viewing.
+- Encrypted report content using Tide Cybersecurity Fabric.
+- Approval requirements for protected actions.
+- Audit records showing important requests and actions.
+
+These features are not all implemented yet. The current status is listed below.
+
+## Current Status
+
+### Implemented
+
+- TideCloak frontend login and logout.
+- Authentication callback page at `/auth/redirect`.
+- Silent single sign-on (SSO) support at `/silent-check-sso.html`.
+- Browser-side authentication checks for the dashboard, profile and settings pages.
+- Navigation that displays the signed-in user.
+- Firestore database configuration retained from the original boilerplate.
+- Local TideCloak development environment using Docker.
+- Playwright browser-test foundation.
+- Tide development learning log.
+
+Silent SSO checks whether the user already has a login session without requiring another visible login.
+
+### Prepared but Not Enforced
+
+The four planned SOC roles are declared in `tidecloak/roles.json`:
+
+- SOC Analyst.
+- SOC Supervisor.
+- SOC Team Leader.
+- SOC Manager.
+
+Declaring these roles does not mean role-based access control is working. Application and backend role checks still need to be implemented and tested.
+
+### Not Yet Implemented
+
+- Server-side verification of TideCloak JSON Web Tokens (JWTs).
+- Backend API integration with the new TideCloak authentication flow.
+- Role-based access control (RBAC).
+- The main incident-report workflow.
+- Tide Cybersecurity Fabric integration for encrypted report content.
+- Incident-report approval workflows.
+- Incident-report audit logging.
+
+The backend authentication middleware still uses Firebase ID-token verification. It has not yet been connected to the TideCloak frontend.
+
+The frontend `getServerSession()` and `requireAuth()` functions are currently fail-closed placeholders, not completed TideCloak verification. Fail-closed means they deny access rather than grant it without verified authentication.
+
+### Important Security Limit
+
+Browser-side route protection controls what the website displays. It is not a complete security boundary.
+
+Backend APIs, Server Actions and database access need their own authentication and permission checks. A successful browser redirect test does not prove that these other layers are secure.
+
+## Technology Stack
+
+| Component                  | Technology                                                        |
+| -------------------------- | ----------------------------------------------------------------- |
+| Frontend                   | Next.js 16 App Router, React 19, TypeScript 5 and Tailwind CSS v4 |
+| Backend                    | Express, structured for Firebase Cloud Functions v2               |
+| Database                   | Firestore                                                         |
+| Frontend authentication    | TideCloak                                                         |
+| Local identity environment | TideCloak Docker container                                        |
+| Planned report protection  | Tide Cybersecurity Fabric                                         |
+| Package manager            | pnpm workspaces                                                   |
+| Unit and component testing | Vitest, Testing Library and supertest                             |
+| Browser testing            | Playwright with Chromium                                          |
+| Development checks         | ESLint, TypeScript, Prettier and Lefthook                         |
+| Repository automation      | GitHub Actions and Dependabot                                     |
+
+Use `pnpm` for project commands and dependency changes.
+
+Firestore remains the application database. Replacing Firebase Authentication does not remove the need for Firebase database configuration.
+
+The current setup uses a real Firebase project rather than a local Firestore emulator. Use development data only.
 
 ## Quick Start
 
-### 0. Prerequisites
+### 1. Prerequisites
 
-- **Node.js 22** — [nodejs.org](https://nodejs.org)
-- **pnpm** — `npm install -g pnpm`
-- **Docker Desktop** — required only for the local TideCloak container (see [docs/TIDECLOAK-LOCAL.md](docs/TIDECLOAK-LOCAL.md))
-- No Firebase CLI install needed — `npx firebase-tools` runs it on demand for rule deploys
+Install:
 
-### 1. Bootstrap
+- Node.js — the existing setup instructions specify version 22.
+- The pnpm version specified by the repository.
+- Docker Desktop for local TideCloak development.
+
+Follow any Node.js or package-manager version settings in the repository when setting up your environment.
+
+### 2. Clone and Bootstrap
 
 ```bash
-git clone https://github.com/s3945794/Cyber-Immunity-Hackathon-Project-3.git my-project
-cd my-project
+git clone https://github.com/s3945794/Cyber-Immunity-Hackathon-Project-3.git soc-incident-report-protection
+cd soc-incident-report-protection
 pnpm run bootstrap
 ```
 
-Bootstrap installs dependencies, creates the root `.env` from `.env.example` (only if missing), and generates the per-package env files.
+Bootstrap:
 
-### 2. Connect Firebase (Firestore) — one env file
+- Installs project dependencies.
+- Creates the root `.env` from `.env.example` if it does not already exist.
+- Generates the frontend and backend environment files.
 
-**All env values live in the root `.env`.** `frontend/.env.local` and `backend/.env` are generated from it by `pnpm run env:sync` (runs automatically before `pnpm run dev`) — never edit them by hand.
+### 3. Configure Environment Variables
 
-Create a project at [console.firebase.google.com](https://console.firebase.google.com) — the free Spark plan is enough, no billing required — then:
+Edit the root `.env` file.
 
-1. Create a **Firestore** database
-2. Register a **web app** (Project settings → Your apps → Web) and copy each `firebaseConfig` value into the matching `NEXT_PUBLIC_FIREBASE_*` variable in `.env`
-3. Generate a **service account key** (Project settings → Service accounts), base64-encode it, and set `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` in `.env`:
-   ```bash
-   # macOS (BSD base64 — no -w flag)
-   base64 -i service-account.json | tr -d '\n'
-   # Linux (GNU base64)
-   base64 -w 0 service-account.json
-   # Windows PowerShell (single quotes around the path)
-   [Convert]::ToBase64String([IO.File]::ReadAllBytes('C:\path\to\service-account.json'))
-   ```
-4. Set `NEXT_PUBLIC_FIREBASE_PROJECT_ID` in `.env` and the same id in `.firebaserc` (`projects.default`)
+The following files are generated from it:
 
-Full variable reference: [docs/ENV-VARS.md](docs/ENV-VARS.md).
+- `frontend/.env.local`
+- `backend/.env`
 
-### 3. Connect TideCloak (frontend authentication)
+Do not edit these generated files by hand.
 
-Start the local TideCloak container and provision a realm/client — see [docs/TIDECLOAK-LOCAL.md](docs/TIDECLOAK-LOCAL.md) for the full walkthrough. Set the `NEXT_PUBLIC_TIDECLOAK_*` variables in `.env` from the realm and client you create.
+To regenerate them:
 
-### 4. Run
+```bash
+pnpm run env:sync
+```
+
+Environment synchronisation also runs before `pnpm run dev`.
+
+See [the environment-variable reference](docs/ENV-VARS.md) for the required values.
+
+Never commit `.env` files, service-account keys, passwords or tokens.
+
+### 4. Configure Firestore
+
+Use a Firebase development project:
+
+1. Create a Firestore database.
+2. Register a Firebase web app.
+3. Add the web configuration to the matching `NEXT_PUBLIC_FIREBASE_*` variables in the root `.env`.
+4. Configure the server-side Firebase credentials described in `docs/ENV-VARS.md`.
+5. Set the correct Firebase project ID in `.env` and `.firebaserc`.
+
+Firebase service-account credentials are secret. Do not put them in browser-facing variables or include them in screenshots, documentation or Git commits.
+
+### 5. Configure and Start TideCloak
+
+Follow [the local TideCloak guide](docs/TIDECLOAK-LOCAL.md) to set up the realm and client.
+
+A realm is the identity environment containing the application's users, clients and roles.
+
+Set the required `NEXT_PUBLIC_TIDECLOAK_*` configuration values in the root `.env`.
+
+Start TideCloak:
+
+```bash
+pnpm run tidecloak:start
+```
+
+Check its status:
+
+```bash
+pnpm run tidecloak:status
+```
+
+### 6. Start the Website
 
 ```bash
 pnpm run dev
 ```
 
-- App → [http://localhost:3000](http://localhost:3000)
+Open:
 
-Restart the dev server after changing `.env` — `NEXT_PUBLIC_*` variables are baked in at startup.
+[http://localhost:3000](http://localhost:3000)
 
-## Current functionality
+This command starts the frontend development server. It does not mean the backend API or all planned features are running.
 
-- TideCloak frontend login, logout, post-login callback (`/auth/redirect`), and silent SSO (`/silent-check-sso.html`) are implemented and working end to end.
-- The dashboard route group is gated **client-side** via `useAuth()` — this is a UX gate, not a security boundary.
-- Firestore remains the application database, accessed via the Admin SDK (server) and the client SDK (browser), unchanged by the TideCloak migration.
+Restart the development server after changing environment variables.
 
-## Not yet implemented
+## Authentication Flow
 
-- **Server-side TideCloak JWT verification** — Server Actions and the backend API do not yet verify TideCloak tokens. `getServerSession()`/`requireAuth()` are fail-closed placeholders.
-- **Role-based access control (RBAC)** — the four SOC roles are declared in `tidecloak/roles.json` but not yet created in the realm, and no code reads roles from a token yet.
-- **Backend API protection** — `backend/`'s auth middleware still verifies Firebase ID tokens, not TideCloak tokens; it has not been reconnected to the new frontend auth.
-- **Encryption, approval workflows, and audit logging** for incident reports — not started.
+The current frontend authentication flow is:
 
-This work is tracked under `feature/tidecloak-protect`.
+1. A logged-out user opens a protected page.
+2. The application starts TideCloak authentication.
+3. The browser passes through local TideCloak.
+4. The observed development flow continues to an external HTTPS sign-in page under `*.tideprotocol.com`.
+5. After successful authentication, the browser returns through `/auth/redirect`.
+6. The signed-in user can reach the dashboard.
 
-## Troubleshooting
+Do not assume the final sign-in page stays on the local TideCloak address or uses standard Keycloak form selectors.
 
-| Symptom                                                 | What to try                                                                                                                                                                                                                                                                                               |
-| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "Firebase web config is incomplete" on Vercel           | A `NEXT_PUBLIC_FIREBASE_*` env var is missing in Vercel. Add it under Project Settings → Environment Variables (same names as your local `.env`), then redeploy — existing deployments don't pick up new env vars automatically. See [docs/CI-CD.md § Vercel Setup](docs/CI-CD.md#vercel-setup-frontend). |
-| `Invalid project id: REPLACE_WITH_...`                  | Set the real project id in `.firebaserc`.                                                                                                                                                                                                                                                                 |
-| `'next' is not recognized` / `Command "next" not found` | Run `pnpm install` from the **repo root**. If it persists, delete all `node_modules` folders and reinstall.                                                                                                                                                                                               |
-| Ignored build scripts warning from pnpm                 | Build approvals live in `pnpm-workspace.yaml` (`allowBuilds`) — re-run `pnpm install`.                                                                                                                                                                                                                    |
-| "Missing or insufficient permissions"                   | Firestore security rules don't allow that access — add rules in `firebase/firestore.rules`, then deploy them (`npx firebase-tools deploy --only firestore:rules`).                                                                                                                                        |
-| TideCloak login loops back to `/auth/signin`            | Check the TideCloak server log for the OAuth error code. See `docs/tide-mcp-learning.txt` for previously diagnosed causes (DPoP, silent-SSO iframe framing).                                                                                                                                              |
-| Commit rejected                                         | Message must be Conventional Commits (`feat: …`, `fix: …`).                                                                                                                                                                                                                                               |
+Authentication URLs can contain temporary session information. Never hardcode or publish full authentication URLs or their query values.
+
+## Testing
+
+### Unit and Component Tests
+
+```bash
+pnpm run test
+pnpm run test:component
+pnpm run test:all
+```
+
+These commands run the existing Vitest-based tests. Run Playwright separately using the browser-test commands below.
+
+### CI-Safe Browser Tests
+
+Install Chromium when needed:
+
+```bash
+pnpm --filter frontend exec playwright install chromium
+```
+
+Run:
+
+```bash
+pnpm run test:e2e
+```
+
+The current CI-safe tests check the sign-in page and silent-SSO page without entering Tide account credentials.
+
+These tests are designed to be suitable for continuous integration (CI). That does not automatically mean they are already included in a GitHub Actions workflow.
+
+### Local TideCloak Browser Tests
+
+With the frontend and local TideCloak running:
+
+```bash
+pnpm run test:e2e:local-tidecloak
+```
+
+Run this test group with one worker, as configured by the local test script. This is a reliability precaution, not proof that concurrent sessions caused earlier failures.
+
+The protected-route tests cover:
+
+- `/dashboard`
+- `/profile`
+- `/settings`
+
+They check that unauthenticated users are redirected through the expected authentication flow and protected page content is not displayed.
+
+Automated login and logout tests are currently skipped because reliable login-page selectors have not been confirmed. Login and logout still require manual verification.
+
+### Latest Reported Local Verification
+
+During the Playwright foundation stage:
+
+- Five CI-safe browser tests passed.
+- Three local protected-route tests passed using one worker.
+- Two automated login/logout tests were skipped.
+- Existing frontend and backend unit tests passed.
+- Lint, type checking and the production build passed.
+
+These results describe that development checkpoint. Rerun relevant checks after making changes.
+
+Test reports, traces and screenshots may contain sensitive session information. Keep generated artifacts out of Git and review them before sharing.
+
+See [the testing guide](docs/TESTING.md) for detailed instructions.
+
+## Common Commands
+
+Run these commands from the repository root.
+
+| Command                             | Purpose                                            |
+| ----------------------------------- | -------------------------------------------------- |
+| `pnpm run bootstrap`                | Install dependencies and prepare environment files |
+| `pnpm run dev`                      | Start the frontend development server              |
+| `pnpm run build`                    | Build the frontend and backend                     |
+| `pnpm run test`                     | Run backend unit tests                             |
+| `pnpm run test:component`           | Run frontend unit and component tests              |
+| `pnpm run test:all`                 | Run the existing combined Vitest tests             |
+| `pnpm run test:e2e`                 | Run CI-safe Playwright browser tests               |
+| `pnpm run test:e2e:local-tidecloak` | Run local TideCloak browser tests                  |
+| `pnpm run lint`                     | Check code with ESLint                             |
+| `pnpm run typecheck`                | Check TypeScript types                             |
+| `pnpm run format`                   | Format project files with Prettier                 |
+| `pnpm run env:sync`                 | Regenerate frontend and backend environment files  |
+| `pnpm run validate`                 | Check for unreplaced template placeholders         |
+| `pnpm run tidecloak:start`          | Start local TideCloak                              |
+| `pnpm run tidecloak:stop`           | Stop local TideCloak while retaining local data    |
+| `pnpm run tidecloak:status`         | Check the container and HTTP response              |
+| `pnpm run tidecloak:logs`           | Follow TideCloak container logs                    |
+
+`pnpm run format` changes files. Review its diff before committing.
 
 ## Project Structure
 
-```
-/
-├── frontend/          Next.js 16 App Router
-│   └── src/
-│       ├── app/       Pages (route groups: (auth), (dashboard))
-│       ├── components/ UI components (layout, shared)
-│       ├── features/  Feature modules (one folder per business domain)
-│       ├── lib/       Firebase client/admin (lazy init), TideCloak config, validations, utils
-│       ├── hooks/     Custom React hooks
-│       ├── providers/ React context providers (TideCloak auth bridge)
-│       ├── actions/   Next.js Server Actions
-│       └── types/     TypeScript type definitions
-├── backend/           Cloud Functions v2 — Express fat-lambda
-│   └── src/
-│       ├── app.ts     Express app factory
-│       ├── routes/    One file per resource
-│       ├── middleware/ auth (Firebase ID token → req.user — not yet TideCloak), errorHandler (RFC 9457)
-│       └── lib/       firebase (Admin singleton), errors (HttpError), zodConverter
-├── firebase/          Firestore rules, indexes
-├── tidecloak/         Local TideCloak config and declared SOC realm roles
-├── docs/              Guides and reference docs — start with GUIDE.md
-└── .claude/           Claude Code harness (agents, skills, MCP, hooks)
-```
+| Location                        | Purpose                                               |
+| ------------------------------- | ----------------------------------------------------- |
+| `frontend/src/app/`             | Website pages and layouts                             |
+| `frontend/src/components/`      | Shared user-interface components                      |
+| `frontend/src/features/`        | Application feature modules                           |
+| `frontend/src/lib/`             | Firebase setup, TideCloak configuration and utilities |
+| `frontend/src/providers/`       | React providers, including the authentication bridge  |
+| `frontend/src/actions/`         | Next.js Server Actions                                |
+| `frontend/tests/e2e/`           | Playwright browser tests                              |
+| `frontend/playwright.config.ts` | Playwright configuration                              |
+| `backend/src/routes/`           | Express API routes                                    |
+| `backend/src/middleware/`       | Authentication and error-handling middleware          |
+| `backend/src/lib/`              | Server-side Firebase setup and utilities              |
+| `firebase/`                     | Firestore rules and indexes                           |
+| `tidecloak/`                    | Local TideCloak configuration and role declarations   |
+| `scripts/`                      | Project setup and development scripts                 |
+| `docs/`                         | Setup guides and reference documents                  |
+| `.github/workflows/`            | GitHub Actions workflow definitions                   |
+| `.claude/`                      | Optional Claude Code development configuration        |
 
-## Commands
+## GitHub Actions and Dependabot
+
+### GitHub Actions
+
+GitHub Actions runs automated jobs defined in `.github/workflows/`.
+
+Depending on the workflow configuration, jobs can run after a push, a pull request or another configured event.
+
+The workflow files are the source of truth for:
+
+- Which checks run.
+- Which branches trigger them.
+- Whether browser tests are included.
+- Whether deployment steps are included.
+
+Passing a local test does not mean that test also runs on GitHub.
+
+A green workflow means its configured jobs passed. It does not prove the whole website is secure.
+
+A red workflow means a job failed. Open the failed job and step to find the cause before accepting the affected changes.
+
+### Dependabot
+
+Dependabot checks dependencies and can open pull requests proposing updates.
+
+A dependency update can fail CI even when the current `main` branch passes. Investigate the failed check before merging the proposed update.
+
+Do not disable checks just to accept a dependency update.
+
+## Security and Development Limits
+
+This is a development proof of concept, not a production-ready report-protection system.
+
+Important rules:
+
+- Do not store real sensitive incident reports yet.
+- Do not treat browser-side route checks as backend protection.
+- Do not weaken Firestore rules just to remove permission errors.
+- Do not commit passwords, tokens, cookies, private keys or service-account credentials.
+- Do not publish authentication query strings or session URLs.
+- Do not treat AI development hooks as application security controls.
+- Do not assume a green build proves authentication, authorisation or encryption is complete.
+
+Check dependency findings with:
 
 ```bash
-pnpm run bootstrap        # First-time: install deps, env templates
-pnpm run dev              # Frontend dev server (talks to your real Firebase project)
-pnpm run build            # Build all packages
-pnpm run test             # Backend unit tests (mocked Firebase Admin)
-pnpm run test:component   # Frontend unit tests
-pnpm run test:all         # All tests
-pnpm run lint             # ESLint across all packages
-pnpm run format           # Prettier across all packages
-pnpm run typecheck        # TypeScript check across all packages
-pnpm run env:sync         # Regenerate frontend/backend env files from root .env
-pnpm run validate         # Check for unreplaced template placeholders
-pnpm run tidecloak:start  # Start the local TideCloak container
-pnpm run tidecloak:stop   # Stop it (keeps ./data)
-pnpm run tidecloak:status # Container state + HTTP probe
-pnpm run tidecloak:logs   # Follow container logs
+pnpm audit
 ```
 
-## Security
+Audit findings change as dependencies and advisory data change. Investigate each finding rather than assuming development-only packages are harmless.
 
-Security is enforced in independent layers — Claude Code guard hooks, HTTP hardening (helmet/CORS/rate limits), TideCloak frontend authentication, Zod input validation, default-deny Firestore rules, and CI scanning (`pnpm audit`). Server-side token verification and RBAC are not yet implemented — see [docs/SECURITY.md](docs/SECURITY.md) for the current, honest state of each layer.
+See [the security document](docs/SECURITY.md) for more detail.
 
-### Known `pnpm audit` findings (manual fix)
+## Troubleshooting
 
-`pnpm audit` currently flags two high-severity CVEs — both transitive, dev/build-time only, not runtime-reachable:
-
-| Package   | Issue                                                     | Pulled in by                                                   |
-| --------- | --------------------------------------------------------- | -------------------------------------------------------------- |
-| `js-yaml` | CVE-2026-59870 — quadratic CPU DoS on `!!omap` resolution | eslint's dependency chain (lint-time only)                     |
-| `nanoid`  | Infinite loop when a custom generator's `size` is 0       | postcss, used by Tailwind/Next/Vitest builds (build-time only) |
-
-To patch: add these two lines under `overrides:` in `pnpm-workspace.yaml`, then run `pnpm install`:
-
-```yaml
-js-yaml: '^4.3.1'
-nanoid: '^3.3.18'
-```
-
-Confirm with `pnpm audit` — should show 0 high/critical findings.
+| Problem                                         | What to check                                                                                         |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Firebase configuration is incomplete            | Check the required root `.env` values, run `pnpm run env:sync`, and restart the frontend              |
+| Firebase project ID contains a placeholder      | Set the real development project ID in `.env` and `.firebaserc`                                       |
+| `next` or another dependency command is missing | Run `pnpm install` from the repository root                                                           |
+| pnpm reports ignored build scripts              | Review the repository's build-approval configuration before approving scripts                         |
+| Firestore reports insufficient permissions      | Check the intended access and `firebase/firestore.rules`; do not enable broad access as a workaround  |
+| TideCloak login returns to `/auth/signin`       | Inspect sanitised application and TideCloak errors, then check the learning log for previous findings |
+| Browser tests expect the wrong login URL        | Check the observed redirect chain; the sign-in page may be on an external Tide domain                 |
+| Playwright reports `ERR_NETWORK_CHANGED`        | Inspect the failure and rerun with one worker; do not assume credentials or concurrency caused it     |
+| Automated login/logout tests are skipped        | Follow the manual verification procedure in `docs/TESTING.md`                                         |
+| A commit is rejected                            | Check the hook output and use a Conventional Commit message such as `docs: update README`             |
 
 ## Git Workflow
 
-| Branch      | Purpose                                  |
-| ----------- | ---------------------------------------- |
-| `main`      | Production — protected, no direct pushes |
-| `feature/*` | New features → PR back to `main`         |
-| `hotfix/*`  | Urgent fixes → PR back to `main`         |
+Use clear commit messages:
 
-Use the Claude Code skills `/git-feature`, `/git-hotfix`, `/git-release`. Details: [docs/GIT-WORKFLOW.md](docs/GIT-WORKFLOW.md).
+```text
+feat: add a feature
+fix: correct a problem
+docs: update documentation
+test: add or update tests
+chore: maintain project configuration
+```
 
-## Claude Code Harness
+Before committing:
 
-The repo ships a pre-configured harness: three MCP servers (**context7** for live library docs, **firebase** for Firestore/deploy tooling, **stitch** for design-to-code), three sub-agents (**security-reviewer**, **doc-auditor**, **test-writer**), enforcement hooks (blocks `any`, secret prefixes, direct pushes to `main`, unapproved deploys), and skills for scaffolding and quality:
+```bash
+git status -sb
+git diff
+git diff --check
+```
 
-| Category    | Skills                                                                                                                                             |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Setup       | `/bootstrap` — guided end-to-end local setup with verification                                                                                     |
-| Scaffolding | `/new-feature` · `/new-page` · `/new-component` · `/firebase-collection` · `/add-auth-provider` · `/add-route` · `/evolve-schema` · `/add-env-var` |
-| Quality     | `/verify` · `/checkpoint` · `/save-session` · `/resume-session`                                                                                    |
-| Git         | `/git-feature` · `/git-hotfix` · `/git-release`                                                                                                    |
+For a README-only update, stage only the README:
 
-See [CLAUDE.md](CLAUDE.md) for the full harness reference.
+```bash
+git add README.md
+git commit -m "docs: update SOC project README"
+```
+
+Check the current branch before pushing. A push to a feature branch does not update the README on `main`.
+
+Follow the repository's branch-protection rules. If a pull request is required, use one. Do not force-push or bypass protection.
+
+See [the Git workflow guide](docs/GIT-WORKFLOW.md).
+
+## Development Tools
+
+Kiro is used during development. Claude Code configuration is also included in the repository.
+
+Neither tool is required to run the application. Developers can edit files directly and use the documented pnpm commands.
+
+AI-generated changes must still be reviewed and tested.
+
+See [CLAUDE.md](CLAUDE.md) for the optional Claude Code development instructions.
+
+## Tide Learning Log
+
+The learning log is stored in:
+
+[docs/tide-mcp-learning.txt](docs/tide-mcp-learning.txt)
+
+It records:
+
+- Observable problems and error messages.
+- Investigation steps and results.
+- Confirmed solutions or available workarounds.
+- Verification evidence.
+- Suggested improvements to Tide guidance.
+
+Update an existing entry when the same issue is solved instead of creating a duplicate.
+
+Never record secrets or private AI reasoning. If the cause is unknown, state that the root cause is not confirmed.
 
 ## Documentation
 
-| Topic                           | Link                                                     |
-| ------------------------------- | -------------------------------------------------------- |
-| **Beginner guide (start here)** | [docs/GUIDE.md](docs/GUIDE.md)                           |
-| Architecture + diagrams         | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)             |
-| Frontend conventions            | [docs/FRONTEND.md](docs/FRONTEND.md)                     |
-| Backend conventions             | [docs/BACKEND.md](docs/BACKEND.md)                       |
-| Design system                   | [docs/DESIGN.md](docs/DESIGN.md)                         |
-| Firestore schema                | [docs/FIRESTORE-SCHEMA.md](docs/FIRESTORE-SCHEMA.md)     |
-| Environment variables           | [docs/ENV-VARS.md](docs/ENV-VARS.md)                     |
-| TideCloak local development     | [docs/TIDECLOAK-LOCAL.md](docs/TIDECLOAK-LOCAL.md)       |
-| Testing                         | [docs/TESTING.md](docs/TESTING.md)                       |
-| Security                        | [docs/SECURITY.md](docs/SECURITY.md)                     |
-| Git workflow                    | [docs/GIT-WORKFLOW.md](docs/GIT-WORKFLOW.md)             |
-| CI/CD & deployment              | [docs/CI-CD.md](docs/CI-CD.md)                           |
-| Tide MCP learning log           | [docs/tide-mcp-learning.txt](docs/tide-mcp-learning.txt) |
+| Topic                 | Document                                            |
+| --------------------- | --------------------------------------------------- |
+| Setup guide           | [GUIDE.md](docs/GUIDE.md)                           |
+| Architecture          | [ARCHITECTURE.md](docs/ARCHITECTURE.md)             |
+| Frontend conventions  | [FRONTEND.md](docs/FRONTEND.md)                     |
+| Backend conventions   | [BACKEND.md](docs/BACKEND.md)                       |
+| Design system         | [DESIGN.md](docs/DESIGN.md)                         |
+| Firestore schema      | [FIRESTORE-SCHEMA.md](docs/FIRESTORE-SCHEMA.md)     |
+| Environment variables | [ENV-VARS.md](docs/ENV-VARS.md)                     |
+| Local TideCloak       | [TIDECLOAK-LOCAL.md](docs/TIDECLOAK-LOCAL.md)       |
+| Testing               | [TESTING.md](docs/TESTING.md)                       |
+| Security              | [SECURITY.md](docs/SECURITY.md)                     |
+| Git workflow          | [GIT-WORKFLOW.md](docs/GIT-WORKFLOW.md)             |
+| CI/CD                 | [CI-CD.md](docs/CI-CD.md)                           |
+| Vercel deployment     | [DEPLOY-TO-VERCEL.md](docs/DEPLOY-TO-VERCEL.md)     |
+| Tide learning log     | [tide-mcp-learning.txt](docs/tide-mcp-learning.txt) |
 
 ## Deployment
 
-The frontend deploys to **Vercel** (free Hobby tier, no billing account needed — this app is server-rendered, so it needs a server host, not static hosting).
-Use this to deploy to Vercel - [DEPLOY-TO-VERCEL.md](docs/DEPLOY-TO-VERCEL.md)
+The frontend deployment guide targets Vercel.
+
+See [the Vercel deployment guide](docs/DEPLOY-TO-VERCEL.md) for configuration instructions.
+
+A successful frontend deployment does not mean the backend, TideCloak or planned report-protection features are deployed and working.
+
+Production deployment requires suitable identity-server hosting, callback settings, environment variables and verified backend security.
+
+## Next Steps
+
+1. Add the CI-safe Playwright tests to GitHub Actions.
+2. Implement server-side TideCloak token verification.
+3. Connect backend APIs to TideCloak authentication.
+4. Implement and test the four SOC roles.
+5. Build the incident-report workflow.
+6. Integrate Tide Cybersecurity Fabric.
+7. Add approvals and audit records.
+8. Verify the complete security and user flow.
 
 ## Credits
+
+Based on the RMIT Garage boilerplate.
 
 Originally forked from a Firebase-based student capstone boilerplate by **Duc Gia Tin Huynh** ([LinkedIn](https://www.linkedin.com/in/huynhducgiatin/)).
