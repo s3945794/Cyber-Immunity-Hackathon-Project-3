@@ -13,7 +13,7 @@
 | **1A** | Local TideCloak **container foundation** + **interactive** realm / client provisioning via the built-in wizard                                                                   | **Done and verified by manual runtime test**                                                                                                                      |
 | **1B** | The four SOC **roles**, adapter-JSON export, and a **reproducible / scripted** realm setup                                                                                       | Not started — scripted path still unavailable (see ISSUE 005)                                                                                                     |
 | **2A** | **Frontend** TideCloak auth — provider, `login`/`logout`, `/auth/redirect` callback, `useAuth()` state; Firebase Auth UI + `__session` cookie removed (`feature/tidecloak-auth`) | **Done and verified** — end-to-end login against the live local realm succeeded and reached `/dashboard` (see `docs/tide-mcp-learning.txt` ISSUE 010 / ISSUE 011) |
-| **2B** | **Backend / server-side** — route & API protection, server-side JWT verification, RBAC (`feature/tidecloak-protect`)                                                             | Not started                                                                                                                                                       |
+| **2B** | **Backend / server-side** — server-side JWT verification + role-checking middleware (`feature/tidecloak-backend-auth`)                                                           | **Code done and unit-tested** (local test keys). Not yet verified against a running TideCloak instance or real adapter export — see notes below.                  |
 
 ---
 
@@ -184,8 +184,10 @@ copying `./data` to another machine is not a supported setup path.
   [`../tidecloak/roles.json`](../tidecloak/roles.json) (realm roles; display
   names are UI labels only).
 - The adapter JSON has **not** been exported.
-- Backend/Express authentication code has **not** been touched — it still verifies Firebase ID
-  tokens (see Phase 2B below).
+- Backend/Express authentication code now verifies TideCloak access tokens by default, and a
+  minimal protected endpoint (`GET /api/me`) exists to exercise it, but both have only been
+  tested against locally generated test keys, not a real exported adapter or a running realm
+  (see Phase 2B below).
 
 **Update:** Frontend Firebase Authentication (client SDK, `proxy.ts`, `__session` cookie,
 `/api/auth/session`) **has since been removed** as part of Phase 2A (`feature/tidecloak-auth`).
@@ -231,7 +233,7 @@ admin panel / approval UI, which is **out of scope** for this PoC (see
 
 ---
 
-## Phase 2A — frontend migration (done) / Phase 2B — backend (not started)
+## Phase 2A — frontend migration (done) / Phase 2B — backend (code done, not runtime-verified)
 
 **Frontend** (`feature/tidecloak-auth`, done): TideCloak provider, redirect handler
 (`/auth/redirect`), silent SSO (`/silent-check-sso.html`), `useAuth()` state, and removal of the
@@ -239,10 +241,31 @@ Firebase Authentication surface (client SDK, `proxy.ts`, `__session` cookie, `/a
 are all complete and verified end to end against the local realm above. Firestore remains the
 database, unchanged.
 
-**Backend** (`feature/tidecloak-protect`, not started): route/API protection, server-side
-TideCloak JWT verification (EdDSA), and role checks are still future work. The Express backend's
-auth middleware currently verifies **Firebase ID tokens** and has not been reconnected to
-TideCloak — see `docs/BACKEND.md`.
+**Backend** (`feature/tidecloak-backend-auth`): the Express backend's auth middleware now
+verifies **TideCloak access tokens** by default (`src/middleware/auth.ts`,
+`src/lib/tideJWT.ts`, `src/lib/tidecloakConfig.ts`) — see `docs/BACKEND.md` for the exact checks.
+Legacy Firebase ID token verification (`verifyFirebaseToken`) has been moved into its own module,
+`src/middleware/firebaseAuth.ts`, so the normal TideCloak auth path (`src/middleware/auth.ts`)
+never imports Firebase Authentication; it is kept for reference but not wired into `createApp()`.
+Firebase Admin remains in use for Firestore, unaffected.
+
+`GET /api/me` (`src/routes/me.ts`) is a minimal protected endpoint that returns the authenticated
+user's `uid`, `email` and recognised SOC `roles` — it exists to demonstrate the auth middleware
+end to end, not as an application feature. The `data/tidecloak.json` fallback now resolves
+relative to the repository root regardless of the process's working directory (previously it
+used `process.cwd()`, which pointed at `backend/data/tidecloak.json` under every documented run
+command — fixed in `src/lib/tidecloakConfig.ts`).
+
+Confirmed via Tide MCP (`verify-jwt-server-side` playbook) and implemented here:
+issuer = `${auth-server-url}/realms/${realm}`, `azp` (not `aud`) checked against the client id,
+realm + client roles read from `realm_access.roles` / `resource_access[<client>].roles`, local
+embedded-JWKS verification only (no remote JWKS fetch), and no hardcoded signing algorithm (Tide
+MCP did not confirm one — `jose` verifies using the JWKS key material). This corrects the earlier
+"EdDSA" note below, which was an assumption, not confirmed guidance.
+
+**Not yet done:** the four SOC roles have not been created in a running TideCloak realm (Phase
+1B, still separate), so this code has only been verified with unit tests against locally
+generated test keys — not against a real adapter export or a live TideCloak instance.
 
 ---
 

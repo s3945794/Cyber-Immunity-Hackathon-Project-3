@@ -81,15 +81,16 @@ Everything a feature build needs already exists below. **Do not survey the codeb
 
 ### Backend building blocks
 
-| File                              | Exports                                                                                                    | Use for                                                           |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `backend/src/app.ts`              | `createApp({ verifyToken? })`                                                                              | Composition; tests inject mock auth                               |
-| `backend/src/middleware/auth.ts`  | `AuthenticatedRequest` (`.user` = `AuthUser { uid, email, claims }`), `VerifyToken`, `verifyFirebaseToken` | Authed user in routes                                             |
-| `backend/src/lib/errors.ts`       | `HttpError` + statics `badRequest/unauthorized/forbidden/notFound/conflict/internal`                       | All route errors, via `next(...)`                                 |
-| `backend/src/lib/firebase.ts`     | `adminAuth`, `adminDb`                                                                                     | Sole Firebase Admin entry (CI-enforced)                           |
-| `backend/src/lib/zodConverter.ts` | `createZodConverter(schema, version, migrate?)`                                                            | Typed Firestore reads with `_schemaVersion`                       |
-| `backend/src/routes/index.ts`     | `apiRouter` — mount new routers here                                                                       | Route registry                                                    |
-| `backend/tests/setup.ts`          | `mockVerifyToken`, `mockUser`                                                                              | Route unit tests (mocked Firebase Admin — no real Firebase calls) |
+| File                                     | Exports                                                                                                                           | Use for                                                           |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `backend/src/app.ts`                     | `createApp({ verifyToken? })`                                                                                                     | Composition; tests inject mock auth                               |
+| `backend/src/middleware/auth.ts`         | `AuthenticatedRequest` (`.user` = `AuthUser { uid, email, claims, roles }`), `VerifyToken`, `verifyTideCloakToken`, `requireRole` | Authed user in routes; no Firebase import                         |
+| `backend/src/middleware/firebaseAuth.ts` | `verifyFirebaseToken` (legacy, not wired into `createApp()`)                                                                      | Legacy Firebase ID token verification, isolated                   |
+| `backend/src/lib/errors.ts`              | `HttpError` + statics `badRequest/unauthorized/forbidden/notFound/conflict/internal`                                              | All route errors, via `next(...)`                                 |
+| `backend/src/lib/firebase.ts`            | `adminAuth`, `adminDb`                                                                                                            | Sole Firebase Admin entry (CI-enforced)                           |
+| `backend/src/lib/zodConverter.ts`        | `createZodConverter(schema, version, migrate?)`                                                                                   | Typed Firestore reads with `_schemaVersion`                       |
+| `backend/src/routes/index.ts`            | `apiRouter` — mount new routers here                                                                                              | Route registry                                                    |
+| `backend/tests/setup.ts`                 | `mockVerifyToken`, `mockUser`                                                                                                     | Route unit tests (mocked Firebase Admin — no real Firebase calls) |
 
 ### Firestore rules helpers (`firebase/firestore.rules`)
 

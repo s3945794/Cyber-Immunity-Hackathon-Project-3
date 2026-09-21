@@ -2,7 +2,7 @@ import express, { type Express } from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
-import { createAuthMiddleware, verifyFirebaseToken, type VerifyToken } from './middleware/auth'
+import { createAuthMiddleware, verifyTideCloakToken, type VerifyToken } from './middleware/auth'
 import { errorHandler } from './middleware/errorHandler'
 import { healthRouter } from './routes/health'
 import { apiRouter } from './routes'
@@ -28,10 +28,10 @@ const globalLimiter = rateLimit({
 /**
  * Express app factory.
  *
- * verifyToken defaults to Firebase token verification (production).
+ * verifyToken defaults to TideCloak access token verification (production).
  * Pass a mock in tests: createApp({ verifyToken: mockVerifyToken })
  */
-export function createApp({ verifyToken = verifyFirebaseToken }: AppOptions = {}): Express {
+export function createApp({ verifyToken = verifyTideCloakToken }: AppOptions = {}): Express {
   const app = express()
 
   const authMiddleware = createAuthMiddleware(verifyToken)
@@ -52,7 +52,7 @@ export function createApp({ verifyToken = verifyFirebaseToken }: AppOptions = {}
   // Public routes (no auth)
   app.use('/api/health', healthRouter)
 
-  // Protected routes — require a valid Firebase ID token
+  // Protected routes — require a valid TideCloak access token
   app.use('/api', authMiddleware, apiRouter)
 
   // 404 handler
