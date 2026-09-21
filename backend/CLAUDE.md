@@ -13,15 +13,19 @@ backend/src/
 ├── index.ts                  # Cloud Function entry — exports `api` via onRequest()
 ├── app.ts                    # Express app factory — createApp()
 ├── lib/
-│   ├── firebase.ts           # Firebase Admin singleton — sole entry point for the Admin SDK
+│   ├── firebase.ts           # Firebase Admin singleton — sole entry point for the Admin SDK (Firestore only)
+│   ├── tidecloakConfig.ts    # TideCloak adapter config loader (CLIENT_ADAPTER / data/tidecloak.json)
+│   ├── tideJWT.ts            # TideCloak access token verification + SOC role extraction
 │   ├── errors.ts             # HttpError — the single error type (RFC 9457 responses)
 │   └── zodConverter.ts       # Typed Firestore converter with _schemaVersion + lazy migration
 ├── middleware/
-│   ├── auth.ts               # Token verification → attaches req.user
+│   ├── auth.ts               # TideCloak JWT verification → attaches req.user; requireRole() (no Firebase import)
+│   ├── firebaseAuth.ts       # Legacy Firebase ID token verification — isolated, not wired into createApp()
 │   └── errorHandler.ts       # Renders every error as { type, title, status, detail }
 └── routes/
     ├── index.ts              # Route registry — mount new routers here
-    └── health.ts             # GET /api/health — public, no auth
+    ├── health.ts             # GET /api/health — public, no auth
+    └── me.ts                 # GET /api/me — auth middleware demo endpoint (uid/email/roles)
 ```
 
 Two rules, enforced by `tests/unit/conventions.test.ts` in CI:
@@ -55,7 +59,10 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
     const { user } = req as AuthenticatedRequest
     const { id } = req.params
 
-    const doc = await adminDb.collection('items').doc(id ?? '').get()
+    const doc = await adminDb
+      .collection('items')
+      .doc(id ?? '')
+      .get()
     if (!doc.exists) {
       return next(HttpError.notFound('Item', id))
     }
@@ -92,6 +99,7 @@ export { router as itemsRouter }
 ```
 
 **Rules:**
+
 - Access the authed user via `(req as AuthenticatedRequest).user` — `{ uid, email, claims }`
 - Always validate `req.body` with Zod (`.strict()` to reject unknown fields) before use
 - Errors go through `next(...)` — never `res.status(500).json(...)` inline
@@ -105,12 +113,13 @@ export { router as itemsRouter }
 One error type: `HttpError` (`lib/errors.ts`). The `errorHandler` middleware renders it as an RFC 9457 Problem Details response; anything that isn't an `HttpError` becomes a generic 500 (internals never leak to the client).
 
 ```typescript
-next(HttpError.notFound('User', uid))   // → 404
-next(HttpError.forbidden())             // → 403
+next(HttpError.notFound('User', uid)) // → 404
+next(HttpError.forbidden()) // → 403
 next(HttpError.badRequest('Bad input')) // → 400
 ```
 
 **Response format:**
+
 ```json
 {
   "type": "https://httpstatuses.io/404",
@@ -124,16 +133,21 @@ next(HttpError.badRequest('Bad input')) // → 400
 
 ## Auth Middleware
 
-`createApp()` wires the auth middleware for everything under `/api` except `/api/health`. It expects `Authorization: Bearer <Firebase ID token>` and attaches the user:
+`createApp()` wires the auth middleware for everything under `/api` except `/api/health`. It expects `Authorization: Bearer <TideCloak access token>` and attaches the user:
 
 ```typescript
 const { user } = req as AuthenticatedRequest
-// user.uid    — Firebase UID
-// user.email  — email (may be undefined)
-// user.claims — full decoded token claims
+// user.uid    — token subject (sub)
+// user.email  — email claim (may be undefined)
+// user.claims — full decoded token payload
+// user.roles  — recognised SOC roles only: soc-analyst, soc-supervisor, soc-team-leader, soc-manager
 ```
 
-Token verification is injectable for tests: `createApp({ verifyToken: mockVerifyToken })`. Public endpoints must be registered before the auth middleware in `app.ts`.
+Gate a route on a role with `requireRole('soc-analyst')` (returns 403 if missing). The auth middleware itself returns 401 for anything wrong with the token (see `docs/BACKEND.md` for the exact checks — issuer, `azp`, time claims, local embedded-JWKS signature verification).
+
+Token verification is injectable for tests: `createApp({ verifyToken: mockVerifyToken })`. Public endpoints must be registered before the auth middleware in `app.ts`. Firebase Admin remains the sole path for Firestore access — it is no longer used for authentication (see `lib/tideJWT.ts`, `lib/tidecloakConfig.ts`).
+
+`middleware/auth.ts` does not import `lib/firebase.ts` at all — the TideCloak auth path never touches Firebase Admin. Legacy Firebase ID token verification (`verifyFirebaseToken`) lives in `middleware/firebaseAuth.ts`, a separate module that imports `adminAuth` from `lib/firebase.ts`; it exists for reference only and is never wired into `createApp()`.
 
 ---
 

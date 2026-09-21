@@ -27,7 +27,7 @@ if (!fs.existsSync(envPath)) {
   console.error(
     '\x1b[31mNo .env file found at the repo root.\x1b[0m\n' +
       'Create it first:  cp .env.example .env  (then fill in your Firebase values)\n' +
-      'See docs/ENV-VARS.md for what each variable is.',
+      'See docs/ENV-VARS.md for what each variable is.'
   )
   process.exit(1)
 }
@@ -63,7 +63,7 @@ if (!env.NEXT_PUBLIC_FIREBASE_PROJECT_ID && env.FIREBASE_PROJECT_ID) {
   env.NEXT_PUBLIC_FIREBASE_PROJECT_ID = env.FIREBASE_PROJECT_ID
   console.warn(
     '\x1b[33mWarning: your .env uses the old name FIREBASE_PROJECT_ID — ' +
-      'rename it to NEXT_PUBLIC_FIREBASE_PROJECT_ID (see .env.example).\x1b[0m',
+      'rename it to NEXT_PUBLIC_FIREBASE_PROJECT_ID (see .env.example).\x1b[0m'
   )
 }
 
@@ -79,7 +79,9 @@ const frontendLines = [header('read by Next.js')]
 for (const [key, value] of Object.entries(env)) {
   if (key.startsWith('NEXT_PUBLIC_')) frontendLines.push(`${key}=${value}`)
 }
-frontendLines.push(`FIREBASE_SERVICE_ACCOUNT_KEY_BASE64=${get('FIREBASE_SERVICE_ACCOUNT_KEY_BASE64')}`)
+frontendLines.push(
+  `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64=${get('FIREBASE_SERVICE_ACCOUNT_KEY_BASE64')}`
+)
 
 // ── backend/.env ─────────────────────────────────────────────────────
 const backendLines = [
@@ -88,6 +90,7 @@ const backendLines = [
   `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64=${get('FIREBASE_SERVICE_ACCOUNT_KEY_BASE64')}`,
   `CORS_ORIGIN=${get('CORS_ORIGIN')}`,
   `PORT=${get('PORT')}`,
+  `CLIENT_ADAPTER=${get('CLIENT_ADAPTER')}`,
 ]
 
 fs.writeFileSync(path.join(root, 'frontend', '.env.local'), frontendLines.join('\n') + '\n')
@@ -105,6 +108,6 @@ const missing = required.filter((key) => !get(key))
 if (missing.length > 0) {
   console.warn(
     `\x1b[33mWarning: ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} empty in .env — ` +
-      `the app will fail at runtime until filled in (see docs/ENV-VARS.md).\x1b[0m`,
+      `the app will fail at runtime until filled in (see docs/ENV-VARS.md).\x1b[0m`
   )
 }

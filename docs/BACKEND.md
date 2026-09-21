@@ -13,12 +13,16 @@ backend/
 │   ├── app.ts                Express app factory — createApp()
 │   ├── routes/
 │   │   ├── index.ts          Route registry
-│   │   └── health.ts         GET /api/health
+│   │   ├── health.ts         GET /api/health
+│   │   └── me.ts             GET /api/me — auth middleware demo endpoint
 │   ├── middleware/
-│   │   ├── auth.ts           Firebase ID token verification → req.user
+│   │   ├── auth.ts           TideCloak JWT verification → req.user; requireRole() (no Firebase import)
+│   │   ├── firebaseAuth.ts   Legacy Firebase ID token verification — isolated, not wired in
 │   │   └── errorHandler.ts   Global error handler (RFC 9457 responses)
 │   └── lib/
-│       ├── firebase.ts       Admin SDK singleton (sole entry point)
+│       ├── firebase.ts       Admin SDK singleton (sole entry point; Firestore only)
+│       ├── tidecloakConfig.ts  Adapter config loader (CLIENT_ADAPTER / data/tidecloak.json)
+│       ├── tideJWT.ts        TideCloak access token verification + role extraction
 │       ├── errors.ts         HttpError — the single error type
 │       └── zodConverter.ts   Typed Firestore converter with schema versioning
 └── tests/
@@ -29,34 +33,82 @@ backend/
 
 ## Routes
 
-| Method | Path          | Auth | Description  |
-| ------ | ------------- | ---- | ------------ |
-| GET    | `/api/health` | No   | Health check |
+| Method | Path          | Auth | Description                                                                                                                                                                  |
+| ------ | ------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/health` | No   | Health check                                                                                                                                                                 |
+| GET    | `/api/me`     | Yes  | Returns the authenticated user's `uid`, `email` and SOC `roles` from the verified TideCloak token. Demonstrates the auth middleware end to end — not an application feature. |
 
 Add new routes with the `/add-route` Claude Code skill.
 
-## Authentication (legacy — transitional)
+## Authentication
 
-> **Status:** the frontend now uses TideCloak for authentication (see `docs/ARCHITECTURE.md`,
-> `docs/SECURITY.md`). This backend's auth middleware still verifies **Firebase ID tokens** and
-> has **not** been reconnected to TideCloak. It is kept as-is, unmodified, as a transitional
-> reference — it is not currently reachable from the app's own TideCloak-authenticated sign-in
-> flow. Replacing it with TideCloak JWT verification (EdDSA) and RBAC belongs to
-> `feature/tidecloak-protect`. Do not treat this middleware as protecting anything the frontend
-> actually calls today.
-
-All routes under `/api/` (except `/api/health`) require a valid Firebase ID token:
+All routes under `/api/` (except `/api/health`) require a valid **TideCloak access token**:
 
 ```
-Authorization: Bearer {firebase-id-token}
+Authorization: Bearer {tidecloak-access-token}
 ```
 
-The auth middleware verifies the token and attaches the user to the request:
+`createApp()` defaults `verifyToken` to `verifyTideCloakToken` (`src/middleware/auth.ts`), which
+verifies the token via `src/lib/tideJWT.ts`:
+
+- Signature verified locally against the adapter's embedded JWKS (`jose`'s `createLocalJWKSet` +
+  `jwtVerify`) — **no remote JWKS endpoint is ever used**. No signing algorithm is hardcoded;
+  `jose` verifies using whatever key material the JWKS provides.
+- `exp` and `nbf` (when present) are verified by `jose`.
+- `iss` must equal `${auth-server-url}/realms/${realm}` from the adapter config.
+- `azp` (not `aud`) must equal the adapter's client id (`resource`).
+- `iat` more than 60 seconds in the future is rejected.
+
+The adapter configuration is loaded by `src/lib/tidecloakConfig.ts`, in priority order:
+
+1. `CLIENT_ADAPTER` environment variable (adapter JSON as a string)
+2. `data/tidecloak.json` (local file, gitignored) — resolved relative to the **repository
+   root**, not the process's current working directory, so it is found the same way whether
+   the backend is run via `pnpm run test` / `pnpm --filter backend ...` (cwd = `backend/`) or
+   directly from the repo root.
+
+Loading **fails closed**: if neither source is present, or the parsed config is missing
+`auth-server-url`, `realm`, `resource`, or `jwk`, every request is rejected (401) rather than
+falling back to an unverified state. Neither the config nor decoded token claims are ever logged.
+
+The auth middleware attaches the user to the request:
 
 ```typescript
 const { user } = req as AuthenticatedRequest
-// user.uid, user.email, user.claims
+// user.uid    — token subject (sub)
+// user.email  — email claim, if present
+// user.claims — full decoded token payload
+// user.roles  — recognised SOC roles only (soc-analyst, soc-supervisor,
+//               soc-team-leader, soc-manager); unrelated TideCloak roles
+//               are filtered out
 ```
+
+Role-gate a route with `requireRole`:
+
+```typescript
+import { requireRole } from '../middleware/auth'
+
+router.get('/reports', requireRole('soc-analyst'), handler)
+```
+
+`requireRole` returns **403** if the authenticated user lacks the role. The auth middleware itself
+returns **401** for anything wrong with the token (missing header, wrong scheme, malformed,
+invalid signature, expired, future-issued beyond tolerance, wrong issuer, wrong `azp`).
+
+### Firebase Admin — still used for Firestore, isolated from auth
+
+Firebase Admin (`src/lib/firebase.ts`, `adminAuth`/`adminDb`) remains in place for **Firestore**
+access. Legacy Firebase ID token verification (`verifyFirebaseToken`) lives in a separate module,
+`src/middleware/firebaseAuth.ts`, and is not wired into `createApp()`. `src/middleware/auth.ts` —
+the module the normal TideCloak auth path imports — does not import `lib/firebase.ts` or
+`adminAuth` at all, so the TideCloak path never initialises Firebase Authentication. `adminDb`
+(Firestore) is unaffected and remains available wherever it's imported from `lib/firebase.ts`.
+
+### Roles
+
+The four recognised SOC roles are declared in [`../tidecloak/roles.json`](../tidecloak/roles.json).
+Creating these roles in a running TideCloak realm is a separate, not-yet-done step (Phase 1B) —
+this backend code recognises them wherever they appear in a token but does not provision them.
 
 ## Error Handling
 
@@ -85,6 +137,10 @@ Available helpers: `HttpError.badRequest()`, `.unauthorized()`, `.forbidden()`, 
 
 1. Any file other than `src/lib/firebase.ts` imports `firebase-admin` at runtime
 2. Any `src/` file contains `console.log`
+
+`src/middleware/firebaseAuth.ts` imports `adminAuth` from `src/lib/firebase.ts` (not from
+`firebase-admin` directly), so it does not violate rule 1 — it is the isolation boundary for
+legacy Firebase _authentication_, not a second Firebase Admin entry point.
 
 ## Local Development
 

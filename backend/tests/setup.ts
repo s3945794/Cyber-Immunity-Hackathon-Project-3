@@ -21,6 +21,7 @@ export const mockUser: AuthUser = {
   uid: 'test-uid',
   email: 'test@example.com',
   claims: {},
+  roles: [],
 }
 
 export const mockVerifyToken: VerifyToken = vi

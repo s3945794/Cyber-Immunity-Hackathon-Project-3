@@ -116,10 +116,10 @@ requirement (login, logout, protected routes, protected APIs, four roles).
 ISSUE 002 - Express backend guidance was difficult to locate
 ===========================================================
 
-Date: 2026-09-09
+Date: 2026-09-09 (updated 2026-09-22)
 Project feature: Server-side JWT verification for the Express backend (backend/ Cloud Functions fat-lambda)
 Tide component: Tide MCP playbooks / canon (verify-jwt-server-side)
-Status: Workaround available and Open for Tide
+Status: Resolved (implementation) / Open for Tide (documentation gap)
 Impact: Security and correctness - risk of a weak or wrong verifier
 Priority for Tide: High
 
@@ -168,9 +168,23 @@ Apply Tide's server-side verification pattern in the Express backend using:
   * an Express authentication middleware that runs this before protected routes
 
 7. Verification
-The technical plan for the backend now names the required Express middleware,
-the token validation checks, and role enforcement at the route layer. (Code
-not written under this task - plan-level verification only.)
+Updated 2026-09-22: the Express middleware described above has since been
+implemented (backend/src/middleware/auth.ts, backend/src/lib/tideJWT.ts,
+backend/src/lib/tidecloakConfig.ts) and verified twice:
+  * Automated: unit tests covering missing / malformed / expired / wrong-issuer
+    / wrong-azp / wrong-signature tokens, and SOC role extraction, all passing
+    against locally generated test keys.
+  * Manual, end to end, against a real running local TideCloak instance and a
+    real adapter export (data/tidecloak.json, gitignored): a real user signed
+    in through the TideCloak frontend flow, and the resulting real access
+    token was sent to a protected backend endpoint (GET /api/me). Result:
+    HTTP 200, uidPresent true, emailPresent true, roles returned as an empty
+    array (expected - the four SOC roles have not been created/assigned in the
+    realm yet, so this does not demonstrate role-based access control, only
+    that a genuine TideCloak-signed token is correctly verified and its claims
+    are correctly extracted).
+No token, user id, email, credential, cookie, adapter content or JWK value was
+recorded to reach this result; only the safe boolean/array summary above.
 
 8. Value for Tide
   * Why it matters: JWT verification is security-critical. A developer who
@@ -185,15 +199,18 @@ not written under this task - plan-level verification only.)
     cross-link it from verify-jwt-server-side.
   * How it helps others: Node/Express is a common backend choice; a
     first-class playbook removes the risk of a mis-applied Next.js example.
+  * Documentation gap remains open for Tide even though this project's
+    implementation is now resolved: the Express content is still only reachable
+    via Step 6 of a Next.js-framed playbook.
 
 ============================================================
 ISSUE 003 - No Firebase Authentication migration guide
 =====================================================
 
-Date: 2026-09-09
+Date: 2026-09-09 (updated 2026-09-22)
 Project feature: Replacing Firebase Authentication with TideCloak while keeping Firestore
 Tide component: Tide MCP playbook (migrate-from-existing-auth)
-Status: Workaround available and Open for Tide
+Status: Resolved (implementation) / Open for Tide (documentation gap)
 Impact: Security and correctness - risk of a second auth authority left active
 Priority for Tide: High
 
@@ -245,6 +262,25 @@ and exports that must be removed or rewritten, and confirmed that Firestore
 access can be retained without Firebase Auth. (Plan-level verification - no
 auth code changed under this task.)
 
+Updated 2026-09-22: the backend side of this migration is now implemented and
+verified. Firebase ID-token verification (verifyFirebaseToken) was moved into
+its own isolated module (backend/src/middleware/firebaseAuth.ts) and is no
+longer wired into createApp() as the default; the normal TideCloak
+authentication path (backend/src/middleware/auth.ts) does not import it and
+does not import Firebase Authentication at all. A test confirms the TideCloak
+auth path loads and serves a request correctly with no Firebase Authentication
+configuration present. Firebase Admin itself remains available and unaffected
+for Firestore access (backend/src/lib/firebase.ts, adminDb) - this migration
+isolated/replaced Firebase for API *authentication* only, it did not remove
+Firebase Admin or any Firestore functionality.
+End-to-end confirmation: a real TideCloak login produced a real access token
+that the backend correctly verified (HTTP 200, uidPresent true, emailPresent
+true, roles returned empty - see ISSUE 002 for the same result and why roles
+is currently empty). This confirms Firebase Authentication is no longer on
+the path a real authenticated request takes through this backend. It does not
+by itself confirm role-based access control, which depends on the four SOC
+roles being created and assigned in the realm (separate, not yet done).
+
 8. Value for Tide
   * Why it matters: without explicit guidance a developer may treat Firebase
     as a standard OIDC provider, or leave Firebase session-cookie verification
@@ -258,6 +294,9 @@ auth code changed under this task.)
     to remove and a note that Firestore/other Firebase services can stay.
   * How it helps others: Firebase + Firestore is a very common stack for the
     student and startup projects this boilerplate targets.
+  * Documentation gap remains open for Tide even though this project's
+    migration is now resolved: migrate-from-existing-auth still has no
+    Firebase-specific path.
 
 ============================================================
 ISSUE 004 - Large Tide canon responses were difficult to retrieve efficiently
