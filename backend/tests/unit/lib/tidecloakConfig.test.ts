@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { join } from 'node:path'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 
 const VALID_CONFIG = {
   realm: 'soc-incident-report-protection',
@@ -136,11 +138,22 @@ describe('loadTideCloakConfig', () => {
     })
 
     it('still reads from the repo-root path from an unrelated cwd', async () => {
-      process.chdir(join(REPO_ROOT, 'data'))
-      const { mod, mockedReadFileSync } = await freshModuleWithMockedFs()
-      const config = mod.loadTideCloakConfig()
-      expect(mockedReadFileSync).toHaveBeenCalledWith(EXPECTED_REPO_ROOT_ADAPTER_PATH, 'utf-8')
-      expect(config.resource).toBe('soc-incident-report-protection-app')
+      // Use a genuinely unrelated directory outside the repo (created via
+      // os.tmpdir() / fs.mkdtempSync(), not the repo's gitignored data/
+      // directory — that directory doesn't exist on a clean checkout, e.g. a
+      // CI runner, so chdir-ing into it would throw ENOENT there even though
+      // it exists on a machine that has already run local TideCloak setup).
+      const tempCwd = mkdtempSync(join(tmpdir(), 'tidecloak-config-test-'))
+      try {
+        process.chdir(tempCwd)
+        const { mod, mockedReadFileSync } = await freshModuleWithMockedFs()
+        const config = mod.loadTideCloakConfig()
+        expect(mockedReadFileSync).toHaveBeenCalledWith(EXPECTED_REPO_ROOT_ADAPTER_PATH, 'utf-8')
+        expect(config.resource).toBe('soc-incident-report-protection-app')
+      } finally {
+        process.chdir(originalCwd)
+        rmSync(tempCwd, { recursive: true, force: true })
+      }
     })
   })
 })
