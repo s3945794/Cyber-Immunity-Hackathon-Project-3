@@ -1,12 +1,12 @@
 ---
-description: Full local bootstrap — from fresh clone to the app running against a real Firebase (Firestore) project and a local TideCloak container. Checks prerequisites, installs dependencies, walks through creating a free Firebase project, filling the root .env, starting TideCloak, starting the dev server, and manually verifying the TideCloak login round trip. Use on first setup or whenever local dev is broken.
+description: Full local bootstrap — from fresh clone to the app running with a local TideCloak container. Checks prerequisites, installs dependencies, fills the root .env, starts TideCloak, starts the dev server, and manually verifies the TideCloak login round trip. Firestore setup is optional and backend-only — only needed once a Firestore-backed feature is implemented. Use on first setup or whenever local dev is broken.
 ---
 
 # Skill: /bootstrap
 
-Take the repo from fresh clone to a **running app against a real Firebase (Firestore) project and a local TideCloak identity server**, end to end, verifying every step. Do not stop at the first success message — the job is done only when the smoke test in Step 5 passes.
+Take the repo from fresh clone to a **running app with a local TideCloak identity server**, end to end, verifying every step. Do not stop at the first success message — the job is done only when the smoke test in Step 5 passes.
 
-There is no local Firestore emulator in this project — the app always talks to the real Firebase project configured in `.env` for Firestore. Firebase's free Spark plan covers Firestore, so no billing is required. **Frontend authentication is TideCloak, not Firebase Authentication** — TideCloak runs in a local Docker container (see `docs/TIDECLOAK-LOCAL.md`).
+**TideCloak is the only authentication provider** — Firebase Authentication is not used anywhere in this app. TideCloak runs in a local Docker container (see `docs/TIDECLOAK-LOCAL.md`). Firestore is reserved for future server-side backend features (emergency-access request, approval, expiry, audit history) — all access goes through the Express backend via Firebase Admin, never the browser. A real Firebase project is **not required** to bootstrap or run the app locally today; it is only needed once a Firestore-backed feature is implemented, and even then only the backend needs credentials (`FIREBASE_SERVICE_ACCOUNT_KEY_BASE64`, optional — deployed Cloud Functions use Application Default Credentials instead).
 
 ## Step 1 — Preflight
 
@@ -35,21 +35,23 @@ Confirm Lefthook hooks installed (install output shows `sync hooks: ✔️`).
 All configuration lives in the **root `.env`** (never edit `frontend/.env.local` / `backend/.env` — they are generated).
 
 1. If `.env` does not exist: `cp .env.example .env`
-2. Ask the user if they already have a Firebase project for this repo. If not, walk them through:
-   - Create a project at https://console.firebase.google.com (free Spark plan — no billing needed)
-   - Build → Firestore Database → create database (start in production mode; rules already live in `firebase/firestore.rules`)
-   - Note: **do not** enable Firebase Authentication for this project — the frontend uses TideCloak, not Firebase Auth
-3. Fill `.env` from the Firebase console (Firestore only):
-   - `NEXT_PUBLIC_FIREBASE_PROJECT_ID` — Project settings → General → Project ID
-   - `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` — Project settings → Service accounts → Generate new private key, then base64-encode the downloaded JSON (macOS: `base64 -i service-account.json | tr -d '\n'` — BSD `base64` has no `-w` flag; Linux: `base64 -w 0 service-account.json`)
-   - `NEXT_PUBLIC_FIREBASE_*` — Project settings → Your apps → add/open a web app → copy the `firebaseConfig` values
-   - `NEXT_PUBLIC_APP_NAME`
-4. `.firebaserc` → `projects.default` must equal `NEXT_PUBLIC_FIREBASE_PROJECT_ID`.
-5. Fill in the `NEXT_PUBLIC_TIDECLOAK_*` variables — see `docs/TIDECLOAK-LOCAL.md` for how to
-   provision the local realm and client these values come from.
-6. `pnpm run env:sync`
+2. Fill in the `NEXT_PUBLIC_TIDECLOAK_*` variables — see `docs/TIDECLOAK-LOCAL.md` for how to
+   provision the local realm and client these values come from. This is the only identity
+   provider setup needed to run the app locally.
+3. Fill in `NEXT_PUBLIC_APP_NAME`.
+4. (Optional, only if working on a Firestore-backed backend feature) Ask the user if they
+   already have a Firebase project for this repo. If not and the task requires Firestore, walk
+   them through creating one at https://console.firebase.google.com (free Spark plan — no
+   billing needed) with Firestore Database enabled — **do not** enable Firebase Authentication,
+   it is not used. Fill in `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` (Project settings → Service
+   accounts → Generate new private key, then base64-encode the downloaded JSON — macOS:
+   `base64 -i service-account.json | tr -d '\n'`; Linux: `base64 -w 0 service-account.json`).
+   This variable is backend-only and is never synced to the frontend.
+5. `pnpm run env:sync`
 
-Verify: `frontend/.env.local` and `backend/.env` exist and contain the values from `.env` (`NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64`, `NEXT_PUBLIC_TIDECLOAK_*`, etc).
+Verify: `frontend/.env.local` and `backend/.env` exist and contain the values from `.env`
+(`NEXT_PUBLIC_TIDECLOAK_*`, `NEXT_PUBLIC_APP_NAME` in the frontend file;
+`FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` only in the backend file, if set).
 
 ## Step 4 — Start the app
 
@@ -105,7 +107,6 @@ Output a summary the user can act on:
 ```
 ## Bootstrap complete ✅
 
-Firebase project: <NEXT_PUBLIC_FIREBASE_PROJECT_ID> (Firestore only)
 TideCloak realm:  <NEXT_PUBLIC_TIDECLOAK_REALM>
 App:              http://localhost:3000
 

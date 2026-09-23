@@ -37,15 +37,14 @@ Merge to main
 
    | Variable                                                                                                  | Value                                                                                                                                                                                          |
    | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-   | `NEXT_PUBLIC_FIREBASE_API_KEY`                                                                            | from `firebaseConfig`                                                                                                                                                                          |
-   | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`                                                                        | from `firebaseConfig`                                                                                                                                                                          |
-   | `NEXT_PUBLIC_FIREBASE_PROJECT_ID`                                                                         | from `firebaseConfig` — same name as in your root `.env`                                                                                                                                       |
-   | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`                                                                | from `firebaseConfig`                                                                                                                                                                          |
-   | `NEXT_PUBLIC_FIREBASE_APP_ID`                                                                             | from `firebaseConfig`                                                                                                                                                                          |
    | `NEXT_PUBLIC_APP_NAME`                                                                                    | app display name                                                                                                                                                                               |
    | `NEXT_PUBLIC_APP_URL`                                                                                     | your Vercel production URL, once known                                                                                                                                                         |
-   | `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64`                                                                     | base64-encoded service account JSON (server-only — do **not** prefix with `NEXT_PUBLIC_`)                                                                                                      |
    | `NEXT_PUBLIC_TIDECLOAK_AUTH_SERVER_URL`, `NEXT_PUBLIC_TIDECLOAK_REALM`, `NEXT_PUBLIC_TIDECLOAK_CLIENT_ID` | TideCloak connection details — the TideCloak instance must be reachable from the deployed URL (see `docs/TIDECLOAK-LOCAL.md`; a purely local TideCloak container is not reachable from Vercel) |
+
+   The frontend has no Firebase configuration at all — TideCloak is the only authentication
+   provider, and the browser never connects to Firestore directly (see `firebase/firestore.rules`).
+   `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` is backend-only and must never be set on the frontend/Vercel
+   deployment.
 
 4. Deploy. Every push to `main` auto-deploys to production from then on — there's no approval gate on Vercel's side, so treat merging to `main` as shipping.
 5. If you later add the `backend/` Express API and need the frontend to call it cross-origin, set `CORS_ORIGIN` in the backend's env to your Vercel production URL.
@@ -54,10 +53,10 @@ Merge to main
 
 Add these in **GitHub → Settings → Secrets and variables → Actions**:
 
-| Secret                                | Description                                                                                                                                                                                                                                                |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FIREBASE_PROJECT_ID`                 | Firebase project ID (used as `--project` flag). GitHub Actions secrets are never exposed to a browser, so this one intentionally keeps the bare name instead of the `NEXT_PUBLIC_` prefix used in `.env`/Vercel — value is the same project ID either way. |
-| `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` | Base64-encoded service account JSON                                                                                                                                                                                                                        |
+| Secret                                | Description                                                                                                                                                                                                      |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FIREBASE_PROJECT_ID`                 | Firebase project ID (used as `--project` flag for `firebase-tools deploy`). Only needed to deploy Firestore rules/indexes or the backend Cloud Function from CI — not read by any application code.              |
+| `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` | Base64-encoded service account JSON. Only needed if the deploy step itself requires an explicit credential; deployed Cloud Functions runtime uses Application Default Credentials and does not need this secret. |
 
 ### Getting the service account key
 

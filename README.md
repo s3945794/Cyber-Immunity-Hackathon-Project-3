@@ -143,17 +143,20 @@ See [the environment-variable reference](docs/ENV-VARS.md) for the required valu
 
 Never commit `.env` files, service-account keys, passwords or tokens.
 
-### 4. Configure Firestore
+### 4. Configure Firestore (optional — server-only, not required to run the app)
 
-Use a Firebase development project:
+Firestore is reserved for future server-side backend features (emergency-access request,
+approval, expiry, audit history). The browser never connects to Firestore directly — TideCloak
+is the only authentication provider, and there is no Firebase configuration in the frontend. A
+Firebase project is only needed once a Firestore-backed backend feature is implemented:
 
-1. Create a Firestore database.
-2. Register a Firebase web app.
-3. Add the web configuration to the matching `NEXT_PUBLIC_FIREBASE_*` variables in the root `.env`.
-4. Configure the server-side Firebase credentials described in `docs/ENV-VARS.md`.
-5. Set the correct Firebase project ID in `.env` and `.firebaserc`.
+1. Create a Firestore database in a Firebase project.
+2. Configure the server-side Firebase credentials described in `docs/ENV-VARS.md`
+   (`FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` — backend-only, optional for local dev; deployed Cloud
+   Functions use Application Default Credentials instead).
+3. Set the correct Firebase project ID in `.firebaserc`.
 
-Firebase service-account credentials are secret. Do not put them in browser-facing variables or include them in screenshots, documentation or Git commits.
+Firebase service-account credentials are secret. Do not put them in browser-facing (`NEXT_PUBLIC_`) variables or include them in screenshots, documentation or Git commits.
 
 ### 5. Configure and Start TideCloak
 
@@ -298,25 +301,25 @@ Run these commands from the repository root.
 
 ## Project Structure
 
-| Location                        | Purpose                                               |
-| ------------------------------- | ----------------------------------------------------- |
-| `frontend/src/app/`             | Website pages and layouts                             |
-| `frontend/src/components/`      | Shared user-interface components                      |
-| `frontend/src/features/`        | Application feature modules                           |
-| `frontend/src/lib/`             | Firebase setup, TideCloak configuration and utilities |
-| `frontend/src/providers/`       | React providers, including the authentication bridge  |
-| `frontend/src/actions/`         | Next.js Server Actions                                |
-| `frontend/tests/e2e/`           | Playwright browser tests                              |
-| `frontend/playwright.config.ts` | Playwright configuration                              |
-| `backend/src/routes/`           | Express API routes                                    |
-| `backend/src/middleware/`       | Authentication and error-handling middleware          |
-| `backend/src/lib/`              | Server-side Firebase setup and utilities              |
-| `firebase/`                     | Firestore rules and indexes                           |
-| `tidecloak/`                    | Local TideCloak configuration and role declarations   |
-| `scripts/`                      | Project setup and development scripts                 |
-| `docs/`                         | Setup guides and reference documents                  |
-| `.github/workflows/`            | GitHub Actions workflow definitions                   |
-| `.claude/`                      | Optional Claude Code development configuration        |
+| Location                        | Purpose                                                   |
+| ------------------------------- | --------------------------------------------------------- |
+| `frontend/src/app/`             | Website pages and layouts                                 |
+| `frontend/src/components/`      | Shared user-interface components                          |
+| `frontend/src/features/`        | Application feature modules                               |
+| `frontend/src/lib/`             | API client helpers, TideCloak configuration and utilities |
+| `frontend/src/providers/`       | React providers, including the authentication bridge      |
+| `frontend/src/actions/`         | Next.js Server Actions                                    |
+| `frontend/tests/e2e/`           | Playwright browser tests                                  |
+| `frontend/playwright.config.ts` | Playwright configuration                                  |
+| `backend/src/routes/`           | Express API routes                                        |
+| `backend/src/middleware/`       | Authentication and error-handling middleware              |
+| `backend/src/lib/`              | Server-side Firebase setup and utilities                  |
+| `firebase/`                     | Firestore rules and indexes                               |
+| `tidecloak/`                    | Local TideCloak configuration and role declarations       |
+| `scripts/`                      | Project setup and development scripts                     |
+| `docs/`                         | Setup guides and reference documents                      |
+| `.github/workflows/`            | GitHub Actions workflow definitions                       |
+| `.claude/`                      | Optional Claude Code development configuration            |
 
 ## GitHub Actions and Dependabot
 

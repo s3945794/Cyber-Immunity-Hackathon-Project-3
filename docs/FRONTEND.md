@@ -9,8 +9,10 @@ Next.js 16 App Router with React 19, TypeScript (strict), and Tailwind CSS v4.
 ### Server vs Client Components
 
 - **Default: Server Component** — no `'use client'` directive needed
-- Add `'use client'` only when you need: React hooks, event handlers, browser APIs, or Firebase client SDK
+- Add `'use client'` only when you need: React hooks, event handlers, or browser APIs
 - Pages in `app/` are Server Components; extract interactivity to `*Client.tsx` components
+- The frontend has no Firebase SDK — TideCloak is the only auth provider, and the browser never
+  connects to Firestore directly (`firebase/firestore.rules` denies all direct client access)
 
 ### Route Groups
 
@@ -28,7 +30,7 @@ New business domains go in `src/features/{feature}/`:
 src/features/invoices/
 ├── types.ts          TypeScript interfaces
 ├── hooks/
-│   └── useInvoices.ts  Firestore subscription hook
+│   └── useInvoices.ts  Hook that calls the backend API via @/lib/api/invoices
 ├── actions/
 │   └── invoices.actions.ts  Server Actions
 └── components/
@@ -39,12 +41,17 @@ Use the `/new-feature` skill to scaffold this structure.
 
 ### Data Fetching
 
-| Context          | Method                            | When                   |
-| ---------------- | --------------------------------- | ---------------------- |
-| Server Component | `adminDb.collection(...).get()`   | One-time, SSR          |
-| Client Component | `useCollection()` hook            | Real-time subscription |
-| Server Action    | `adminDb` + `requireAuth()`       | Mutations              |
-| Route Handler    | `adminAuth.verifySessionCookie()` | Session management     |
+The frontend has no Firebase SDK and never queries Firestore directly. All data comes from the
+backend's protected Express API — see `frontend/src/lib/api/incidents.ts` for the reference
+pattern (typed fetch helper, TideCloak access token in the `Authorization` header).
+
+| Context          | Method                                                    | When               |
+| ---------------- | --------------------------------------------------------- | ------------------ |
+| Client Component | `@/lib/api/*` fetch helper + TideCloak access token       | Load data on mount |
+| Server Action    | `requireAuth()` + call to the backend API (not Firestore) | Mutations          |
+
+Server-side Firestore access (via the backend's `adminDb`) is reserved for future features and
+is never called from the frontend.
 
 ### Styling
 
@@ -71,7 +78,7 @@ import { cn } from '@/lib/utils'
 - `useAuth()` hook → `{ user: { uid, username, email } | null, authenticated, loading, login, logout }`
 - The `(dashboard)` layout gates **client-side only** via `useAuth()` — spinner while `loading`, calls `login()` when `!authenticated`. This is a UX gate, not server-side security.
 - `requireAuth()` (a Server Action) is currently a **fail-closed stub** — it always redirects to `/auth/signin`. It does not yet verify a real TideCloak session server-side. Server-side verification is `feature/tidecloak-protect`.
-- Removed: Firebase Authentication (client SDK), the `__session` cookie, `proxy.ts`, and `/api/auth/session`.
+- Removed: Firebase Authentication (client SDK and backend Admin Auth), the `__session` cookie, `proxy.ts`, and `/api/auth/session`.
 
 ## Adding a Page
 

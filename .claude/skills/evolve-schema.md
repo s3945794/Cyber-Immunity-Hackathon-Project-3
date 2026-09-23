@@ -1,6 +1,6 @@
 ---
 description: Safely evolve a Firestore collection schema — updates the TypeScript type, writes a migration script, updates security rules, and documents the change. Use when adding, renaming, or removing fields from an existing collection.
-argument-hint: "[CollectionName] [add|rename|remove] [fieldName]"
+argument-hint: '[CollectionName] [add|rename|remove] [fieldName]'
 ---
 
 # Skill: /evolve-schema
@@ -10,6 +10,7 @@ Safely evolve a Firestore collection schema — adding, renaming, or removing fi
 ## Step 1 — Gather requirements
 
 Ask the user:
+
 1. **Collection name** — which collection is changing?
 2. **Change type**:
    - `add-field` — add a new optional or required field
@@ -21,6 +22,7 @@ Ask the user:
 ## Step 2 — Assess impact
 
 Before writing any code, evaluate:
+
 - Does the change break existing security rules?
 - Does the change break existing TypeScript types?
 - Does it break existing Firestore queries (index changes)?
@@ -30,14 +32,15 @@ Before writing any code, evaluate:
 
 ### For `add-field`:
 
-1. **`frontend/src/types/firestore.ts`** — add field with `?` if optional, or with a default in the creation function
-2. **`frontend/src/lib/firebase/firestore.ts`** — no change needed unless index is required
-3. **`firebase/firestore.rules`** — if the field must exist on create, add it to `hasAll([...])`
+1. **Backend type** (e.g. `backend/src/types/{feature}.ts`) — add field with `?` if optional, or with a default where the document is written via `adminDb`
+2. **`firebase/firestore.indexes.json`** — only if the new field needs a composite index for a backend query
+3. **`firebase/firestore.rules`** — no change needed; the file uses a single default-deny-all rule since Firestore is server-only. Do not add a `request.auth`-based `hasAll([...])` check — there is no Firebase Auth session for TideCloak-authenticated users
 4. **`docs/FIRESTORE-SCHEMA.md`** — document the new field
 
 ### For `rename-field` or `remove-field`:
 
 These are **breaking changes**. Recommended approach:
+
 1. Add the new field alongside the old one (additive)
 2. Deploy rules and code that write both fields
 3. Run a migration script to backfill old documents
@@ -49,6 +52,7 @@ These are **breaking changes**. Recommended approach:
 ### Migration script template
 
 For bulk backfills, create `scripts/migrate-{collection}-{description}.js`:
+
 ```javascript
 const admin = require('firebase-admin')
 // Initialize admin with service account

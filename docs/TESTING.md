@@ -105,14 +105,9 @@ a TideCloak service container, which does not exist in this repo's pipeline.
 
 ## Mocking Firebase
 
-**Frontend** (`frontend/tests/setup.ts`):
+**Frontend** has no Firebase SDK — no Firebase mocks are needed in `frontend/tests/setup.ts`.
 
-```typescript
-vi.mock('@/lib/firebase/client', () => ({ auth: ..., db: {} }))
-vi.mock('@/lib/firebase/admin', () => ({ adminAuth: { verifySessionCookie: vi.fn() }, ... }))
-```
-
-**Backend** (`backend/tests/setup.ts`) mocks `src/lib/firebase` so the Admin SDK never initializes, and exports reusable auth mocks. Auth is injected per-app, not patched globally:
+**Backend** (`backend/tests/setup.ts`) mocks `src/lib/firebase` (`adminDb` only — there is no Auth export) so the Admin SDK never initializes, and exports reusable auth mocks. Auth is injected per-app, not patched globally:
 
 ```typescript
 import { createApp } from '../../../src/app'

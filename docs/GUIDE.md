@@ -8,17 +8,17 @@ This guide takes you from a fresh clone to a running app. No prior experience wi
 
 The app has three parts:
 
-- **`frontend/`** — a Next.js website. Pages live in `frontend/src/app/`. Most pages render on the server (fast, secure); interactive parts run in the browser. **TideCloak** handles frontend authentication (login, logout, callback, silent SSO).
-- **`backend/`** — an Express API deployed as one Firebase Cloud Function. You only need it for logic that shouldn't live in the frontend (webhooks, heavy processing, third-party API calls with secrets). Its auth middleware currently verifies **Firebase ID tokens**, not TideCloak tokens — reconnecting it to TideCloak is future work (`feature/tidecloak-protect`).
-- **Firebase Firestore** — the database. There's no local emulator — dev, staging, and production all talk to real Firebase projects (use a separate free project for local dev so you're not testing against production data).
+- **`frontend/`** — a Next.js website. Pages live in `frontend/src/app/`. Most pages render on the server (fast, secure); interactive parts run in the browser. **TideCloak** handles frontend authentication (login, logout, callback, silent SSO) — this is the only identity provider; there is no Firebase SDK in the frontend.
+- **`backend/`** — an Express API deployed as one Firebase Cloud Function. You only need it for logic that shouldn't live in the frontend (webhooks, heavy processing, third-party API calls with secrets). Its auth middleware verifies **TideCloak access tokens** — Firebase Authentication is not used anywhere in this app.
+- **Firebase Firestore** — reserved for future server-side backend features (emergency-access request, approval, expiry, audit history). Server-only, via Firebase Admin — the browser never connects to Firestore directly. A Firebase project is only needed once a Firestore-backed feature is implemented; you don't need one to run the app today.
 
 See the diagrams in [ARCHITECTURE.md](ARCHITECTURE.md) for how these connect, and [TIDECLOAK-LOCAL.md](TIDECLOAK-LOCAL.md) for the local TideCloak setup.
 
 **The three golden rules** (everything else follows from these):
 
-1. **Never trust the browser.** Every data access is checked server-side — Firestore security rules today; server-side TideCloak token verification is planned but not yet implemented, so treat any Server Action or API route as **not yet security-enforced** until that work lands.
+1. **Never trust the browser.** Every data access is checked server-side — Firestore security rules default-deny all direct client access as a backstop, and the real authorization happens in the backend's TideCloak auth middleware. Server-side TideCloak token verification for Server Actions is planned but not yet implemented, so treat any Server Action as **not yet security-enforced** until that work lands.
 2. **Server Components by default.** Only add `'use client'` to a file when it needs clicks, typing, live updates, or the TideCloak SDK.
-3. **One collection, four places.** Every Firestore collection gets: a TypeScript type, a typed collection export, security rules, and a schema doc entry. The `/firebase-collection` skill does all four for you.
+3. **Firestore is server-only.** When a feature does need a new collection: a TypeScript type, a backend accessor via `adminDb`, and a schema doc entry — see the `/firebase-collection` skill.
 
 ---
 
@@ -40,17 +40,20 @@ pnpm run bootstrap
 
 This installs dependencies, creates the root `.env` from the template, and generates the per-package env files.
 
-### Connect a Firebase project (Firestore)
+### Connect a Firebase project (optional — only for Firestore-backed backend work)
 
 **All env values live in one file: the root `.env`.** (`frontend/.env.local` and `backend/.env` are generated from it — never edit those.)
 
+You don't need a Firebase project to run the app locally today — Firestore is reserved for
+future backend features and no current route uses it. If you're working on a feature that does
+need Firestore:
+
 1. Create a project at [console.firebase.google.com](https://console.firebase.google.com) — the free **Spark plan** is enough, no billing required
 2. Create a **Firestore** database
-3. Project settings → **Your apps** → add a **Web app** → copy each `firebaseConfig` value into `.env` (the variable names match: `apiKey` → `NEXT_PUBLIC_FIREBASE_API_KEY`, etc.)
-4. Project settings → **Service accounts** → generate a private key → base64-encode it (macOS: `base64 -i service-account.json | tr -d '\n'`; Linux: `base64 -w 0 service-account.json`) → paste into `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` in `.env`
-5. Set `NEXT_PUBLIC_FIREBASE_PROJECT_ID` in `.env` and put the same id in `.firebaserc` (replacing the placeholder)
+3. Project settings → **Service accounts** → generate a private key → base64-encode it (macOS: `base64 -i service-account.json | tr -d '\n'`; Linux: `base64 -w 0 service-account.json`) → paste into `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` in `.env` — this variable is backend-only and never reaches the frontend
+4. Set the project id in `.firebaserc` → `projects.default` (replacing the placeholder). Deployed Cloud Functions use Application Default Credentials automatically and don't need step 3 at all.
 
-### Connect TideCloak (frontend authentication)
+### Connect TideCloak (the only authentication provider)
 
 Start the local TideCloak container and provision a realm/client, then fill in the `NEXT_PUBLIC_TIDECLOAK_*` variables in `.env`. Full walkthrough: [TIDECLOAK-LOCAL.md](TIDECLOAK-LOCAL.md).
 
@@ -75,7 +78,7 @@ Sign in via "Continue with TideCloak" on `/auth/signin` and confirm you land on 
 | Add a page                              | `frontend/src/app/(dashboard)/…` or `(auth)/…`                 | `/new-page`            |
 | Add a business feature                  | `frontend/src/features/{name}/`                                | `/new-feature`         |
 | Add a reusable component                | `frontend/src/components/shared/`                              | `/new-component`       |
-| Add a database collection               | types + firestore.ts + rules + schema doc                      | `/firebase-collection` |
+| Add a server-side Firestore collection  | backend type + `adminDb` accessor + schema doc                 | `/firebase-collection` |
 | Change a collection's fields            | (guided migration)                                             | `/evolve-schema`       |
 | Add an API endpoint                     | `backend/src/routes/`                                          | `/add-route`           |
 | Add a config value                      | `.env.example` + `docs/ENV-VARS.md`                            | `/add-env-var`         |
@@ -85,17 +88,16 @@ Sign in via "Continue with TideCloak" on `/auth/signin` and confirm you land on 
 
 ## 4. Common pitfalls
 
-| Symptom                                                               | Cause & fix                                                                                                                                                                                                  |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| "Firebase web config is incomplete" on Vercel                         | A `NEXT_PUBLIC_FIREBASE_*` env var is missing in Vercel's project settings. Add it (same name as your root `.env`), then redeploy — Vercel doesn't retroactively apply new env vars to existing deployments. |
-| Changed an env var, nothing happened                                  | Edit the root `.env` (not the generated files), then restart `pnpm run dev` — `NEXT_PUBLIC_*` values are baked in at startup.                                                                                |
-| Edited `frontend/.env.local` or `backend/.env` and it got overwritten | Those files are generated. Make the change in the root `.env` instead.                                                                                                                                       |
-| "Missing or insufficient permissions" from Firestore                  | Your security rules don't allow the read/write. Add rules for the collection in `firebase/firestore.rules`, then deploy them: `npx firebase-tools deploy --only firestore:rules`.                            |
-| `Invalid project id: REPLACE_WITH_...`                                | Set your real project id in `.firebaserc`.                                                                                                                                                                   |
-| Imported `firebase/firestore` in a page and it crashed                | Client SDK in a Server Component. Use `@/lib/firebase/admin` on the server, or move the code into a `'use client'` component.                                                                                |
-| Hook/`useState` error in a page                                       | The file needs `'use client'` at the top — or better, move the interactive part into its own small Client Component.                                                                                         |
-| TideCloak login loops back to `/auth/signin`                          | Check the TideCloak server log for the OAuth error code (e.g. `invalid_dpop_proof`). See `docs/tide-mcp-learning.txt` for previously diagnosed causes.                                                       |
-| Commit rejected                                                       | The message isn't Conventional Commits format. Use `feat: …`, `fix: …`, `docs: …` etc.                                                                                                                       |
+| Symptom                                                               | Cause & fix                                                                                                                                                                                                                                                |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Changed an env var, nothing happened                                  | Edit the root `.env` (not the generated files), then restart `pnpm run dev` — `NEXT_PUBLIC_*` values are baked in at startup.                                                                                                                              |
+| Edited `frontend/.env.local` or `backend/.env` and it got overwritten | Those files are generated. Make the change in the root `.env` instead.                                                                                                                                                                                     |
+| "Missing or insufficient permissions" from Firestore                  | Firestore is server-only — the browser never connects directly. Only the backend, via `adminDb`, can read/write; if a backend route sees this, check the service account / ADC credentials, not the client-facing rules (which deny everything by design). |
+| `Invalid project id: REPLACE_WITH_...`                                | Set your real project id in `.firebaserc`.                                                                                                                                                                                                                 |
+| Imported `firebase/*` in a frontend file and it failed to resolve     | The frontend has no Firebase SDK — remove the import. Use `@/lib/api/*` to call the backend instead.                                                                                                                                                       |
+| Hook/`useState` error in a page                                       | The file needs `'use client'` at the top — or better, move the interactive part into its own small Client Component.                                                                                                                                       |
+| TideCloak login loops back to `/auth/signin`                          | Check the TideCloak server log for the OAuth error code (e.g. `invalid_dpop_proof`). See `docs/tide-mcp-learning.txt` for previously diagnosed causes.                                                                                                     |
+| Commit rejected                                                       | The message isn't Conventional Commits format. Use `feat: …`, `fix: …`, `docs: …` etc.                                                                                                                                                                     |
 
 More troubleshooting lives in the [README](../README.md#troubleshooting).
 
@@ -115,4 +117,4 @@ More troubleshooting lives in the [README](../README.md#troubleshooting).
 
 ## 6. Shipping it — Deploy to Vercel
 
-Local dev talks to your Firebase project already — going live just means putting the frontend somewhere public. Deploy to [Vercel](https://vercel.com) (free, no billing account needed): sign in with GitHub, **Add New Project**, import this repo, set **Root Directory** to `frontend`, then add the environment variables listed (including the `NEXT_PUBLIC_TIDECLOAK_*` values, pointed at a reachable TideCloak instance) — Vercel doesn't read your root `.env` file, so each variable has to be added manually under the same name it has there. For a step-by-step walkthrough, see [DEPLOY-TO-VERCEL.md](DEPLOY-TO-VERCEL.md).
+Going live means putting the frontend somewhere public. Deploy to [Vercel](https://vercel.com) (free, no billing account needed): sign in with GitHub, **Add New Project**, import this repo, set **Root Directory** to `frontend`, then add the environment variables listed (including the `NEXT_PUBLIC_TIDECLOAK_*` values, pointed at a reachable TideCloak instance) — Vercel doesn't read your root `.env` file, so each variable has to be added manually under the same name it has there. For a step-by-step walkthrough, see [DEPLOY-TO-VERCEL.md](DEPLOY-TO-VERCEL.md).

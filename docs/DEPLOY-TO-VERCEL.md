@@ -2,35 +2,9 @@
 
 This guide takes your local app live on the internet. It assumes `pnpm run dev` already works on your machine — if it doesn't, fix that first (see `docs/GUIDE.md`).
 
-**What you're deploying:** the `frontend/` app only. It's a full Next.js server (pages + Server Actions) that talks to TideCloak for frontend authentication and straight to Firestore using the Admin SDK. The old Firebase session-cookie route (`/api/auth/session`) has been removed. The separate `backend/` Express app (Cloud Functions) still exists as optional scaffolding; skip it unless your feature specifically calls it (see the box at the end). Note: TideCloak JWT verification for the Express backend is not yet implemented — see `docs/BACKEND.md`.
+**What you're deploying:** the `frontend/` app only. It's a full Next.js server (pages + Server Actions) that talks to TideCloak for frontend authentication — TideCloak is the only authentication provider, and the frontend has no Firebase SDK at all. The old Firebase session-cookie route (`/api/auth/session`) has been removed. The separate `backend/` Express app (Cloud Functions) still exists as optional scaffolding for future features (including any Firestore-backed data, which is server-only); skip it unless your feature specifically calls it (see the box at the end).
 
-Two things need to be live for the app to fully work: **Vercel** (hosts the site) and **Firestore security rules** (protects the database). Steps 1–6 cover Vercel. Step 7 covers the rules.
-
----
-
-## Before you start — gather 6 values
-
-Open your Firebase project at [console.firebase.google.com](https://console.firebase.google.com) and collect these. Keep them in a scratch note, you'll paste them into Vercel in Step 5.
-
-| #   | Value                            | Where to find it                                                                                                             |
-| --- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Firebase **Project ID**          | Project Settings (gear icon) → General → "Project ID"                                                                        |
-| 2   | Firebase **API Key**             | Project Settings → General → scroll to "Your apps" → click your web app → copy `apiKey` from the config snippet              |
-| 3   | Firebase **Auth Domain**         | Same config snippet → `authDomain`                                                                                           |
-| 4   | Firebase **Messaging Sender ID** | Same config snippet → `messagingSenderId`                                                                                    |
-| 5   | Firebase **App ID**              | Same config snippet → `appId`                                                                                                |
-| 6   | **Service account key** (base64) | Project Settings → Service Accounts tab → "Generate new private key" → downloads a `.json` file. See encoding command below. |
-
-You can also just open your local `.env` file — every one of these values is already sitting there, filled in when the project was bootstrapped.
-
-**Encode the service account key** (do this in your terminal, not by hand):
-
-```bash
-# macOS
-base64 -i ~/Downloads/your-service-account-file.json | tr -d '\n' | pbcopy
-```
-
-That copies the encoded key straight to your clipboard — you'll paste it into Vercel in Step 5. Never paste this key into chat, a doc, or commit it to git.
+The app has no required Firebase configuration to deploy today — Firestore is reserved for future backend features and is never accessed from the browser or from Vercel's deployment.
 
 ---
 
@@ -63,28 +37,24 @@ On the "Configure Project" screen:
 | **Framework Preset** | Next.js (should auto-detect)                           |
 | **Root Directory**   | Click "Edit" next to it → select `frontend` → Continue |
 
-Do **not** click Deploy yet — you still need to add environment variables in the next step, or the app will build but fail to connect to Firebase.
+Do **not** click Deploy yet — you still need to add environment variables in the next step.
 
 ## Step 5 — Add environment variables
 
 Still on the same screen, expand **Environment Variables** and add each row below. For each one: type the name in the left box, the value in the right box, click **Add**, repeat.
 
-| Name                                       | Value                                                                         |
-| ------------------------------------------ | ----------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_FIREBASE_API_KEY`             | value #2 from your list                                                       |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`         | value #3                                                                      |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID`          | value #1                                                                      |
-| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | value #4                                                                      |
-| `NEXT_PUBLIC_FIREBASE_APP_ID`              | value #5                                                                      |
-| `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64`      | value #6 (paste from clipboard)                                               |
-| `NEXT_PUBLIC_APP_NAME`                     | your app's display name, e.g. `My Capstone App`                               |
-| `NEXT_PUBLIC_APP_URL`                      | leave as `https://placeholder.vercel.app` for now — you'll fix this in Step 6 |
+| Name                                                                                                      | Value                                                                                                                                                |
+| --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_APP_NAME`                                                                                    | your app's display name, e.g. `My Capstone App`                                                                                                      |
+| `NEXT_PUBLIC_APP_URL`                                                                                     | leave as `https://placeholder.vercel.app` for now — you'll fix this in Step 6                                                                        |
+| `NEXT_PUBLIC_TIDECLOAK_AUTH_SERVER_URL`, `NEXT_PUBLIC_TIDECLOAK_REALM`, `NEXT_PUBLIC_TIDECLOAK_CLIENT_ID` | TideCloak connection details — the TideCloak instance must be reachable from this deployed URL, not just `localhost` (see `docs/TIDECLOAK-LOCAL.md`) |
+| `NEXT_PUBLIC_API_URL`                                                                                     | only if the frontend calls the deployed `backend/` API — its public base URL                                                                         |
 
 **Checklist before continuing:**
 
 - [ ] Every row shows a value, not blank
-- [ ] `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` does **not** have `NEXT_PUBLIC_` in front of it (it's a secret — that prefix would expose it to the browser)
 - [ ] No extra spaces at the start/end of any value (a trailing space is invisible and breaks things)
+- [ ] `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` is **not** set here — it's a backend-only secret that must never reach the frontend
 
 ## Step 6 — Deploy, then fix the URL
 
@@ -95,16 +65,14 @@ Still on the same screen, expand **Environment Variables** and add each row belo
 
 **From now on, every push to `main` auto-deploys to this URL.** There's no approval step on Vercel's side — merging to `main` means it's live.
 
-## Step 7 — Deploy Firestore security rules
+## Step 7 — Firestore security rules (only if you deploy the backend and use Firestore)
 
-This is separate from Vercel and easy to forget — without it, Firestore may reject every read/write from your live app even though the site loads fine.
+Only relevant if a Firestore-backed feature has been implemented in `backend/`. `firebase/firestore.rules` denies all direct client access by default — there is nothing to configure for the frontend, since the browser never connects to Firestore. If you do deploy Firestore rules:
 
 ```bash
 npx firebase-tools login
 npx firebase-tools deploy --only firestore:rules
 ```
-
-(This also happens automatically on every push to `main` via `deploy.yml`, if that GitHub Actions workflow is set up for this repo — check the **Actions** tab on GitHub to confirm it ran.)
 
 ---
 
@@ -112,12 +80,11 @@ npx firebase-tools deploy --only firestore:rules
 
 Visit your Vercel URL and:
 
-1. Try signing up with a new account — if this fails, double check the `NEXT_PUBLIC_FIREBASE_*` values in Step 5
-2. Try creating something that saves to Firestore (e.g. a note) — if this fails with a permissions error, Step 7 (rules) probably wasn't done
-3. Refresh the page while signed in — if you get signed out, check `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` was pasted completely (it's a long string and easy to truncate when copying)
+1. Click "Continue with TideCloak" on `/auth/signin` — if this fails, double check the `NEXT_PUBLIC_TIDECLOAK_*` values in Step 5 and that the TideCloak instance is reachable from the public internet (not just `localhost`)
+2. Confirm you land on `/dashboard` after signing in
 
 ---
 
 ## Do I need to deploy `backend/` too?
 
-Almost certainly not. That folder is a separate Express API deployed as its own Cloud Function — it still exists, but it only matters if your frontend code calls it directly (look for `fetch` calls to a `/api/...` URL, or check `backend/src/routes/` for routes with actual code in them, not empty files). Its auth middleware currently verifies Firebase ID tokens and has not yet been reconnected to TideCloak — that work is future (`feature/tidecloak-protect`), not complete. If you're not sure, ask before spending time on it — deploying it also requires upgrading Firebase to the paid Blaze plan. Full instructions are in `docs/CI-CD.md` if you do need it.
+Almost certainly not, unless your feature specifically calls it (look for `fetch` calls to a `/api/...` URL in the frontend, or check `backend/src/routes/` for routes with actual code in them). Its auth middleware verifies **TideCloak access tokens** — Firebase Authentication is not used anywhere in this backend. Deploying it requires upgrading Firebase to the paid Blaze plan. Full instructions are in `docs/CI-CD.md` if you do need it.
