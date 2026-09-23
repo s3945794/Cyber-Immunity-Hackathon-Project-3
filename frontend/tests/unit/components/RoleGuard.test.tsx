@@ -10,6 +10,7 @@ import { RoleGuard } from '@/components/auth/RoleGuard'
 
 const login = vi.fn()
 const logout = vi.fn()
+const getToken = vi.fn()
 
 function mockAuth(value: Partial<AuthContextValue>) {
   vi.mocked(useAuth).mockReturnValue({
@@ -18,6 +19,7 @@ function mockAuth(value: Partial<AuthContextValue>) {
     loading: false,
     login,
     logout,
+    getToken,
     ...value,
   })
 }

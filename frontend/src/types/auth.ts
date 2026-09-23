@@ -34,4 +34,11 @@ export interface AuthContextValue {
   login: () => Promise<void>
   /** End the TideCloak session and return to the app. */
   logout: () => Promise<void>
+  /**
+   * Returns the current TideCloak access token (or `null` if unauthenticated),
+   * refreshing it via the SDK first if needed. Callers must use the result
+   * only in an `Authorization: Bearer` header — never render, log, store in
+   * component state, persist to localStorage, or return it from an API.
+   */
+  getToken: () => Promise<string | null>
 }

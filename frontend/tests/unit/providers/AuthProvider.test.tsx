@@ -9,6 +9,7 @@ const mockTc = {
   token: null as string | null,
   login: vi.fn(),
   logout: vi.fn(),
+  getToken: vi.fn<() => Promise<string | null>>(),
   getValueFromIdToken: vi.fn<(key: string) => unknown>(),
   getValueFromToken: vi.fn<(key: string) => unknown>(),
   hasRealmRole: vi.fn<(role: string) => boolean>(),
