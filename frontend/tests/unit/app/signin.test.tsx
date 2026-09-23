@@ -20,6 +20,7 @@ function mockAuth(value: Partial<AuthContextValue> = {}) {
     loading: false,
     login,
     logout: vi.fn(),
+    getToken: vi.fn(),
     ...value,
   })
 }
