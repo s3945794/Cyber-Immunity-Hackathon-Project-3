@@ -124,34 +124,30 @@ useAuth() → { user, authenticated, loading, login, logout } (read from token c
 - Removed: the Firebase Authentication client SDK, the `__session` cookie, `proxy.ts`, and the
   `/api/auth/session` route
 
-### Backend API — Firebase ID token (legacy, not yet TideCloak)
+### Backend API — TideCloak access token
 
 ```
-Client → Authorization: Bearer <Firebase ID token>
+Client → Authorization: Bearer <TideCloak access token>
          ↓
-authMiddleware → verifyToken(token) → AuthUser { uid, email, claims }
+authMiddleware → verifyTideCloakToken(token) → AuthUser { uid, email, claims, roles }
                  ↓
-Route handler → (req as AuthenticatedRequest).user.uid
+Route handler → (req as AuthenticatedRequest).user.uid / .roles
 ```
 
-- This flow **predates the TideCloak migration** and has not been reconnected to the
-  TideCloak-authenticated frontend. It is not currently reachable from the app's own sign-in
-  flow. See `docs/BACKEND.md`
-- Tokens expire after 1 hour — this assumed a Firebase client SDK that auto-refreshed via
-  `getIdToken()`, which no longer exists in the frontend
+- `backend/src/middleware/auth.ts` verifies the token via `backend/src/lib/tideJWT.ts` — see
+  `docs/BACKEND.md` for the exact checks (embedded JWKS signature, issuer, `azp`, time claims)
+- Firebase Authentication is not used anywhere in this backend; there is no legacy Firebase auth
+  module
 - The `verifyToken` function is injected — pass a mock to `createApp()` in tests without
-  touching Firebase
+  touching Firebase or TideCloak
 - Invalid or expired tokens always return `401 Unauthorized` with RFC 9457 format
-- Replacing this with TideCloak JWT verification (EdDSA) is `feature/tidecloak-protect`
+- `requireRole`/`requireAnyRole` are available role-membership guards on top of this — see
+  `docs/BACKEND.md`
 
-### Revoking sessions (Firebase, legacy path only)
+### Revoking sessions
 
-To force-sign-out a user under the current Firebase-token backend flow:
-
-1. `adminAuth.revokeRefreshTokens(uid)` — revokes all tokens
-2. Subsequent token verifications with `checkRevoked: true` will fail
-
-TideCloak session revocation is not yet wired into this project.
+Firebase Authentication is not used anywhere in this app, so there is no Firebase-token session
+to revoke. TideCloak session revocation is not yet wired into this project.
 
 ---
 
@@ -199,32 +195,17 @@ Errors use RFC 9457 Problem Details format — no stack traces, no internal deta
 
 ## Firestore Security Rules
 
-Rules in `firebase/firestore.rules` are the **last line of defence**. Write rules assuming the client is untrusted and malicious.
+`firebase/firestore.rules` denies all direct client reads and writes with a single default-deny
+rule. Firestore is server-only in this app: all current and future access happens from the
+Express backend, via Firebase Admin (`backend/src/lib/firebase.ts`'s `adminDb`), only after the
+TideCloak auth middleware has verified and authorized the request. The browser has no Firebase
+SDK and never connects to Firestore directly.
 
-### Key principles
-
-- **Default deny** — the catch-all `match /{document=**}` block denies everything not explicitly allowed
-- **Owner-only** — users can only access their own documents via `isOwner(uid)`
-- **Field allowlists** — `request.resource.data.keys().hasOnly([...])` prevents writing unexpected fields (mass assignment)
-- **Immutable fields** — `uid` and `role` cannot be changed by the user after creation
-- **Soft-delete only** — `delete: if false` on all user-owned collections; set `deletedAt` field instead
-- **notDeleted() guard** — include `&& notDeleted()` in read rules to filter logically deleted docs
-
-### Helper functions
-
-```javascript
-isAuthenticated() // request.auth != null && uid != null
-isOwner(uid) // isAuthenticated() && request.auth.uid == uid
-isAdmin() // reads users/{uid}.role == 'admin' (one Firestore read)
-hasCustomClaim(claim) // request.auth.token[claim] == true (no Firestore read — use for performance)
-notDeleted() // deletedAt field is null or absent
-```
-
-Use `hasCustomClaim('admin')` in high-read collections to avoid the Firestore read that `isAdmin()` triggers. Set custom claims via Admin SDK:
-
-```typescript
-await adminAuth.setCustomUserClaims(uid, { admin: true })
-```
+Firebase Admin bypasses these client security rules entirely — that's expected. Rules exist only
+to stop a hypothetical direct client connection; the real access control for Firestore data lives
+in the backend route (TideCloak role checks via `requireRole`/`requireAnyRole`), not in
+`firebase/firestore.rules`, since there is no Firebase Auth session for these rules to check
+(`request.auth` is always null — TideCloak issues its own JWTs, never a Firebase ID token).
 
 ### Deploying rules
 

@@ -13,19 +13,18 @@ backend/src/
 ├── index.ts                  # Cloud Function entry — exports `api` via onRequest()
 ├── app.ts                    # Express app factory — createApp()
 ├── lib/
-│   ├── firebase.ts           # Firebase Admin singleton — sole entry point for the Admin SDK (Firestore only)
+│   ├── firebase.ts           # Firebase Admin singleton — sole entry point for the Admin SDK. Firestore only (no Auth export); not yet used by any route
 │   ├── tidecloakConfig.ts    # TideCloak adapter config loader (CLIENT_ADAPTER / data/tidecloak.json)
 │   ├── tideJWT.ts            # TideCloak access token verification + SOC role extraction
-│   ├── errors.ts             # HttpError — the single error type (RFC 9457 responses)
-│   └── zodConverter.ts       # Typed Firestore converter with _schemaVersion + lazy migration
+│   └── errors.ts             # HttpError — the single error type (RFC 9457 responses)
 ├── middleware/
 │   ├── auth.ts               # TideCloak JWT verification → attaches req.user; requireRole() (no Firebase import)
-│   ├── firebaseAuth.ts       # Legacy Firebase ID token verification — isolated, not wired into createApp()
 │   └── errorHandler.ts       # Renders every error as { type, title, status, detail }
 └── routes/
     ├── index.ts              # Route registry — mount new routers here
     ├── health.ts             # GET /api/health — public, no auth
-    └── me.ts                 # GET /api/me — auth middleware demo endpoint (uid/email/roles)
+    ├── me.ts                 # GET /api/me — auth middleware demo endpoint (uid/email/roles)
+    └── incidents.ts          # GET /api/incidents, GET /api/incidents/:id — synthetic data (data/incidents.ts), no Firestore
 ```
 
 Two rules, enforced by `tests/unit/conventions.test.ts` in CI:
@@ -33,9 +32,18 @@ Two rules, enforced by `tests/unit/conventions.test.ts` in CI:
 1. **Firebase Admin is imported only via `lib/firebase.ts`** — never from `firebase-admin` directly (type-only imports are fine)
 2. **No `console.log` in `src/`** — use `console.error`/`console.warn` for real logging
 
+Firebase Authentication is not used anywhere in this backend — there is no legacy Firebase auth
+module. TideCloak (`middleware/auth.ts`, `lib/tideJWT.ts`) is the only authentication path.
+
 ---
 
 ## Route Handler Pattern
+
+The example below shows the intended pattern for a future Firestore-backed route. No current
+route uses Firestore yet — `routes/incidents.ts` uses synthetic in-memory data
+(`data/incidents.ts`) as its reference implementation instead. Follow `routes/incidents.ts` for
+today's actual pattern (role gating + explicit field allow-list); use `adminDb` only once a
+feature genuinely needs Firestore.
 
 ```typescript
 import { Router, type Router as ExpressRouter } from 'express'
@@ -145,36 +153,9 @@ const { user } = req as AuthenticatedRequest
 
 Gate a route on a role with `requireRole('soc-analyst')` (returns 403 if missing). The auth middleware itself returns 401 for anything wrong with the token (see `docs/BACKEND.md` for the exact checks — issuer, `azp`, time claims, local embedded-JWKS signature verification).
 
-Token verification is injectable for tests: `createApp({ verifyToken: mockVerifyToken })`. Public endpoints must be registered before the auth middleware in `app.ts`. Firebase Admin remains the sole path for Firestore access — it is no longer used for authentication (see `lib/tideJWT.ts`, `lib/tidecloakConfig.ts`).
+Token verification is injectable for tests: `createApp({ verifyToken: mockVerifyToken })`. Public endpoints must be registered before the auth middleware in `app.ts`. Firebase Authentication is not used anywhere in this backend — `lib/firebase.ts` is Firestore-only (see `lib/tideJWT.ts`, `lib/tidecloakConfig.ts` for the actual auth path).
 
-`middleware/auth.ts` does not import `lib/firebase.ts` at all — the TideCloak auth path never touches Firebase Admin. Legacy Firebase ID token verification (`verifyFirebaseToken`) lives in `middleware/firebaseAuth.ts`, a separate module that imports `adminAuth` from `lib/firebase.ts`; it exists for reference only and is never wired into `createApp()`.
-
----
-
-## Firestore Zod Converter
-
-Use `createZodConverter()` for typed collection access with schema validation and lazy migration:
-
-```typescript
-import { z } from 'zod'
-import { createZodConverter } from '../lib/zodConverter'
-import { adminDb } from '../lib/firebase'
-
-const userSchema = z.object({
-  uid: z.string(),
-  email: z.string(),
-  role: z.enum(['user', 'admin']),
-  _schemaVersion: z.literal(1),
-})
-type User = z.infer<typeof userSchema>
-
-const userConverter = createZodConverter(userSchema, 1)
-
-// Typed read:
-const ref = adminDb.collection('users').doc(uid).withConverter(userConverter)
-const snap = await ref.get()
-const user = snap.data() // User | undefined — fully typed
-```
+`middleware/auth.ts` does not import `lib/firebase.ts` at all — the TideCloak auth path never touches Firebase Admin.
 
 ---
 
@@ -196,7 +177,7 @@ vi.mocked(mockVerifyToken).mockResolvedValue(mockUser)
 vi.mocked(mockVerifyToken).mockRejectedValue(new Error('invalid'))
 ```
 
-`tests/setup.ts` also mocks `src/lib/firebase` so the Admin SDK never initializes in unit tests.
+`tests/setup.ts` also mocks `src/lib/firebase` (`adminDb` only) so the Admin SDK never initializes in unit tests.
 
 ---
 
@@ -215,10 +196,13 @@ vi.mocked(mockVerifyToken).mockRejectedValue(new Error('invalid'))
 
 ## Firebase Admin SDK
 
-Only import from `lib/firebase` — never directly from `firebase-admin`:
+Firestore only — Firebase Authentication is not used anywhere in this backend. Only import from
+`lib/firebase` — never directly from `firebase-admin`:
 
 ```typescript
-import { adminDb, adminAuth } from '../lib/firebase'
+import { adminDb } from '../lib/firebase'
 ```
 
-The conventions test fails CI if any other file imports `firebase-admin` at runtime.
+Deployed Cloud Functions use Application Default Credentials automatically; local development
+can optionally set `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` to use a real Firestore project. The
+conventions test fails CI if any other file imports `firebase-admin` at runtime.

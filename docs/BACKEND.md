@@ -17,18 +17,16 @@ backend/
 │   │   └── me.ts             GET /api/me — auth middleware demo endpoint
 │   ├── middleware/
 │   │   ├── auth.ts           TideCloak JWT verification → req.user; requireRole() (no Firebase import)
-│   │   ├── firebaseAuth.ts   Legacy Firebase ID token verification — isolated, not wired in
 │   │   └── errorHandler.ts   Global error handler (RFC 9457 responses)
 │   └── lib/
-│       ├── firebase.ts       Admin SDK singleton (sole entry point; Firestore only)
+│       ├── firebase.ts       Admin SDK singleton (sole entry point; Firestore only, no Auth export)
 │       ├── tidecloakConfig.ts  Adapter config loader (CLIENT_ADAPTER / data/tidecloak.json)
 │       ├── tideJWT.ts        TideCloak access token verification + role extraction
-│       ├── errors.ts         HttpError — the single error type
-│       └── zodConverter.ts   Typed Firestore converter with schema versioning
+│       └── errors.ts         HttpError — the single error type
 └── tests/
     ├── unit/                 supertest tests (mocked Firebase)
     │   └── conventions.test.ts  Enforces the two backend rules in CI
-    └── setup.ts              Vitest setup + Firebase mocks
+    └── setup.ts              Vitest setup + Firebase mocks (adminDb only)
 ```
 
 ## Routes
@@ -95,14 +93,16 @@ router.get('/reports', requireRole('soc-analyst'), handler)
 returns **401** for anything wrong with the token (missing header, wrong scheme, malformed,
 invalid signature, expired, future-issued beyond tolerance, wrong issuer, wrong `azp`).
 
-### Firebase Admin — still used for Firestore, isolated from auth
+### Firebase Admin — Firestore only, no authentication use
 
-Firebase Admin (`src/lib/firebase.ts`, `adminAuth`/`adminDb`) remains in place for **Firestore**
-access. Legacy Firebase ID token verification (`verifyFirebaseToken`) lives in a separate module,
-`src/middleware/firebaseAuth.ts`, and is not wired into `createApp()`. `src/middleware/auth.ts` —
-the module the normal TideCloak auth path imports — does not import `lib/firebase.ts` or
-`adminAuth` at all, so the TideCloak path never initialises Firebase Authentication. `adminDb`
-(Firestore) is unaffected and remains available wherever it's imported from `lib/firebase.ts`.
+Firebase Admin (`src/lib/firebase.ts`, `adminDb`) exists solely for **Firestore** access,
+reserved for future features (emergency-access request, approval, expiry, audit history) — no
+current route uses it. Firebase Authentication is not used anywhere in this backend; there is no
+legacy Firebase auth module. `src/middleware/auth.ts` — the module the TideCloak auth path
+imports — does not import `lib/firebase.ts` at all, so the auth path never touches Firebase
+Admin. `lib/firebase.ts` initializes lazily: deployed Cloud Functions use Application Default
+Credentials automatically; local development can optionally set
+`FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` to use a real Firestore project.
 
 ### Roles
 
@@ -112,7 +112,7 @@ this backend code recognises them wherever they appear in a token but does not p
 
 ## Error Handling
 
-One error type — `HttpError` from `src/lib/errors.ts`. Always pass errors to `next()`; the global `errorHandler` turns them into RFC 9457 Problem Details responses and never leaks internals:
+One error type — `HttpError` from `src/lib/errors.ts`. Always pass errors to `next()`; the global `errorHandler` turns them into RFC 9457 Problem Details responses and never leaks internals. The example below is illustrative of the intended pattern once a route needs Firestore — no current route uses `adminDb` yet; see `src/routes/incidents.ts` for today's actual pattern (synthetic data + role gating + explicit field allow-list):
 
 ```typescript
 router.get('/:id', async (req, res, next) => {
@@ -138,10 +138,6 @@ Available helpers: `HttpError.badRequest()`, `.unauthorized()`, `.forbidden()`, 
 1. Any file other than `src/lib/firebase.ts` imports `firebase-admin` at runtime
 2. Any `src/` file contains `console.log`
 
-`src/middleware/firebaseAuth.ts` imports `adminAuth` from `src/lib/firebase.ts` (not from
-`firebase-admin` directly), so it does not violate rule 1 — it is the isolation boundary for
-legacy Firebase _authentication_, not a second Firebase Admin entry point.
-
 ## Local Development
 
 ```bash
@@ -149,7 +145,10 @@ legacy Firebase _authentication_, not a second Firebase Admin entry point.
 pnpm --filter backend run dev
 ```
 
-There's no local emulator — the backend talks to the real Firebase project configured in `backend/.env` (generated from the root `.env`).
+There's no local emulator. Deployed Cloud Functions use Application Default Credentials for
+Firestore access automatically; if a Firestore-backed feature is being developed locally, set
+`FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` in the root `.env` to use a real Firebase project — this is
+optional and not required to run the backend otherwise (see `docs/ENV-VARS.md`).
 
 ## Deployment
 

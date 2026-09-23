@@ -2,11 +2,10 @@ import { vi } from 'vitest'
 import type { AuthUser, VerifyToken } from '../src/middleware/auth'
 
 // Prevent Firebase Admin from initializing during unit tests.
-// createApp() accepts a mock verifyToken so adminAuth.verifyIdToken is never called,
-// but the module is still imported at load time — this stub prevents the SDK from throwing.
+// Firebase Authentication is not used anywhere in this backend (TideCloak
+// is the sole auth provider — see middleware/auth.ts). This stub only
+// covers Firestore access, which lib/firebase.ts now exclusively provides.
 vi.mock('../src/lib/firebase', () => ({
-  adminApp: {},
-  adminAuth: { verifyIdToken: vi.fn() },
   adminDb: { collection: vi.fn(), runTransaction: vi.fn() },
 }))
 

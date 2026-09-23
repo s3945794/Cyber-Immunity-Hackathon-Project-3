@@ -7,10 +7,11 @@ This file provides full context for Claude Code. Read it before making any chang
 ## Project Overview
 
 **Type:** SOC Incident Report Protection application. Originally forked from a Firebase-based
-student capstone boilerplate; frontend authentication has been migrated to TideCloak.
-**Purpose:** Protect SOC incident reports with TideCloak-backed identity, Firestore as the
-database, and (future) role-based access control, server-side JWT verification, encryption,
-approval workflows and audit logging.
+student capstone boilerplate; authentication (frontend and backend) has been fully migrated to
+TideCloak — Firebase Authentication is not used anywhere in this app.
+**Purpose:** Protect SOC incident reports with TideCloak-backed identity, Firestore reserved for
+future server-side application data, and (future) role-based access control, server-side JWT
+verification, encryption, approval workflows and audit logging.
 
 New to the repo? Read `docs/GUIDE.md` — it walks through the current setup.
 
@@ -18,20 +19,20 @@ New to the repo? Read `docs/GUIDE.md` — it walks through the current setup.
 
 ## Tech Stack
 
-| Layer              | Technology                                                                                                                                                                                                                                                                                                                       |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Frontend framework | Next.js 16 (App Router, React 19)                                                                                                                                                                                                                                                                                                |
-| Language           | TypeScript 5 — strict mode                                                                                                                                                                                                                                                                                                       |
-| Styling            | Tailwind CSS v4 (CSS-first config, no `tailwind.config.js`)                                                                                                                                                                                                                                                                      |
-| UI components      | Raw Tailwind (shadcn can be added per project)                                                                                                                                                                                                                                                                                   |
-| Backend            | Firebase Cloud Functions v2 (Express fat-lambda)                                                                                                                                                                                                                                                                                 |
-| Database           | Firestore — unchanged by the auth migration                                                                                                                                                                                                                                                                                      |
-| Auth (frontend)    | **TideCloak** — login, logout, callback (`/auth/redirect`), silent SSO implemented. Firebase Authentication, `proxy.ts`, `__session` cookie **removed**.                                                                                                                                                                         |
-| Auth (server-side) | Backend now verifies **TideCloak** JWTs (not Firebase ID tokens) and extracts recognised SOC roles from them — see `docs/BACKEND.md`. Frontend Server Action helpers `getServerSession()`/`requireAuth()` (`frontend/src/actions/auth.actions.ts`) remain fail-closed placeholders — unrelated to the backend/RBAC status below. |
-| Package manager    | pnpm workspaces — **always use pnpm, never npm or yarn**                                                                                                                                                                                                                                                                         |
-| Testing            | Vitest + Testing Library (frontend) · Vitest + supertest (backend)                                                                                                                                                                                                                                                               |
-| Git hooks          | Lefthook (commit-msg: Conventional Commits · pre-commit: lint + format)                                                                                                                                                                                                                                                          |
-| CI/CD              | GitHub Actions                                                                                                                                                                                                                                                                                                                   |
+| Layer              | Technology                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend framework | Next.js 16 (App Router, React 19)                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Language           | TypeScript 5 — strict mode                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Styling            | Tailwind CSS v4 (CSS-first config, no `tailwind.config.js`)                                                                                                                                                                                                                                                                                                                                                                                         |
+| UI components      | Raw Tailwind (shadcn can be added per project)                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Backend            | Firebase Cloud Functions v2 (Express fat-lambda)                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Database           | Firestore — reserved for future server-side backend features (emergency-access request, approval, expiry, audit history). Server-only, via Firebase Admin (`backend/src/lib/firebase.ts`); the browser has no Firebase SDK and never connects to Firestore directly — `firebase/firestore.rules` denies all direct client access. No current route uses Firestore yet (see `backend/src/data/incidents.ts` for the current synthetic-data pattern). |
+| Auth (frontend)    | **TideCloak** — login, logout, callback (`/auth/redirect`), silent SSO implemented. Firebase Authentication, `proxy.ts`, `__session` cookie **removed**.                                                                                                                                                                                                                                                                                            |
+| Auth (server-side) | Backend now verifies **TideCloak** JWTs (not Firebase ID tokens) and extracts recognised SOC roles from them — see `docs/BACKEND.md`. Frontend Server Action helpers `getServerSession()`/`requireAuth()` (`frontend/src/actions/auth.actions.ts`) remain fail-closed placeholders — unrelated to the backend/RBAC status below.                                                                                                                    |
+| Package manager    | pnpm workspaces — **always use pnpm, never npm or yarn**                                                                                                                                                                                                                                                                                                                                                                                            |
+| Testing            | Vitest + Testing Library (frontend) · Vitest + supertest (backend)                                                                                                                                                                                                                                                                                                                                                                                  |
+| Git hooks          | Lefthook (commit-msg: Conventional Commits · pre-commit: lint + format)                                                                                                                                                                                                                                                                                                                                                                             |
+| CI/CD              | GitHub Actions                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 ---
 
@@ -61,45 +62,40 @@ Everything a feature build needs already exists below. **Do not survey the codeb
 
 ### Frontend building blocks
 
-| File                                             | Exports                                                                                                                         | Use for                                                                                                                                                                                              |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `frontend/src/actions/auth.actions.ts`           | `getServerSession()` → `null`, `requireAuth()` → redirects                                                                      | **Placeholders** — server-side TideCloak verification lands in `feature/tidecloak-protect`; fail closed until then                                                                                   |
-| `frontend/src/lib/tidecloak/config.ts`           | `getTideCloakConfig()`, `isTideCloakConfigured()`                                                                               | Builds the `<TideCloakProvider>` config from `NEXT_PUBLIC_TIDECLOAK_*` env vars                                                                                                                      |
-| `frontend/src/providers/AuthProvider.tsx`        | `AuthProvider` (wraps `<TideCloakProvider>`), `useAuthContext`                                                                  | Root client auth provider — TideCloak SDK init + `useAuth()` bridge                                                                                                                                  |
-| `frontend/src/lib/firebase/admin.ts`             | `adminAuth`, `adminDb` (lazy, `server-only`)                                                                                    | All server-side Firebase (Firestore)                                                                                                                                                                 |
-| `frontend/src/lib/firebase/client.ts`            | `getClientApp()`, `getClientDb()`                                                                                               | Browser Firestore SDK (Client Components only)                                                                                                                                                       |
-| `frontend/src/lib/firebase/firestore.ts`         | `getUsersCollection()`, `userDoc(uid)` — add new collections here as `get{X}Collection()` (`typedCollection` is module-private) | Typed collection access                                                                                                                                                                              |
-| `frontend/src/hooks/useFirestore.ts`             | `useCollection(ref, ...constraints)` → `{ data, loading, error }` (onSnapshot)                                                  | Realtime lists in Client Components                                                                                                                                                                  |
-| `frontend/src/hooks/useAuth.ts`                  | `useAuth()` → `{ user: { uid, username, email } \| null, authenticated, loading, login, logout, getToken }`                     | Current user + auth actions in Client Components (TideCloak); `getToken()` is the SDK-backed access-token accessor for authenticated fetches (Authorization header only — never store/log/render it) |
-| `frontend/src/lib/api/incidents.ts`              | `fetchIncidents(tokenSource)`, `fetchIncidentById(tokenSource, id)`, `IncidentApiError`, `IncidentNotFoundError`                | Authenticated calls to the backend incidents API (`NEXT_PUBLIC_API_URL`)                                                                                                                             |
-| `frontend/src/types/index.ts`                    | `ActionResult<T>` `{ success, error?, data? }` + re-exports of `types/auth.ts`, `types/firestore.ts`                            | Return type of every Server Action                                                                                                                                                                   |
-| `frontend/src/types/firestore.ts`                | `UserProfile` — add new collection interfaces here (always with `_schemaVersion: 1`)                                            | Collection types                                                                                                                                                                                     |
-| `frontend/src/lib/validations/`                  | `idSchema`, `paginationSchema` (`common.ts`)                                                                                    | Zod schemas — add feature schemas here or in the feature folder                                                                                                                                      |
-| `frontend/src/lib/utils.ts`                      | `cn()`, `formatDate`, `formatDatetime`, `truncate`                                                                              | Class merging, formatting                                                                                                                                                                            |
-| `frontend/src/components/layout/`                | `DashboardShell`, `Sidebar` (navItems array — add links here), `Navbar`, `PageHeader`                                           | App shell                                                                                                                                                                                            |
-| `frontend/src/components/shared/`                | `ErrorBoundary`, `LoadingSpinner`, `FullPageSpinner`, `EmptyState { title, description?, icon?, action? }`                      | Loading/empty/error states                                                                                                                                                                           |
-| `frontend/src/app/(auth)/auth/redirect/page.tsx` | TideCloak post-login callback (`useAuthCallback` → PKCE token exchange → redirect)                                              | `/auth/redirect` — must be a `Valid redirect URI` on the TideCloak client                                                                                                                            |
+| File                                             | Exports                                                                                                          | Use for                                                                                                                                                                                              |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `frontend/src/actions/auth.actions.ts`           | `getServerSession()` → `null`, `requireAuth()` → redirects                                                       | **Placeholders** — server-side TideCloak verification lands in `feature/tidecloak-protect`; fail closed until then                                                                                   |
+| `frontend/src/lib/tidecloak/config.ts`           | `getTideCloakConfig()`, `isTideCloakConfigured()`                                                                | Builds the `<TideCloakProvider>` config from `NEXT_PUBLIC_TIDECLOAK_*` env vars                                                                                                                      |
+| `frontend/src/providers/AuthProvider.tsx`        | `AuthProvider` (wraps `<TideCloakProvider>`), `useAuthContext`                                                   | Root client auth provider — TideCloak SDK init + `useAuth()` bridge                                                                                                                                  |
+| `frontend/src/hooks/useAuth.ts`                  | `useAuth()` → `{ user: { uid, username, email } \| null, authenticated, loading, login, logout, getToken }`      | Current user + auth actions in Client Components (TideCloak); `getToken()` is the SDK-backed access-token accessor for authenticated fetches (Authorization header only — never store/log/render it) |
+| `frontend/src/lib/api/incidents.ts`              | `fetchIncidents(tokenSource)`, `fetchIncidentById(tokenSource, id)`, `IncidentApiError`, `IncidentNotFoundError` | Authenticated calls to the backend incidents API (`NEXT_PUBLIC_API_URL`)                                                                                                                             |
+| `frontend/src/types/index.ts`                    | `ActionResult<T>` `{ success, error?, data? }` + re-exports of `types/auth.ts`                                   | Return type of every Server Action                                                                                                                                                                   |
+| `frontend/src/lib/validations/`                  | `idSchema`, `paginationSchema` (`common.ts`)                                                                     | Zod schemas — add feature schemas here or in the feature folder                                                                                                                                      |
+| `frontend/src/lib/utils.ts`                      | `cn()`, `formatDate`, `formatDatetime`, `truncate`                                                               | Class merging, formatting                                                                                                                                                                            |
+| `frontend/src/components/layout/`                | `DashboardShell`, `Sidebar` (navItems array — add links here), `Navbar`, `PageHeader`                            | App shell                                                                                                                                                                                            |
+| `frontend/src/components/shared/`                | `ErrorBoundary`, `LoadingSpinner`, `FullPageSpinner`, `EmptyState { title, description?, icon?, action? }`       | Loading/empty/error states                                                                                                                                                                           |
+| `frontend/src/app/(auth)/auth/redirect/page.tsx` | TideCloak post-login callback (`useAuthCallback` → PKCE token exchange → redirect)                               | `/auth/redirect` — must be a `Valid redirect URI` on the TideCloak client                                                                                                                            |
 
 ### Backend building blocks
 
-| File                                     | Exports                                                                                                                                             | Use for                                                           |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `backend/src/app.ts`                     | `createApp({ verifyToken? })`                                                                                                                       | Composition; tests inject mock auth                               |
-| `backend/src/middleware/auth.ts`         | `AuthenticatedRequest` (`.user` = `AuthUser { uid, email, claims, roles }`), `VerifyToken`, `verifyTideCloakToken`, `requireRole`, `requireAnyRole` | Authed user in routes; no Firebase import                         |
-| `backend/src/middleware/firebaseAuth.ts` | `verifyFirebaseToken` (legacy, not wired into `createApp()`)                                                                                        | Legacy Firebase ID token verification, isolated                   |
-| `backend/src/lib/errors.ts`              | `HttpError` + statics `badRequest/unauthorized/forbidden/notFound/conflict/internal`                                                                | All route errors, via `next(...)`                                 |
-| `backend/src/lib/firebase.ts`            | `adminAuth`, `adminDb`                                                                                                                              | Sole Firebase Admin entry (CI-enforced)                           |
-| `backend/src/lib/zodConverter.ts`        | `createZodConverter(schema, version, migrate?)`                                                                                                     | Typed Firestore reads with `_schemaVersion`                       |
-| `backend/src/routes/index.ts`            | `apiRouter` — mount new routers here                                                                                                                | Route registry                                                    |
-| `backend/tests/setup.ts`                 | `mockVerifyToken`, `mockUser`                                                                                                                       | Route unit tests (mocked Firebase Admin — no real Firebase calls) |
+| File                             | Exports                                                                                                                                             | Use for                                                            |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `backend/src/app.ts`             | `createApp({ verifyToken? })`                                                                                                                       | Composition; tests inject mock auth                                |
+| `backend/src/middleware/auth.ts` | `AuthenticatedRequest` (`.user` = `AuthUser { uid, email, claims, roles }`), `VerifyToken`, `verifyTideCloakToken`, `requireRole`, `requireAnyRole` | Authed user in routes; no Firebase import                          |
+| `backend/src/lib/errors.ts`      | `HttpError` + statics `badRequest/unauthorized/forbidden/notFound/conflict/internal`                                                                | All route errors, via `next(...)`                                  |
+| `backend/src/lib/firebase.ts`    | `adminDb` (lazy, Firestore only — no Auth export)                                                                                                   | Sole Firebase Admin entry (CI-enforced); not yet used by any route |
+| `backend/src/routes/index.ts`    | `apiRouter` — mount new routers here                                                                                                                | Route registry                                                     |
+| `backend/tests/setup.ts`         | `mockVerifyToken`, `mockUser`                                                                                                                       | Route unit tests (mocked Firebase Admin — no real Firebase calls)  |
 
-### Firestore rules helpers (`firebase/firestore.rules`)
+### Firestore rules (`firebase/firestore.rules`)
 
-`isAuthenticated()` · `isOwner(uid)` · `isAdmin()` (Firestore read) · `hasCustomClaim(claim)` (no read) · `notDeleted()`
+A single default-deny-all rule — the browser never connects to Firestore directly. All current
+and future Firestore access happens server-side via `backend/src/lib/firebase.ts`'s `adminDb`,
+after TideCloak authorization, which bypasses these rules (they only govern the client SDK).
 
 ### Existing routes/pages
 
-Pages: `/` · `/auth/signin` · `/auth/signup` · `/auth/redirect` (TideCloak callback) · `/dashboard` (incident dashboard) · `/incidents/[id]` (incident detail) · `/profile` · `/settings` · `/access-denied` (route groups `(auth)`, `(dashboard)`). Auth: **TideCloak** front-channel — `/auth/signin` & `/auth/signup` are "Continue with TideCloak" buttons (no password fields). The `(dashboard)` layout is wrapped in `RoleGuard` (`frontend/src/components/auth/RoleGuard.tsx`), which accepts any of the four recognised SOC roles — this is a UX gate only, not a security boundary. An authenticated user without a recognised SOC role sees `/access-denied`. Firebase Auth, the `__session` cookie, `proxy.ts` and `/api/auth/session` have been removed from the frontend. Backend: `GET /api/health` (public); everything else under `/api` requires `Authorization: Bearer <TideCloak access token>`, verified by `backend/src/middleware/auth.ts` (`verifyTideCloakToken`) — Firebase ID token verification is legacy and no longer wired into `createApp()`. `requireRole`/`requireAnyRole` are available role-membership guards; `GET /api/incidents` and `GET /api/incidents/:id` (`backend/src/routes/incidents.ts`) are the first routes gated by `requireAnyRole(...SOC_ROLES)` — synthetic data only (`backend/src/data/incidents.ts`), no Firestore. Responses are built via an explicit field allow-list; victim host, exposure evidence, and suspicious process are never included — only their names, via `lockedFields`. `/api/me` remains authentication-only by design.
+Pages: `/` · `/auth/signin` · `/auth/signup` · `/auth/redirect` (TideCloak callback) · `/dashboard` (incident dashboard) · `/incidents/[id]` (incident detail) · `/profile` · `/settings` · `/access-denied` (route groups `(auth)`, `(dashboard)`). Auth: **TideCloak** front-channel — `/auth/signin` & `/auth/signup` are "Continue with TideCloak" buttons (no password fields). The `(dashboard)` layout is wrapped in `RoleGuard` (`frontend/src/components/auth/RoleGuard.tsx`), which accepts any of the four recognised SOC roles — this is a UX gate only, not a security boundary. An authenticated user without a recognised SOC role sees `/access-denied`. Firebase Auth, the `__session` cookie, `proxy.ts` and `/api/auth/session` have been removed from the frontend. Backend: `GET /api/health` (public); everything else under `/api` requires `Authorization: Bearer <TideCloak access token>`, verified by `backend/src/middleware/auth.ts` (`verifyTideCloakToken`) — Firebase Authentication is not used anywhere in this backend. `requireRole`/`requireAnyRole` are available role-membership guards; `GET /api/incidents` and `GET /api/incidents/:id` (`backend/src/routes/incidents.ts`) are the first routes gated by `requireAnyRole(...SOC_ROLES)` — synthetic data only (`backend/src/data/incidents.ts`), no Firestore. Responses are built via an explicit field allow-list; victim host, exposure evidence, and suspicious process are never included — only their names, via `lockedFields`. `/api/me` remains authentication-only by design.
 
 ---
 
@@ -156,7 +152,7 @@ Run these with `/skill-name` in Claude Code:
 | `/new-feature`         | Scaffold a feature module (types, hook, Server Actions, component)        |
 | `/new-page`            | Create a Next.js App Router page in the correct route group               |
 | `/new-component`       | Create a React component (Server or Client) with typed props              |
-| `/firebase-collection` | Add a typed Firestore collection (type + rules + hook + docs)             |
+| `/firebase-collection` | Add a server-side Firestore collection (type + backend accessor + docs)   |
 | `/add-auth-provider`   | Configure an identity provider through the TideCloak realm (not Firebase) |
 | `/add-route`           | Add a Cloud Functions Express route with tests                            |
 | `/evolve-schema`       | Safely evolve a Firestore collection schema                               |
@@ -223,25 +219,23 @@ Always use `pnpm`. Run commands as:
 
 - **Server Components by default** — all files in `app/` are Server Components unless `'use client'` is at the top.
 - Add `'use client'` only when you actually need: React hooks, event handlers, or browser APIs.
-- Never import `firebase/auth` or `firebase/firestore` in a Server Component — these are client-only SDKs.
-- For server-side Firebase, always use `@/lib/firebase/admin` (imports `server-only`).
+- The frontend has no Firebase SDK at all — it never imports `firebase/*` or `firebase-admin`. Any data the frontend needs comes from the backend's protected Express API (`@/lib/api/*`, e.g. `frontend/src/lib/api/incidents.ts`), authenticated with a TideCloak access token.
 - Server Actions return `ActionResult<T>`: `{ success: boolean, error?: string, data?: T }`.
 - Use `sonner` (`toast` from `sonner`) for all user-facing notifications.
 
 ### Firestore
 
-- Every collection has a typed collection export in `frontend/src/lib/firebase/firestore.ts`.
-- Every collection has security rules in `firebase/firestore.rules`.
-- Every collection is documented in `docs/FIRESTORE-SCHEMA.md`.
-- Always call `requireAuth()` in Server Actions before any Firestore operation. Note: `requireAuth()` is currently a fail-closed stub (always redirects) — it does not yet verify a real TideCloak session. Server Actions that need identity are effectively disabled until `feature/tidecloak-protect` lands.
-- Use the soft-delete pattern (add `deletedAt: Timestamp`) instead of hard deletes.
+- Server-side only, reserved for future features (emergency-access request, approval, expiry, audit history). The browser never connects to Firestore directly — `firebase/firestore.rules` denies all direct client access by default.
+- All Firestore access happens from the backend, via `backend/src/lib/firebase.ts`'s `adminDb`, only after the TideCloak auth middleware has verified and authorized the request.
+- No current route uses Firestore yet — `backend/src/routes/incidents.ts` uses synthetic in-memory data (`backend/src/data/incidents.ts`).
+- When a feature does add a collection, document it in `docs/FIRESTORE-SCHEMA.md` and use the soft-delete pattern (add `deletedAt: Timestamp`) instead of hard deletes.
 
 ### Backend (Cloud Functions)
 
-- All routes under `/api/` (except `/api/health`) are protected by the auth middleware — it verifies a **TideCloak access token** (`verifyTideCloakToken` in `backend/src/middleware/auth.ts`) and extracts recognised SOC roles onto `req.user.roles`. Legacy Firebase ID token verification (`middleware/firebaseAuth.ts`) is isolated and not wired into `createApp()`. `requireRole(role)` and `requireAnyRole(...roles)` are available role-membership guards — see `docs/BACKEND.md`. `/api/me` stays authentication-only (no role gate) by design; the emergency-access request, two-person approval, protected-evidence and access-expiry workflows are **not implemented yet**.
+- All routes under `/api/` (except `/api/health`) are protected by the auth middleware — it verifies a **TideCloak access token** (`verifyTideCloakToken` in `backend/src/middleware/auth.ts`) and extracts recognised SOC roles onto `req.user.roles`. Firebase Authentication is not used anywhere in this backend. `requireRole(role)` and `requireAnyRole(...roles)` are available role-membership guards — see `docs/BACKEND.md`. `/api/me` stays authentication-only (no role gate) by design; the emergency-access request, two-person approval, protected-evidence and access-expiry workflows are **not implemented yet**.
 - Access the authenticated user via `(req as AuthenticatedRequest).user` — `{ uid, email, claims }`.
 - Error handling: pass `HttpError` (from `src/lib/errors.ts`) to `next()` — never inline `res.status(500)`.
-- Import Firebase Admin only from `src/lib/firebase.ts` — enforced by the conventions test.
+- Import Firebase Admin only from `src/lib/firebase.ts` — enforced by the conventions test. It exports `adminDb` only (Firestore) — no Auth export exists, since Firebase Authentication is not used.
 - Unit tests use supertest + mocked Firebase Admin (no real Firebase calls).
 
 ### Git
@@ -286,9 +280,10 @@ An important **security** problem may be recorded immediately, even if found qui
 - `npm` or `yarn` — use `pnpm`
 - `any` in TypeScript — use `unknown` + type narrowing
 - `pages/` directory — this is App Router only
-- `firebase/compat` — modular SDK only
+- Any Firebase SDK import in the frontend (`firebase/*`, `firebase-admin`) — the browser has no Firebase config at all; TideCloak is the only auth provider and Firestore is server-only
+- Firebase Authentication — not used anywhere in this app; do not reintroduce it
 - Firebase Cloud Storage — removed from this boilerplate; it requires the paid Blaze plan. Store file metadata in Firestore, or use a free third-party host, if a feature needs uploads.
-- Local Firebase emulators — not part of this setup; the app always talks to your real (free Spark-plan) Firebase project. **Scoped exception:** this project runs a local **TideCloak** identity server in one Docker container (`docker-compose.tidecloak.yml`, `pnpm run tidecloak:*`) for frontend authentication. The frontend, backend and Firestore are still never containerised. See `docs/TIDECLOAK-LOCAL.md`.
+- Local Firebase emulators — not part of this setup; if a Firestore-backed feature needs local testing, the backend talks to a real Firebase project via `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64`. **Scoped exception:** this project runs a local **TideCloak** identity server in one Docker container (`docker-compose.tidecloak.yml`, `pnpm run tidecloak:*`) for frontend authentication. The frontend, backend and Firestore are still never containerised. See `docs/TIDECLOAK-LOCAL.md`.
 - `NEXT_PUBLIC_` prefix on secret values (service account, API keys)
 - Committing `.env.local` or `.env` — they are gitignored
 - Committing directly to `main`
@@ -310,8 +305,8 @@ When adding a variable, use the `/add-env-var` skill — it updates `.env.exampl
 ```bash
 pnpm install              # Install all workspace dependencies
 pnpm run validate         # Check for unreplaced template placeholders
-pnpm run dev              # Start the frontend dev server (talks to your real Firebase project)
-pnpm run test             # Backend unit tests (mocked Firebase Admin)
+pnpm run dev              # Start the frontend dev server
+pnpm run test             # Backend unit tests (mocked Firebase Admin — no real Firebase calls)
 pnpm run test:component   # Frontend unit tests
 pnpm run test:all         # All tests
 pnpm run lint             # ESLint across all packages
@@ -322,12 +317,14 @@ pnpm run typecheck        # TypeScript check across all packages
 
 ## Remaining Migration Work
 
-This repo was originally a generic Firebase-based student capstone boilerplate. The frontend
-auth migration to TideCloak is done. Backend TideCloak JWT verification and role-membership
-guards are also done:
+This repo was originally a generic Firebase-based student capstone boilerplate. The frontend and
+backend auth migration to TideCloak is done, and Firebase Authentication has been fully removed
+(no code, exports, or dead legacy paths remain). Backend TideCloak JWT verification and
+role-membership guards are also done:
 
-- Backend `middleware/auth.ts` verifies TideCloak access tokens (`verifyTideCloakToken`), not
-  Firebase ID tokens, and extracts the four recognised SOC roles onto `req.user.roles`.
+- Backend `middleware/auth.ts` verifies TideCloak access tokens (`verifyTideCloakToken`) and
+  extracts the four recognised SOC roles onto `req.user.roles`. Firebase Authentication is not
+  used anywhere in this backend.
 - `requireRole(role)` and `requireAnyRole(...roles)` exist as tested, reusable role-membership
   guards. Neither is wired to a feature route yet — there is no feature API to gate, and
   `/api/me` intentionally stays authentication-only.

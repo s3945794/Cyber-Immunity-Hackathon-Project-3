@@ -23,10 +23,10 @@ Write Vitest tests that match the project's testing conventions.
 ### Frontend (Vitest + Testing Library)
 
 - Test files live in `frontend/tests/unit/` mirroring `frontend/src/` structure
-- Firebase client SDK is mocked via `vi.mock('@/lib/firebase/client')`
-- Firebase Admin SDK is mocked via `vi.mock('@/lib/firebase/admin')`
+- The frontend has no Firebase SDK — no Firebase mocks are needed for any frontend test
+- For data-fetching code: mock the `@/lib/api/*` helper (e.g. `vi.mock('@/lib/api/incidents')`), not Firestore
 - For utility functions (e.g. `lib/utils.ts`): plain unit tests, no mocking needed
-- For Server Actions: mock `requireAuth()` to return a test user, mock `adminDb`
+- For Server Actions: mock `requireAuth()` to return a test user; call the backend API mock, never `adminDb` (that only exists in the backend)
 - For React hooks: use `renderHook` from `@testing-library/react`
 - Never test shadcn/ui components or `src/app/` pages directly (excluded from coverage)
 

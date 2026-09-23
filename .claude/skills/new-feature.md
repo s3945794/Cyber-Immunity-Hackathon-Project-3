@@ -1,86 +1,88 @@
 ---
-description: Scaffold a complete feature module under frontend/src/features/ — types, hook, Server Actions, and component. Use when building a new business domain feature.
-argument-hint: "[feature-name e.g. invoices]"
+description: Scaffold a complete feature module — frontend types/hook/component that call a protected Express API, plus the backend route that verifies TideCloak auth before any future Firestore access. Use when building a new business domain feature.
+argument-hint: '[feature-name e.g. invoices]'
 ---
 
 # Skill: /new-feature
 
-Scaffold a complete feature module under `src/features/` in the `frontend/` package.
+Scaffold a complete feature module under `frontend/src/features/{feature}/` (client) and
+`backend/src/routes/{feature}.ts` (server). The browser never talks to Firestore directly —
+`firebase/firestore.rules` denies all direct client access. Every feature is: frontend calls the
+Express API over HTTP with a TideCloak access token → backend's TideCloak auth middleware
+verifies and authorizes the request → (once needed) the route reads/writes Firestore via
+`backend/src/lib/firebase.ts`'s `adminDb`.
 
 ## Step 1 — Gather requirements
 
 Ask the user:
+
 1. **Feature name** (e.g., `invoices`, `team-members`, `projects`) — use kebab-case for the folder, PascalCase for types/components
-2. **Data model fields** — what fields does the primary document have?
-3. **Access pattern** — owner-only, all authenticated users, or public?
-4. **Realtime?** — does the UI need live Firestore updates (`onSnapshot`) or one-time reads (`getDocs`)?
+2. **Data model fields** — what fields does the primary record have?
+3. **Access pattern** — which SOC roles / TideCloak claims can call this endpoint? (see `requireRole`/`requireAnyRole` in `backend/src/middleware/auth.ts`)
+4. **Does this feature need Firestore yet**, or is synthetic/in-memory data acceptable for now (see `backend/src/data/incidents.ts` for the existing pattern)?
 
 ## Step 2 — Files to create
 
 Given feature name `{feature}` and model name `{Model}`:
 
-### `frontend/src/features/{feature}/types.ts`
-```typescript
-import type { Timestamp } from 'firebase/firestore'
+### `frontend/src/types/{feature}.ts`
 
+```typescript
 export interface {Model} {
   id: string
-  uid: string // owning user UID
   // ... user-defined fields
-  createdAt: Timestamp
-  updatedAt: Timestamp
-  _schemaVersion: 1 // required on every collection — see docs/FIRESTORE-SCHEMA.md
 }
-
-export type Create{Model}Input = Omit<{Model}, 'id' | 'createdAt' | 'updatedAt'>
-export type Update{Model}Input = Partial<Omit<{Model}, 'id' | 'uid' | 'createdAt' | 'updatedAt'>>
 ```
+
+### `frontend/src/lib/api/{feature}.ts`
+
+Follow the existing pattern in `frontend/src/lib/api/incidents.ts` — a typed `fetch{Model}s(tokenSource)` / `fetch{Model}ById(tokenSource, id)` helper that calls the backend API with `Authorization: Bearer <TideCloak access token>` (from `useAuth().getToken()`), against `NEXT_PUBLIC_API_URL`.
 
 ### `frontend/src/features/{feature}/hooks/use{Feature}.ts`
-- Import typed collection from `@/lib/firebase/firestore`
+
+- Calls the `@/lib/api/{feature}` helper (not Firestore) inside a `useEffect`
 - Return `{ data, loading, error }` shape
-- Use `onSnapshot` for realtime; `getDocs`/`getDoc` for one-time
-- Clean up subscription in `useEffect` return
 
-### `frontend/src/features/{feature}/actions/{feature}.actions.ts`
+### `frontend/src/components/{feature}/{Model}List.tsx`
+
+Basic list/table component using raw Tailwind classes (not shadcn, to keep it simple) — follow `frontend/src/components/incidents/IncidentTable.tsx` as the reference pattern.
+
+### `backend/src/routes/{feature}.ts`
+
+Follow `backend/src/routes/incidents.ts` as the reference pattern:
+
 ```typescript
-'use server'
-import { adminDb } from '@/lib/firebase/admin'
-import { requireAuth } from '@/actions/auth.actions'
-import { revalidatePath } from 'next/cache'
-import type { Create{Model}Input, Update{Model}Input } from '../types'
-import type { ActionResult } from '@/types'
+import { Router, type Router as ExpressRouter } from 'express'
+import { requireAnyRole } from '../middleware/auth'
+// import { adminDb } from '../lib/firebase' // only once this feature actually needs Firestore
 
-export async function create{Model}(input: Create{Model}Input): Promise<ActionResult<string>> { ... }
-export async function update{Model}(id: string, input: Update{Model}Input): Promise<ActionResult> { ... }
-export async function delete{Model}(id: string): Promise<ActionResult> { ... }
+const router: ExpressRouter = Router()
+const requireSocMembership = requireAnyRole(/* accepted roles */)
+
+router.get('/', requireSocMembership, (req, res) => {
+  // Return an explicit field allow-list — never spread an internal record.
+})
+
+export { router as {feature}Router }
 ```
 
-### `frontend/src/features/{feature}/components/{Model}List.tsx`
-Basic list/table component using raw Tailwind classes (not shadcn, to keep it simple).
+Mount it in `backend/src/routes/index.ts`.
 
-## Step 3 — Cross-cutting updates
+## Step 3 — Cross-cutting updates (only if this feature uses Firestore)
 
-After creating the feature files, also update:
-
-1. **`frontend/src/lib/firebase/firestore.ts`** — add typed collection export (function-style, matching the existing `getUsersCollection()` pattern):
-   ```typescript
-   export function get{Model}sCollection() {
-     return typedCollection<{Model}>('{collection_name}')
-   }
-   export function {feature}Doc(id: string) { return doc(get{Model}sCollection(), id) }
-   ```
-
-2. **`frontend/src/types/firestore.ts`** — add the type (or re-export from feature)
-
-3. **`firebase/firestore.rules`** — add security rules for the new collection
-
-4. **`docs/FIRESTORE-SCHEMA.md`** — document the new schema
+1. **`firebase/firestore.rules`** — this file default-denies all client access; it does not need
+   a rule for a new collection, since Firestore is server-only. Do not add client-facing rules
+   for `request.auth`-based access — there is no Firebase Auth session to check.
+2. **`backend/src/lib/firebase.ts`** — import `adminDb` from here inside the route handler, after
+   the TideCloak auth middleware has already run.
+3. **`docs/FIRESTORE-SCHEMA.md`** — document the new collection's schema and access pattern.
 
 ## Checklist
-- [ ] Types defined and exported
-- [ ] Typed collection added to `firestore.ts`
-- [ ] Security rules added to `firestore.rules`
+
+- [ ] Frontend types defined and exported
+- [ ] Frontend API helper added under `@/lib/api/`
+- [ ] Backend route added under `backend/src/routes/`, mounted in `routes/index.ts`
+- [ ] Route requires TideCloak auth + appropriate role via `requireRole`/`requireAnyRole`
+- [ ] Response uses an explicit field allow-list, never a raw spread of internal data
 - [ ] Hook returns `{ data, loading, error }`
-- [ ] Server Actions use `requireAuth()` before any DB operation
-- [ ] Schema documented in `FIRESTORE-SCHEMA.md`
+- [ ] If Firestore is used: schema documented in `FIRESTORE-SCHEMA.md`, access happens only through `backend/src/lib/firebase.ts`

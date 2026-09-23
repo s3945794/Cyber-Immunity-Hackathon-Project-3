@@ -244,10 +244,9 @@ database, unchanged.
 **Backend** (`feature/tidecloak-backend-auth`): the Express backend's auth middleware now
 verifies **TideCloak access tokens** by default (`src/middleware/auth.ts`,
 `src/lib/tideJWT.ts`, `src/lib/tidecloakConfig.ts`) — see `docs/BACKEND.md` for the exact checks.
-Legacy Firebase ID token verification (`verifyFirebaseToken`) has been moved into its own module,
-`src/middleware/firebaseAuth.ts`, so the normal TideCloak auth path (`src/middleware/auth.ts`)
-never imports Firebase Authentication; it is kept for reference but not wired into `createApp()`.
-Firebase Admin remains in use for Firestore, unaffected.
+Firebase Authentication is not used anywhere in this backend; there is no legacy Firebase auth
+module. Firebase Admin remains in place for Firestore only (`src/lib/firebase.ts`, `adminDb`),
+reserved for future features — no current route uses it.
 
 `GET /api/me` (`src/routes/me.ts`) is a minimal protected endpoint that returns the authenticated
 user's `uid`, `email` and recognised SOC `roles` — it exists to demonstrate the auth middleware

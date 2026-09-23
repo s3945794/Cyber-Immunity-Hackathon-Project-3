@@ -36,12 +36,12 @@ For `CLAUDE.md`, check that:
 2. Use Glob to find all skill files: `.claude/skills/*.md`
 3. Use Glob to find all doc files: `docs/*.md`
 4. For every code example or file reference in a skill or doc, read the actual source and compare
-5. Check that `frontend/src/lib/firebase/admin.ts` uses `server-only`, matches the admin SDK pattern in docs
-6. Check that `frontend/src/lib/firebase/client.ts` singleton pattern matches documented examples
+5. **The frontend has no Firebase SDK at all** — `frontend/src/lib/firebase/` (client.ts, admin.ts, firestore.ts), `frontend/src/hooks/useFirestore.ts`, and `frontend/src/types/firestore.ts` were removed. Flag any doc or skill that still references these paths or teaches a client-side Firestore access pattern as stale — don't treat their absence as something to fix by recreating them.
+6. Check that `backend/src/lib/firebase.ts` is Firestore-only (`adminDb` export only, no Auth export) and lazily initialized — matches the documented pattern in `docs/BACKEND.md`/`backend/CLAUDE.md`
 7. Check that `frontend/src/providers/AuthProvider.tsx` and `frontend/src/lib/tidecloak/config.ts` match the documented TideCloak auth flow. **Do not assume `frontend/src/proxy.ts` or `frontend/src/middleware.ts` exist** — both have been removed as part of the TideCloak migration; flag any doc/skill that still references either as stale, don't treat their absence as something to fix by recreating them.
-8. Check that `backend/src/middleware/auth.ts` and `backend/src/middleware/errorHandler.ts` match documented patterns — this middleware verifies Firebase ID tokens and is documented as legacy/transitional (`docs/BACKEND.md`); don't flag it as "should already be TideCloak" unless a doc claims it already is
+8. Check that `backend/src/middleware/auth.ts` and `backend/src/middleware/errorHandler.ts` match documented patterns — this middleware verifies **TideCloak access tokens**, not Firebase ID tokens; Firebase Authentication is not used anywhere in this backend and there is no legacy Firebase auth module (`backend/src/middleware/firebaseAuth.ts` was removed). Flag any doc/skill claiming otherwise as stale.
 9. Cross-check that all skills reference correct file paths for this repo structure
-10. Check that no doc or skill instructs recreating removed files/features: `frontend/src/lib/firebase/auth.ts`, `frontend/src/proxy.ts`, `frontend/src/app/api/auth/session/route.ts`, or `frontend/src/features/notes/`
+10. Check that no doc or skill instructs recreating removed files/features: `frontend/src/lib/firebase/` (any file), `frontend/src/hooks/useFirestore.ts`, `frontend/src/types/firestore.ts`, `backend/src/middleware/firebaseAuth.ts`, `backend/src/lib/zodConverter.ts`, `frontend/src/proxy.ts`, `frontend/src/app/api/auth/session/route.ts`, or `frontend/src/features/notes/`
 
 ## Report format
 

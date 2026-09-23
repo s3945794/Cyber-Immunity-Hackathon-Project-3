@@ -19,10 +19,10 @@ violation merely for calling `requireAuth()` — that call is currently inert by
 `feature/tidecloak-protect`. Do flag any code that tries to trust client-supplied claims as if
 they were server-verified.
 
-- Cloud Functions routes under `/api/` are protected by `authMiddleware`, which currently
-  verifies **Firebase ID tokens** (legacy — not yet reconnected to TideCloak; see
-  `docs/BACKEND.md`). Treat this middleware as protecting a path the frontend does not currently
-  call, not as a live TideCloak security boundary.
+- Cloud Functions routes under `/api/` are protected by `authMiddleware`, which verifies
+  **TideCloak access tokens** (`backend/src/middleware/auth.ts`; see `docs/BACKEND.md`).
+  Firebase Authentication is not used anywhere in this backend — flag any reintroduction of a
+  Firebase ID token verification path as a regression, not a fix.
 - Unauthenticated endpoints are explicitly intentional (e.g. `GET /api/health`)
 - Server Actions call `requireAuth()` — confirm the call is present even though it is currently
   a stub, so the code is ready once real verification lands
@@ -34,11 +34,17 @@ they were server-verified.
 
 ### Firestore Security
 
-- Firestore security rules in `firebase/firestore.rules` cover every new collection
-- Rules use `isAuthenticated()` and `isOwner()` helpers — never allow unauthenticated writes
-- No collection-wide reads without appropriate scoping
+- Firestore is server-only — `firebase/firestore.rules` uses a single default-deny-all rule.
+  Flag any change that adds a client-facing allow rule based on `request.auth` (there is no
+  Firebase Auth session for TideCloak-authenticated users, so such a rule is either dead or
+  incorrectly permissive) — authorization belongs in the backend route (TideCloak + role checks),
+  not in Firestore rules
+- No collection-wide reads without appropriate scoping in the backend route/query
 - Soft-delete pattern used (`deletedAt: Timestamp`) — no hard deletes unless explicitly justified
 - Every new collection is documented in `docs/FIRESTORE-SCHEMA.md`
+- All Firestore access goes through `backend/src/lib/firebase.ts`'s `adminDb`, after the
+  TideCloak auth middleware has run — flag any direct `firebase-admin`/`firebase` import outside
+  that file (backend) or anywhere in the frontend
 
 ### Input Validation
 
@@ -51,14 +57,14 @@ they were server-verified.
 
 - No API keys, tokens, or private keys in source files
 - No `.env.local` or `.env` committed — only `.env.example`
-- `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` and other secrets are server-only — never `NEXT_PUBLIC_` prefix
-- `firebase/admin.ts` imports `server-only` at the top
+- `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` and other secrets are server-only — never `NEXT_PUBLIC_` prefix, and never synced to `frontend/.env.local` (check `scripts/sync-env.js` if this variable's handling changes)
+- `backend/src/lib/firebase.ts` — the sole Firebase Admin entry point — never logs decoded credential data or raw error objects that could contain credential material
 - GCP Secret Manager used for production secrets (not environment variables in functions)
 
 ### Frontend Security
 
-- No `firebase/admin` imported in a Client Component or file with `'use client'`
-- No `NEXT_PUBLIC_` prefix on sensitive values (service accounts, admin SDK config, internal API keys, TideCloak DPoP/E2EE adapter fields such as `jwk`, `vendorId`, `homeOrkUrl`)
+- **The frontend has no Firebase SDK at all** — flag any new `firebase/*` or `firebase-admin` import anywhere under `frontend/` as a regression; that surface (client.ts, admin.ts, firestore.ts, useFirestore.ts, types/firestore.ts) was intentionally removed
+- No `NEXT_PUBLIC_` prefix on sensitive values (internal API keys, TideCloak DPoP/E2EE adapter fields such as `jwk`, `vendorId`, `homeOrkUrl`)
 - No `firebase/auth` imports, `signInWithPopup`, `GoogleAuthProvider`, or any Firebase Authentication code — that surface has been removed; flag any reintroduction as a regression, not a new feature
 - No `proxy.ts`, `__session` cookie, or `/api/auth/session` route — these have been removed; flag any reintroduction
 - TideCloak config (`frontend/src/lib/tidecloak/config.ts`) reads only `NEXT_PUBLIC_TIDECLOAK_*` — confirm no TideCloak secret-bearing fields are exposed with a `NEXT_PUBLIC_` prefix
@@ -76,8 +82,7 @@ they were server-verified.
 ### Architecture
 
 - Server Components are the default; `'use client'` only added when hooks/events/browser APIs are needed
-- Firebase client SDK (`firebase/auth`, `firebase/firestore`) never imported in a Server Component
-- `@/lib/firebase/admin` (server-only) never imported in a Client Component
+- No Firebase SDK import anywhere in the frontend (Server or Client Component) — data comes from the backend's protected Express API via `@/lib/api/*`
 - Server Actions return `ActionResult<T>`: `{ success: boolean, error?: string, data?: T }`
 - `@/` alias used instead of relative paths deeper than one level
 

@@ -2,8 +2,11 @@
 
 ## Overview
 
-All collections use the typed collection pattern — see `frontend/src/lib/firebase/firestore.ts`.
-Security rules are in `firebase/firestore.rules`.
+Firestore is server-only — all access happens through the backend's `adminDb`
+(`backend/src/lib/firebase.ts`), after the TideCloak auth middleware has verified and authorized
+the request. The browser never connects to Firestore directly — `firebase/firestore.rules`
+denies all direct client access with a single default-deny rule. No current collection exists
+yet; the `users` collection below is a documented example pattern.
 
 ## Schema versioning
 
@@ -29,23 +32,22 @@ This enables **lazy migration** — when a document is read, check `_schemaVersi
 **Path:** `/users/{userId}`
 **Access:** Owner-only (user can read/write their own document; admins can read all)
 
-| Field            | Type                | Required | Description                                  |
-| ---------------- | ------------------- | -------- | -------------------------------------------- |
-| `uid`            | `string`            | Yes      | Firebase Auth UID (same as document ID)      |
-| `email`          | `string`            | Yes      | User's email address                         |
-| `displayName`    | `string \| null`    | Yes      | Display name from Auth or profile            |
-| `photoURL`       | `string \| null`    | Yes      | Profile photo URL                            |
-| `role`           | `'user' \| 'admin'` | Yes      | User role — immutable by user after creation |
-| `createdAt`      | `Timestamp`         | Yes      | When the document was created                |
-| `updatedAt`      | `Timestamp`         | Yes      | When the document was last updated           |
-| `_schemaVersion` | `1`                 | Yes      | Schema version for lazy migration            |
+| Field            | Type                | Required | Description                                           |
+| ---------------- | ------------------- | -------- | ----------------------------------------------------- |
+| `uid`            | `string`            | Yes      | TideCloak subject (`sub`) claim (same as document ID) |
+| `email`          | `string`            | Yes      | User's email address                                  |
+| `displayName`    | `string \| null`    | Yes      | Display name from Auth or profile                     |
+| `photoURL`       | `string \| null`    | Yes      | Profile photo URL                                     |
+| `role`           | `'user' \| 'admin'` | Yes      | User role — immutable by user after creation          |
+| `createdAt`      | `Timestamp`         | Yes      | When the document was created                         |
+| `updatedAt`      | `Timestamp`         | Yes      | When the document was last updated                    |
+| `_schemaVersion` | `1`                 | Yes      | Schema version for lazy migration                     |
 
-**Creation:** Auto-created by `AuthProvider` on first sign-in via `syncUserProfile()`.
-**Deletion:** Hard-delete is disabled in security rules. Use `deletedAt` field for soft-delete.
-
-> **Note:** `AuthProvider`'s `syncUserProfile()` call was part of the previous Firebase
-> Authentication flow. TideCloak's frontend auth (current) does not yet create this document —
-> reconnecting profile creation to TideCloak identity is part of future backend/RBAC work.
+**Creation:** Not yet implemented. This collection is a documented example only — no current
+route creates, reads, or writes it. When implemented, creation would happen server-side (a
+backend route using `adminDb`, called after TideCloak authentication), not from the frontend.
+**Deletion:** Hard-delete would be disabled in security rules if implemented. Use `deletedAt`
+field for soft-delete.
 
 ---
 

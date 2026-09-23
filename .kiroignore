@@ -1,0 +1,15 @@
+# Environment files containing credentials
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Keys and certificates
+*.pem
+*.key
+*.p12
+
+# Private credential directories
+credentials/
+secrets/
+private/
