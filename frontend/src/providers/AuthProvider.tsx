@@ -3,12 +3,26 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { TideCloakProvider, useTideCloak } from '@tidecloak/nextjs'
 import { getTideCloakConfig } from '@/lib/tidecloak/config'
+import { SOC_ROLES, type SocRole } from '@/lib/tidecloak/roles'
 import type { AuthContextValue, AuthUser } from '@/types/auth'
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 function claim(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null
+}
+
+/**
+ * Determines the recognised SOC roles for the current session using the
+ * TideCloak SDK's own role checks (`hasRealmRole` / `hasClientRole`) rather
+ * than parsing token claims manually. Mirrors the backend's
+ * `extractSocRoles` (`backend/src/lib/tideJWT.ts`): a role counts if it
+ * appears as either a realm role or a role on this client's resource. Any
+ * role outside the four recognised SOC roles (including internal
+ * Tide/TideCloak roles) is ignored.
+ */
+function getSocRoles(tc: ReturnType<typeof useTideCloak>): SocRole[] {
+  return SOC_ROLES.filter((role) => tc.hasRealmRole(role) || tc.hasClientRole(role))
 }
 
 /**
@@ -24,6 +38,7 @@ function AuthBridge({ children }: { children: ReactNode }) {
           uid: claim(tc.getValueFromIdToken('sub')) ?? claim(tc.getValueFromToken('sub')) ?? '',
           username: claim(tc.getValueFromIdToken('preferred_username')),
           email: claim(tc.getValueFromIdToken('email')),
+          roles: getSocRoles(tc),
         }
       : null
 

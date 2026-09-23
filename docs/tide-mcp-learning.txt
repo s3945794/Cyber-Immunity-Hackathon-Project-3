@@ -43,10 +43,10 @@ Status values:
 ISSUE 001 - Scenario selector included an out-of-scope IGA workflow
 ==================================================================
 
-Date: 2026-09-09
+Date: 2026-09-09 (updated 2026-09-22)
 Project feature: TideCloak authentication and RBAC for this branch (feature/tidecloak-auth)
 Tide component: Tide MCP scenario / playbook selection (tide_choose_scenario, tide_choose_playbook)
-Status: Workaround available and Open for Tide
+Status: Resolved with workaround
 Impact: Correctness and development time - risk of scope creep
 Priority for Tide: Medium
 
@@ -67,6 +67,73 @@ IGA and no approval workflows.
 Both the scenario result and the playbook selection result returned the
 IGA-focused workflow. The returned playbook chain contained
 "setup-iga-admin-panel" even though IGA had been excluded in the request.
+
+Updated 2026-09-22:
+  * Creating the four SOC realm roles produced four pending IGA Change
+    Requests.
+  * Bulk Authorize returned: 0 succeeded, 4 failed.
+  * Exact error: [TIDECLOAK] No doken found.
+  * The four role requests remain pending.
+  * Root cause not confirmed.
+  * Likely explanation: the permanent master-realm administrator has
+    Keycloak admin permission but may not have the Tide governance identity
+    or doken required for IGA authorization.
+
+Updated 2026-09-22 (resolution):
+  * The first authorization attempt used a master-realm administrator without
+    the required Tide-linked signing identity, and returned "No doken found".
+  * The correct application-realm administrator had the realm-management
+    client role tide-realm-admin and a tideUserKey (value not recorded).
+  * After switching to the correct administrator, Bulk Authorize appeared to
+    load for approximately 20 minutes because Chrome had blocked the Tide
+    signing popup.
+  * Allowing the popup resulted in Bulk Authorize returning: 4 succeeded, 0
+    failed.
+  * Bulk Commit succeeded.
+  * The four SOC roles were verified as present in Realm roles.
+
+Updated 2026-09-22 (RBAC verification):
+  * After the four SOC roles were authorized and committed, and an existing
+    local test user was linked to a Tide account, a controlled manual
+    verification confirmed the roles are usable end to end.
+  * A first temporary verification attempt returned: status null, error
+    request-failed. This was a network-level result (the request did not
+    reach or return from the backend) - not an authentication rejection, and
+    not evidence that the token or role assignment was invalid.
+  * A controlled rerun, after confirming the temporary backend listener was
+    listening, its health endpoint responded, and its CORS preflight allowed
+    the frontend origin, succeeded: status 200, uidPresent true, emailPresent
+    true, roles [soc-analyst], socAnalystPresent true.
+  * This confirms: a real TideCloak-signed access token reached the backend,
+    the backend's JWT verification path accepted it, and the soc-analyst role
+    was correctly extracted from the token.
+  * All temporary verification files (a temporary frontend page and a
+    temporary standalone backend listener script outside the repository) were
+    removed after the result was recorded. No application code was modified
+    to perform this verification.
+  * No username, email, user ID, token, VUID value, tideUserKey value,
+    password, action link or cookie is recorded here.
+
+Updated 2026-09-22 (frontend RBAC guard verification):
+  * A reusable role-membership guard was added: backend requireAnyRole
+    (alongside the existing requireRole) and a frontend RoleGuard component,
+    covering only the four recognised SOC roles (soc-analyst, soc-supervisor,
+    soc-team-leader, soc-manager) as an any-of membership check, not a
+    hierarchy or a permission split. /api/me remains authentication-only, as
+    designed. requireAnyRole is intentionally not yet connected to a backend
+    feature route - there is no feature API to gate yet, so it exists as a
+    tested, reusable primitive only.
+  * Automated verification: frontend tests passed 36/36, backend tests
+    passed 59/59; frontend and backend typecheck, lint and build all passed.
+  * Live verification: with the real TideCloak test user's session open in
+    the browser and the frontend serving the current code, opening
+    /dashboard produced dashboardVisible: true, accessDeniedVisible: false.
+    This confirms the real user's recognised SOC role (extracted from the
+    live TideCloak session via the SDK's own role checks) passed the
+    frontend RoleGuard end to end, in a real browser session, not only in
+    mocked unit tests.
+  * No username, email, user ID, token, VUID value, tideUserKey value,
+    password, action link or cookie is recorded here.
 
 4. Root cause
 Root cause not confirmed.
@@ -98,6 +165,34 @@ The developer manually removed the IGA step and kept only:
 The final authentication plan was reviewed and contains no IGA administration
 step and no approval workflow. All remaining steps map directly to a stated
 requirement (login, logout, protected routes, protected APIs, four roles).
+
+Updated 2026-09-22 (resolution):
+Re-running Bulk Authorize as the correct application-realm administrator (with
+the tide-realm-admin client role and a tideUserKey) after allowing the Tide
+signing popup produced 4 succeeded, 0 failed, followed by a successful Bulk
+Commit. The four SOC roles were confirmed present in Realm roles.
+
+Updated 2026-09-22 (RBAC verification):
+A first temporary verification attempt failed at the network level (status
+null, error request-failed) before reaching the backend at all. A controlled
+rerun, performed only after independently confirming the temporary listener
+was listening, its health endpoint responded directly, and its CORS preflight
+allowed the frontend origin, succeeded: status 200, uidPresent true,
+emailPresent true, roles [soc-analyst], socAnalystPresent true. This confirms
+a real TideCloak-signed access token reached the backend, the backend's JWT
+verification path accepted it, and the soc-analyst role was correctly
+extracted. The temporary verification page and the temporary standalone
+backend listener were both removed afterward; no application code was
+changed.
+
+Updated 2026-09-22 (frontend RBAC guard verification):
+Frontend tests passed 36/36 and backend tests passed 59/59, with typecheck,
+lint and build passing on both. Live verification with the real TideCloak
+test user's session showed dashboardVisible: true and accessDeniedVisible:
+false at /dashboard, confirming the real user's recognised SOC role passed
+the frontend RoleGuard. requireAnyRole is intentionally not wired to a
+backend route yet, since no feature API exists and /api/me stays
+authentication-only.
 
 8. Value for Tide
   * Why it matters: following the full recommendation would add an admin panel

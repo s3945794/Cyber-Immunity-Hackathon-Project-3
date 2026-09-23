@@ -42,7 +42,7 @@ describe('Navbar', () => {
   it('shows the user and a sign-out control when authenticated and calls logout()', async () => {
     mockAuth({
       authenticated: true,
-      user: { uid: 'u1', username: 'alice', email: 'alice@example.com' },
+      user: { uid: 'u1', username: 'alice', email: 'alice@example.com', roles: [] },
     })
     render(<Navbar />)
 
@@ -57,7 +57,7 @@ describe('Navbar', () => {
   it('falls back to the email when there is no username', () => {
     mockAuth({
       authenticated: true,
-      user: { uid: 'u1', username: null, email: 'bob@example.com' },
+      user: { uid: 'u1', username: null, email: 'bob@example.com', roles: [] },
     })
     render(<Navbar />)
 

@@ -11,6 +11,8 @@ const mockTc = {
   logout: vi.fn(),
   getValueFromIdToken: vi.fn<(key: string) => unknown>(),
   getValueFromToken: vi.fn<(key: string) => unknown>(),
+  hasRealmRole: vi.fn<(role: string) => boolean>(),
+  hasClientRole: vi.fn<(role: string, resource?: string) => boolean>(),
 }
 
 vi.mock('@tidecloak/nextjs', () => ({
@@ -30,6 +32,7 @@ function Probe() {
       <span data-testid="uid">{user?.uid ?? 'none'}</span>
       <span data-testid="username">{user?.username ?? 'none'}</span>
       <span data-testid="email">{user?.email ?? 'none'}</span>
+      <span data-testid="roles">{user ? JSON.stringify(user.roles) : 'none'}</span>
     </div>
   )
 }
@@ -51,6 +54,8 @@ describe('AuthProvider / useAuth', () => {
     mockTc.token = null
     mockTc.getValueFromIdToken.mockReturnValue(undefined)
     mockTc.getValueFromToken.mockReturnValue(undefined)
+    mockTc.hasRealmRole.mockReturnValue(false)
+    mockTc.hasClientRole.mockReturnValue(false)
   })
 
   it('reports loading with no user while the SDK initialises', () => {
@@ -98,5 +103,60 @@ describe('AuthProvider / useAuth', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     expect(() => render(<Probe />)).toThrow(/AuthProvider/)
     spy.mockRestore()
+  })
+
+  describe('SOC role extraction', () => {
+    beforeEach(() => {
+      mockTc.authenticated = true
+      mockTc.isInitializing = false
+    })
+
+    it('has no roles when the user has none of the four recognised SOC roles', () => {
+      renderWithProvider()
+      expect(screen.getByTestId('roles')).toHaveTextContent('[]')
+    })
+
+    it('ignores unrecognised token roles entirely', () => {
+      // Simulates a token carrying an internal Tide/TideCloak role, or any
+      // role outside the four SOC roles — hasRealmRole/hasClientRole return
+      // false for all of them from this component's point of view, since
+      // only SOC_ROLES are ever checked.
+      mockTc.hasRealmRole.mockImplementation((role) => role === 'tide-internal-role')
+      renderWithProvider()
+      expect(screen.getByTestId('roles')).toHaveTextContent('[]')
+    })
+
+    it.each(['soc-analyst', 'soc-supervisor', 'soc-team-leader', 'soc-manager'] as const)(
+      'recognises the %s realm role',
+      (role) => {
+        mockTc.hasRealmRole.mockImplementation((r) => r === role)
+        renderWithProvider()
+        expect(screen.getByTestId('roles')).toHaveTextContent(JSON.stringify([role]))
+      }
+    )
+
+    it('recognises a role granted via hasClientRole as well as hasRealmRole', () => {
+      mockTc.hasClientRole.mockImplementation((role) => role === 'soc-manager')
+      renderWithProvider()
+      expect(screen.getByTestId('roles')).toHaveTextContent(JSON.stringify(['soc-manager']))
+    })
+
+    it('combines multiple recognised roles from realm and client roles without duplicates', () => {
+      mockTc.hasRealmRole.mockImplementation((role) => role === 'soc-analyst')
+      mockTc.hasClientRole.mockImplementation(
+        (role) => role === 'soc-analyst' || role === 'soc-supervisor'
+      )
+      renderWithProvider()
+      expect(screen.getByTestId('roles')).toHaveTextContent(
+        JSON.stringify(['soc-analyst', 'soc-supervisor'])
+      )
+    })
+
+    it('has no roles while unauthenticated even if the SDK role checks would return true', () => {
+      mockTc.authenticated = false
+      mockTc.hasRealmRole.mockReturnValue(true)
+      renderWithProvider()
+      expect(screen.getByTestId('roles')).toHaveTextContent('none')
+    })
   })
 })

@@ -5,6 +5,7 @@ import { SignJWT, exportJWK, generateKeyPair } from 'jose'
 import {
   createAuthMiddleware,
   requireRole,
+  requireAnyRole,
   type AuthenticatedRequest,
   type VerifyToken,
 } from '../../../src/middleware/auth'
@@ -77,6 +78,28 @@ function buildTestApp(verifyToken: VerifyToken) {
     res.json({ uid: user.uid })
   })
 
+  app.get(
+    '/protected/soc-staff',
+    auth,
+    requireAnyRole('soc-analyst', 'soc-supervisor', 'soc-team-leader', 'soc-manager'),
+    (req, res) => {
+      const { user } = req as AuthenticatedRequest
+      res.json({ uid: user.uid, roles: user.roles })
+    }
+  )
+
+  app.get('/protected/no-accepted-roles', auth, requireAnyRole(), (req, res) => {
+    const { user } = req as AuthenticatedRequest
+    res.json({ uid: user.uid })
+  })
+
+  // No auth middleware ahead of this one — used to prove requireAnyRole
+  // itself returns 401 when no authenticated user is attached.
+  app.get('/unauthenticated/soc-staff', requireAnyRole('soc-analyst'), (req, res) => {
+    const { user } = req as AuthenticatedRequest
+    res.json({ uid: user.uid })
+  })
+
   app.use(errorHandler)
   return app
 }
@@ -125,6 +148,75 @@ describe('createAuthMiddleware', () => {
       .get('/protected/analyst-only')
       .set('Authorization', 'Bearer valid-token')
     expect(res.status).toBe(200)
+  })
+})
+
+describe('requireAnyRole', () => {
+  it('returns 401 when no authenticated user is attached to the request', async () => {
+    const app = buildTestApp(mockVerifyToken)
+    const res = await request(app).get('/unauthenticated/soc-staff')
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 403 when the authenticated user has none of the accepted roles', async () => {
+    const app = buildTestApp(mockVerifyToken)
+    vi.mocked(mockVerifyToken).mockResolvedValueOnce({ ...mockUser, roles: [] })
+    const res = await request(app)
+      .get('/protected/soc-staff')
+      .set('Authorization', 'Bearer valid-token')
+    expect(res.status).toBe(403)
+  })
+
+  it('returns 403 for a recognised-but-unaccepted role (role alone is not membership in every set)', async () => {
+    const app = buildTestApp(mockVerifyToken)
+    vi.mocked(mockVerifyToken).mockResolvedValueOnce({ ...mockUser, roles: ['soc-manager'] })
+    const res = await request(app)
+      .get('/protected/analyst-only') // only accepts 'soc-analyst' via requireRole
+      .set('Authorization', 'Bearer valid-token')
+    expect(res.status).toBe(403)
+  })
+
+  it.each(['soc-analyst', 'soc-supervisor', 'soc-team-leader', 'soc-manager'] as const)(
+    'allows the request through when the authenticated user has the %s role',
+    async (role) => {
+      const app = buildTestApp(mockVerifyToken)
+      vi.mocked(mockVerifyToken).mockResolvedValueOnce({ ...mockUser, roles: [role] })
+      const res = await request(app)
+        .get('/protected/soc-staff')
+        .set('Authorization', 'Bearer valid-token')
+      expect(res.status).toBe(200)
+      expect(res.body.roles).toEqual([role])
+    }
+  )
+
+  it('allows the request through when the user has at least one of several accepted roles', async () => {
+    const app = buildTestApp(mockVerifyToken)
+    vi.mocked(mockVerifyToken).mockResolvedValueOnce({
+      ...mockUser,
+      roles: ['soc-supervisor', 'soc-manager'],
+    })
+    const res = await request(app)
+      .get('/protected/soc-staff')
+      .set('Authorization', 'Bearer valid-token')
+    expect(res.status).toBe(200)
+  })
+
+  it('fails closed (403) when the accepted-role list is empty, even for an authenticated user with roles', async () => {
+    const app = buildTestApp(mockVerifyToken)
+    vi.mocked(mockVerifyToken).mockResolvedValueOnce({ ...mockUser, roles: ['soc-manager'] })
+    const res = await request(app)
+      .get('/protected/no-accepted-roles')
+      .set('Authorization', 'Bearer valid-token')
+    expect(res.status).toBe(403)
+  })
+
+  it('returns 401 before evaluating roles when the token itself is invalid', async () => {
+    const failing: VerifyToken = vi.fn().mockRejectedValue(new Error('invalid'))
+    const app = buildTestApp(failing)
+    const res = await request(app)
+      .get('/protected/soc-staff')
+      .set('Authorization', 'Bearer not-a-real-token')
+    expect(res.status).toBe(401)
   })
 })
 

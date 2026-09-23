@@ -1,14 +1,20 @@
+import type { SocRole } from '@/lib/tidecloak/roles'
+
 /**
  * Authenticated user, normalised from the TideCloak ID-token claims.
  *
  * `uid` is the token `sub`. TideCloak always asserts a username
  * (`preferred_username`); depending on the upstream identity provider it may or
  * may not assert an email.
+ *
+ * `roles` contains only the recognised SOC application roles (see
+ * `@/lib/tidecloak/roles`) — any other token role is filtered out.
  */
 export interface AuthUser {
   uid: string
   username: string | null
   email: string | null
+  roles: SocRole[]
 }
 
 /**
