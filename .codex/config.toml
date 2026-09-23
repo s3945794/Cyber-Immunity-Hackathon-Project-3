@@ -1,0 +1,27 @@
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "disabled"
+allow_login_shell = false
+default_permissions = "soc_workspace"
+
+[agents]
+enabled = false
+
+[permissions.soc_workspace]
+extends = ":workspace"
+description = "SOC repository access with credentials denied"
+
+[permissions.soc_workspace.filesystem.":workspace_roots"]
+"." = "write"
+".env" = "deny"
+"**/.env" = "deny"
+"**/.env.local" = "deny"
+"**/.env.development*" = "deny"
+"**/.env.production*" = "deny"
+"**/.env.test*" = "deny"
+"**/*.pem" = "deny"
+"**/*.key" = "deny"
+"**/*.p12" = "deny"
+"credentials/**" = "deny"
+"secrets/**" = "deny"
+"private/**" = "deny"
