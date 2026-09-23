@@ -1,13 +1,7 @@
 import '@testing-library/jest-dom'
-import { vi } from 'vitest'
 
-// Never touch real Firebase in unit tests.
-vi.mock('@/lib/firebase/client', () => ({
-  getClientApp: vi.fn(() => ({})),
-  getClientDb: vi.fn(() => ({})),
-}))
-
-vi.mock('@/lib/firebase/admin', () => ({
-  adminAuth: {},
-  adminDb: {},
-}))
+// Firebase client/admin modules were removed from the frontend — the browser
+// no longer connects to Firebase or Firestore directly. TideCloak is the
+// only authentication provider; any future server-side database access goes
+// through the Express backend (see backend/src/lib/firebase.ts), not the
+// frontend. No Firebase mocks are needed here anymore.

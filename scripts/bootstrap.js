@@ -55,7 +55,7 @@ function checkFirebaserc() {
   const def = data?.projects?.default
   if (typeof def === 'string' && (def.includes('REPLACE_WITH') || def.trim() === '')) {
     warn(
-      '.firebaserc still uses a template project id. Set projects.default to your real Firebase project id (same as NEXT_PUBLIC_FIREBASE_PROJECT_ID).'
+      '.firebaserc still uses a template project id. Set projects.default to your real Firebase project id (used for backend Cloud Functions + Firestore deployment).'
     )
   }
 }
@@ -82,23 +82,24 @@ checkFirebaserc()
 
 console.log(`
 ┌─────────────────────────────────────────────────────────────────
-│ Next steps (you do these once per Firebase project)
+│ Next steps
 └─────────────────────────────────────────────────────────────────
 
   All env values live in ONE file: the root .env
   (frontend/.env.local and backend/.env are generated — never edit them)
 
-  1. Create a free Firebase project: https://console.firebase.google.com
-     (Spark plan is fine — no billing required)
-  2. Enable Authentication (Email/Password, or your chosen sign-in method)
-     and Firestore Database.
-  3. Fill in .env:
-       - NEXT_PUBLIC_FIREBASE_PROJECT_ID (same id in .firebaserc → "default")
-       - FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 (Project settings → Service accounts)
-       - NEXT_PUBLIC_FIREBASE_* (Project settings → Your apps → web app config)
+  TideCloak is the only authentication provider — see docs/TIDECLOAK-LOCAL.md
+  to set up local TideCloak. Firestore is reserved for server-side backend
+  use only (no browser access); a Firebase project is only needed once a
+  Firestore-backed feature is implemented — see docs/BACKEND.md.
+
+  1. Fill in .env:
+       - NEXT_PUBLIC_TIDECLOAK_* (see docs/TIDECLOAK-LOCAL.md)
        - NEXT_PUBLIC_APP_NAME
-  4. Re-run: pnpm run env:sync   (or just start dev — it syncs automatically)
-  5. pnpm run dev  →  http://localhost:3000
+       - FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 (optional — only if you need
+         local backend Firestore access; Project settings → Service accounts)
+  2. Re-run: pnpm run env:sync   (or just start dev — it syncs automatically)
+  3. pnpm run dev  →  http://localhost:3000
 
   Reference for every variable: docs/ENV-VARS.md
 `)
