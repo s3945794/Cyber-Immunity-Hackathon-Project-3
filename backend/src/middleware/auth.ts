@@ -81,3 +81,40 @@ export function requireRole(role: SocRole) {
     next()
   }
 }
+
+/**
+ * Role-membership middleware — must run after createAuthMiddleware().
+ * Allows the request through if the authenticated user has at least one of
+ * the given roles (an OR match, not a hierarchy or ranking of roles).
+ *
+ * - 401 if no authenticated user is attached to the request (auth middleware
+ *   did not run, or failed to attach one).
+ * - 403 if the user is authenticated but has none of the accepted roles.
+ * - 403 if `acceptedRoles` is empty — fails closed rather than granting
+ *   access to everyone. An empty list is treated as "no one is authorized",
+ *   never as "no restriction".
+ *
+ * Usage: router.get('/dashboard', requireAnyRole('soc-analyst', 'soc-manager'), handler)
+ */
+export function requireAnyRole(...acceptedRoles: SocRole[]) {
+  return function anyRoleMiddleware(req: Request, _res: Response, next: NextFunction): void {
+    const { user } = req as Partial<AuthenticatedRequest>
+    if (!user) {
+      next(HttpError.unauthorized())
+      return
+    }
+
+    if (acceptedRoles.length === 0) {
+      next(HttpError.forbidden())
+      return
+    }
+
+    const hasAcceptedRole = acceptedRoles.some((role) => user.roles.includes(role))
+    if (!hasAcceptedRole) {
+      next(HttpError.forbidden())
+      return
+    }
+
+    next()
+  }
+}
