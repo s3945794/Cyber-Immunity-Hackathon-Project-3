@@ -1353,5 +1353,128 @@ Root cause of the one-off ERR_NETWORK_CHANGED observation is not confirmed.
     real behaviour through failing tests.
 
 ============================================================
+ISSUE 013 - TideCloak login rejected with "Requested session has not been
+            allowed for vouchers" for multiple previously-working users
+============================================================
+
+Date: 2026-09-23
+Updated: 2026-09-24 (resolved with workaround - root cause still not
+         confirmed)
+Project feature: SOC Incident Report Protection - live browser verification
+                 of feature/incident-dashboard
+Tide component: TideCloak container (local dev realm
+                 "soc-incident-report-protection"), Tide voucher/session
+                 identity-broker step
+Status: Resolved with workaround (root cause not confirmed)
+
+1. What happened
+During live browser verification of the incident dashboard, two previously
+working test users both failed TideCloak sign-in with the identical error.
+This is not a first-time or single-user failure - the same login path had
+succeeded for both users earlier in this same working session, and both
+began failing at the same time.
+
+2. Evidence (safe, redacted)
+  * Exact backend log error (verbatim, contains no identifiers or session
+    parameters):
+      [TIDE-IDPEXT-VOUCHER-SESSION_NOT_FOUND] Requested session has not
+      been allowed for vouchers. (traceId=null)
+  * This exact line recurred at least 14 times over a ~2 minute window
+    across at least 3 different executor threads - consistent with
+    multiple distinct login attempts by more than one user, not a single
+    stuck request.
+  * No stack trace accompanies this error class (contrast with the
+    licence-lookup error below, which does include one).
+  * No log line immediately precedes or follows any occurrence of this
+    error in the container log - there is no adjacent evidence in the logs
+    of a successful authorization-code issuance immediately before the
+    rejection.
+  * A separate, earlier error was found in the same container's log
+    history (2026-09-22, ~24 hours before this incident, two occurrences
+    only, not recurring since):
+      [TIDE-IDPEXT-VENDOR-LICENSE_LOOKUP_FAILED] Could not retrieve
+      license details. (traceId=null): jakarta.ws.rs.ForbiddenException:
+      HTTP 403 Forbidden
+    This has not been confirmed as related to today's voucher/session
+    error - it is recorded because it is the only other Tide-vendor-layer
+    error found in the container's history, not because a causal link has
+    been established.
+  * No other keyword matches (licence/license beyond the entry above, ORK,
+    timeout, certificate, network, clock) were found anywhere in the
+    available container log history.
+
+3. Root cause
+Root cause not confirmed.
+
+4. Investigation (read-only; no destructive action taken)
+  * Container health: no Docker healthcheck is configured on this image,
+    but the container has been continuously running (no restart) since
+    2026-09-22, ports bound and responsive (HTTP 302 on the realm root),
+    CPU/memory usage unremarkable.
+  * Host vs. container clock: host UTC and container UTC were compared
+    within the same few seconds; the observed difference was approximately
+    2 seconds - not consistent with a clock-skew cause.
+  * Outbound network: DNS resolution for the Tide vendor domain succeeded
+    and a TCP:443 connection to the resolved address succeeded - outbound
+    HTTPS connectivity does not appear to be blocked.
+  * Licence status: presence of licence-lookup activity was checked; no
+    licence values were read or displayed. One isolated licence-lookup
+    failure pair was found from the prior day (see Evidence); no
+    licence-lookup errors were found in the log window matching today's
+    voucher/session failures.
+  * User attribute booleans (enabled / tideUserKey present / VUID present /
+    tideInvitable present): NOT OBTAINED. An admin-token grant against the
+    realm's master admin-cli endpoint was attempted read-only, using the
+    already-configured local bootstrap admin credentials, solely to query
+    boolean attribute presence with no values ever to be displayed. The
+    grant request returned HTTP 400 with an empty error body. Repeating or
+    varying this credential grant was deliberately not attempted further,
+    to avoid generating additional session/voucher-adjacent server load
+    indistinguishable from the reported symptom. This means the user
+    attribute check required by the diagnosis could not be completed
+    safely through this path.
+  * Whether the rejection occurs before an authorization code is issued:
+    NOT CONFIRMED. No log evidence of a preceding successful code issuance
+    was found adjacent to any occurrence of the error, which is consistent
+    with (but does not prove) rejection at the voucher/session-validation
+    step of the identity-broker exchange, before or during a code
+    exchange rather than after a token has already been issued.
+  * Realm/host configuration match: the frontend's configured TideCloak
+    auth server URL, realm name, and client id were not re-verified against
+    the running container as part of this read-only pass beyond confirming
+    the container answers on the expected port; no mismatch was observed
+    in the checks that were performed.
+
+5. Solution or workaround (confirmed workaround; root cause not confirmed)
+  * No server-side change, restart, configuration change, or user/role/
+    attribute change was made or was needed.
+  * A completely fresh Edge InPrivate browser session (a new InPrivate
+    window, not a reload or retry in the already-open one) allowed login to
+    succeed again for the affected accounts.
+  * Likely explanation (not confirmed as root cause): the previous
+    browser's authorization/voucher session had become stale or invalid,
+    and TideCloak's voucher-session check correctly rejected it; starting
+    an entirely new browser session avoided reusing that stale state. This
+    is the most consistent explanation given the evidence in section 2 (no
+    server-side error pattern beyond the repeated rejection itself, healthy
+    container, no clock skew, working outbound network), but it has not
+    been confirmed against TideCloak/Tide internals - "root cause not
+    confirmed" still applies.
+  * No usernames, session URLs, tokens, or other identity values were
+    recorded as part of this resolution.
+
+6. Verification
+  * Live browser verification of feature/incident-dashboard was completed
+    successfully from the fresh InPrivate session:
+      - /dashboard loaded with the incident list visible (incident IDs,
+        threats, severity, status, and indicators all visible).
+      - Opening an incident navigated to /incidents/[id] with general
+        incident information, timeline, and basic indicators visible.
+      - Victim Host, Exposure Evidence, and Suspicious Process each showed
+        "Locked" with no protected value displayed.
+  * TideCloak was left running throughout in its existing state; no
+    restart was performed; all volumes and realm data remained untouched.
+
+============================================================
 END OF LOG
 ==========
