@@ -10,7 +10,21 @@ describe('LockedField', () => {
     expect(screen.getByText(/locked/i)).toBeInTheDocument()
   })
 
-  it('accepts only a label — there is no prop through which a value could be passed', () => {
+  it('renders an optional request link without accepting a protected value', () => {
+    render(
+      <LockedField
+        label="Victim Host"
+        requestHref="/incidents/INC-1001/request-access?resource=victimHost"
+      />
+    )
+
+    expect(screen.getByRole('link', { name: 'Request access to Victim Host' })).toHaveAttribute(
+      'href',
+      '/incidents/INC-1001/request-access?resource=victimHost'
+    )
+  })
+
+  it('has no prop through which a protected value could be passed', () => {
     // @ts-expect-error — LockedField's props intentionally have no value field.
     render(<LockedField label="Exposure Evidence" value="should not compile" />)
     expect(screen.getByText('Exposure Evidence')).toBeInTheDocument()

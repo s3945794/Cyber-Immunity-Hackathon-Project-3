@@ -1,16 +1,25 @@
-/**
- * Display labels for locked-field keys returned by the API's `lockedFields`
- * array. Falls back to the raw key if an unrecognised name ever appears —
- * still renders as "locked", never breaks.
- */
-export const LOCKED_FIELD_LABELS: Record<string, string> = {
+/** The only protected resource keys the frontend may use in request links. */
+export const LOCKED_RESOURCE_KEYS = ['victimHost', 'exposureEvidence', 'suspiciousProcess'] as const
+
+export type LockedResourceKey = (typeof LOCKED_RESOURCE_KEYS)[number]
+
+/** Safe display labels for the allow-listed protected resource keys. */
+export const LOCKED_FIELD_LABELS: Record<LockedResourceKey, string> = {
   victimHost: 'Victim Host',
   exposureEvidence: 'Exposure Evidence',
   suspiciousProcess: 'Suspicious Process',
 }
 
+export function isLockedResourceKey(key: string): key is LockedResourceKey {
+  return LOCKED_RESOURCE_KEYS.some((resourceKey) => resourceKey === key)
+}
+
+/**
+ * Returns a safe label for a locked-field key. Existing incident views retain
+ * their fallback so an unexpected backend key remains visibly locked.
+ */
 export function lockedFieldLabel(key: string): string {
-  return LOCKED_FIELD_LABELS[key] ?? key
+  return isLockedResourceKey(key) ? LOCKED_FIELD_LABELS[key] : key
 }
 
 const SEVERITY_STYLES: Record<string, string> = {

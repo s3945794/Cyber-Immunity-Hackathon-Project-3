@@ -84,6 +84,26 @@ describe('IncidentDetailPage', () => {
     expect(screen.getAllByText(/locked/i).length).toBeGreaterThanOrEqual(3)
   })
 
+  it('links each locked resource to its own allow-listed access request', async () => {
+    vi.mocked(fetchIncidentById).mockResolvedValue(DETAIL)
+    render(<IncidentDetailPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Victim Host')).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('link', { name: 'Request access to Victim Host' })).toHaveAttribute(
+      'href',
+      '/incidents/INC-1001/request-access?resource=victimHost'
+    )
+    expect(
+      screen.getByRole('link', { name: 'Request access to Exposure Evidence' })
+    ).toHaveAttribute('href', '/incidents/INC-1001/request-access?resource=exposureEvidence')
+    expect(
+      screen.getByRole('link', { name: 'Request access to Suspicious Process' })
+    ).toHaveAttribute('href', '/incidents/INC-1001/request-access?resource=suspiciousProcess')
+  })
+
   it('never renders any known protected synthetic value', async () => {
     vi.mocked(fetchIncidentById).mockResolvedValue(DETAIL)
     render(<IncidentDetailPage />)
@@ -95,13 +115,14 @@ describe('IncidentDetailPage', () => {
     for (const value of KNOWN_PROTECTED_SUBSTRINGS) {
       expect(screen.queryByText(value)).not.toBeInTheDocument()
     }
-    // The DOM must not contain the raw field key either, only the display label.
-    expect(document.body.innerHTML.includes('victimHost')).toBe(false)
-    expect(document.body.innerHTML.includes('exposureEvidence')).toBe(false)
-    expect(document.body.innerHTML.includes('suspiciousProcess')).toBe(false)
+    // Resource keys are required in request-link URLs, but must never be
+    // rendered as visible evidence content.
+    expect(document.body.textContent).not.toContain('victimHost')
+    expect(document.body.textContent).not.toContain('exposureEvidence')
+    expect(document.body.textContent).not.toContain('suspiciousProcess')
   })
 
-  it('renders locked labels only — no protected value text anywhere near the lock indicators', async () => {
+  it('renders locked labels and request links without protected value text', async () => {
     vi.mocked(fetchIncidentById).mockResolvedValue(DETAIL)
     render(<IncidentDetailPage />)
 
@@ -114,9 +135,7 @@ describe('IncidentDetailPage', () => {
       const labelNode = screen.getByText(label)
       const row = labelNode.closest('div')
       expect(row).not.toBeNull()
-      // The only other text in a locked-field row is the "Locked" status —
-      // never a value.
-      expect(row?.textContent).toMatch(new RegExp(`^${label}Locked$`))
+      expect(row?.textContent).toContain(`${label}Locked`)
     }
   })
 
