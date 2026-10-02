@@ -175,7 +175,11 @@ export default function IncidentDetailPage() {
             </p>
             <div className="mt-3 space-y-2">
               {incident.lockedFields.map((field) => (
-                <LockedField key={field} label={lockedFieldLabel(field)} />
+                <LockedField
+                  key={field}
+                  label={lockedFieldLabel(field)}
+                  requestHref={`/incidents/${encodeURIComponent(incident.id)}/request-access?resource=${encodeURIComponent(field)}`}
+                />
               ))}
             </div>
           </section>
