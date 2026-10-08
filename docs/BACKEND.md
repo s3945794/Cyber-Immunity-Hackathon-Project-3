@@ -158,3 +158,44 @@ npx firebase-tools deploy --only functions
 ```
 
 The function is deployed to `australia-southeast1`. Change the region in `src/index.ts`.
+
+## Emergency access stage (7 October 2026)
+
+This stage adds server-only Firestore requests and a native listener. See
+SOC-POC-RUNBOOK.md for authorised local emulator startup; the Cloud Function export
+remains intact. No cloud deployment or database writes were performed.
+
+| Method / path                                  | Behaviour                                                                                       |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| GET /api/access/config                         | Recognised member receives allowed durations in seconds and authorityAvailable=false            |
+| POST /api/requests                             | Strict create input; UUID Idempotency-Key required                                              |
+| GET /api/requests                              | Signed-in request history, bounded pages with optional before cursor                            |
+| GET /api/requests/:id                          | Safe request details available to recognised SOC users for review/audit                         |
+| GET /api/approvals                             | Pending requests eligible for this other, not-yet-approved user                                 |
+| POST /api/requests/:id/decisions               | Strict approve or reject-with-reason; UUID operation ID                                         |
+| POST /api/requests/:id/cancel                  | Empty body; requester-only pending cancellation; UUID operation ID                              |
+| GET /api/access/incidents/:incidentId/requests | This user's latest safe scope state for each incident resource                                  |
+| GET /api/audit                                 | Read-only application audit, bounded cursor pages                                               |
+| POST /api/requests/:id/evidence                | Strict incident/resource/read correlation; always denies until verified Tide integration exists |
+
+Create JSON fields are incidentId, resource, permission, reason, durationSeconds
+and acknowledged. Unknown requester IDs, roles, status, timestamps, approvals and
+grant fields are rejected. Resources are victimHost/exposureEvidence/suspiciousProcess;
+permission is read; reason is trimmed and has 20–500 characters; acknowledgement
+is true. Normal durations are 900/1800/3600 seconds. Optional 60 is enabled only by
+trusted demo configuration.
+
+All four recognised SOC roles are equal membership labels. The requester cannot
+review themselves; two different other users approve. Each reviewer decides once.
+Decisions and cancellation are transactional and idempotent. A single valid
+rejection closes pending state. Two approvals produce authorising with a blocked
+authority job, never active. No Tide call occurs in a retrying transaction.
+
+Responses use no-store. CORS permits configured-origin preflight before auth and
+the required Idempotency-Key header; protected operations still verify tokens.
+Malformed JSON is 400; oversized bodies are 413; conflicts are 409; unavailable
+storage/authority is 503. Provider error bodies/stacks are not logged or returned.
+
+Production FirestoreStore is injected through createApp composition. MemoryStore
+and identity mocks exist only under tests/support and unit tests. They are not
+runtime alternatives. See FIRESTORE-SCHEMA.md and SOC-TIDE-CAPABILITIES.md.

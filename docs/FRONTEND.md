@@ -88,3 +88,24 @@ Use the `/new-page` skill. Key checklist:
 - Export `metadata` object
 - Call `requireAuth()` in protected pages
 - Put client interactivity in a `*Client.tsx` component
+
+## Emergency access pages
+
+The agreed layout, comfortable spacing and blue accent are retained. Navigation
+includes Dashboard, My Requests, Approvals, Audit, Profile and Settings; mobile
+navigation is available without changing Profile/Settings behaviour.
+
+The dashboard filters/searches actual synthetic incident data and derives count
+cards from that data. Request submission uses the authenticated Express API,
+preserves reason on failure, disables duplicate submissions and only shows a
+saved pending summary after success. Optional short duration comes from server
+configuration. History/review/audit support bounded older pages.
+
+Incident pages show latest server request state for each of the three protected
+resources. Two approvals show authorising/unavailable with evidence locked.
+There is no plaintext unlock/decryption flow or fabricated active grant.
+Metadata state rechecks on visibility, reconnection and periodic visible refresh;
+session/context changes invalidate late responses. All new errors are in-page.
+
+Code entry points are in ARCHITECTURE.md. Tide evidence UI/countdown/clearing
+verification remains blocked on real scoped authority; see SOC-TIDE-CAPABILITIES.md.
