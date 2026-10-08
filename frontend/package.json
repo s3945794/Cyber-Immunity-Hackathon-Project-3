@@ -11,9 +11,9 @@
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
+    "test": "vitest run --configLoader runner",
+    "test:watch": "vitest --configLoader runner",
+    "test:coverage": "vitest run --coverage --configLoader runner",
     "test:e2e": "playwright test --project=ci-safe",
     "test:e2e:local-tidecloak": "playwright test --project=local-tidecloak --workers=1",
     "test:e2e:report": "playwright show-report"

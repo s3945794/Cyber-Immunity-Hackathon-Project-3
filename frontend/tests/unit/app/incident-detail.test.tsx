@@ -1,8 +1,12 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { AuthContextValue } from '@/types/auth'
 import type { IncidentDetail } from '@/types/incident'
 
+vi.mock('@/lib/api/access', () => ({
+  accessApi: vi.fn().mockResolvedValue({ requests: [] }),
+  AccessApiError: class extends Error {},
+}))
 vi.mock('@/hooks/useAuth', () => ({ useAuth: vi.fn() }))
 vi.mock('next/navigation', () => ({ useParams: vi.fn() }))
 vi.mock('@/lib/api/incidents', () => {
@@ -157,4 +161,95 @@ describe('IncidentDetailPage', () => {
       expect(screen.getByText(/something went wrong/i)).toBeInTheDocument()
     })
   })
+  it.each([
+    {
+      failure: 'not-found',
+      error: () => new IncidentNotFoundError('INC-9999'),
+      previousState: /incident not found/i,
+    },
+    {
+      failure: 'API-error',
+      error: () => new IncidentApiError('Incident service unavailable'),
+      previousState: /something went wrong/i,
+    },
+  ])(
+    'recovers from a $failure state when the incident ID changes without unmounting',
+    async ({ error, previousState }) => {
+      vi.mocked(useParams).mockReturnValue({ id: 'INC-9999' })
+      vi.mocked(fetchIncidentById).mockRejectedValueOnce(error()).mockResolvedValueOnce(DETAIL)
+      const { rerender } = render(<IncidentDetailPage />)
+
+      await screen.findByText(previousState)
+      vi.mocked(useParams).mockReturnValue({ id: DETAIL.id })
+      rerender(<IncidentDetailPage />)
+
+      await screen.findByRole('heading', { name: DETAIL.id })
+      expect(fetchIncidentById).toHaveBeenLastCalledWith({ getToken }, DETAIL.id)
+      expect(screen.queryByText(/incident not found/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/something went wrong/i)).not.toBeInTheDocument()
+      expect(screen.getByText('Credential stuffing')).toBeInTheDocument()
+      expect(screen.getAllByText('Locked')).toHaveLength(3)
+      expect(screen.getByRole('link', { name: 'Request access to Victim Host' })).toHaveAttribute(
+        'href',
+        '/incidents/INC-1001/request-access?resource=victimHost'
+      )
+    }
+  )
+
+  it('replaces a previous not-found state with the current incident API error', async () => {
+    vi.mocked(useParams).mockReturnValue({ id: 'INC-9999' })
+    vi.mocked(fetchIncidentById)
+      .mockRejectedValueOnce(new IncidentNotFoundError('INC-9999'))
+      .mockRejectedValueOnce(new IncidentApiError('Current incident load failed'))
+    const { rerender } = render(<IncidentDetailPage />)
+
+    await screen.findByText(/incident not found/i)
+    vi.mocked(useParams).mockReturnValue({ id: 'INC-1002' })
+    rerender(<IncidentDetailPage />)
+
+    await screen.findByText('Current incident load failed')
+    expect(screen.getByText(/something went wrong/i)).toBeInTheDocument()
+    expect(screen.queryByText(/incident not found/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: DETAIL.id })).not.toBeInTheDocument()
+  })
+
+  it.each(['success', 'not-found', 'API-error'] as const)(
+    'ignores an older %s response after the current incident loads',
+    async (outcome) => {
+      let resolvePrevious: (value: IncidentDetail) => void = () => {}
+      let rejectPrevious: (error: Error) => void = () => {}
+      const previousResponse = new Promise<IncidentDetail>((resolve, reject) => {
+        resolvePrevious = resolve
+        rejectPrevious = reject
+      })
+      vi.mocked(useParams).mockReturnValue({ id: 'INC-1002' })
+      vi.mocked(fetchIncidentById)
+        .mockReturnValueOnce(previousResponse)
+        .mockResolvedValueOnce(DETAIL)
+      const { rerender } = render(<IncidentDetailPage />)
+
+      vi.mocked(useParams).mockReturnValue({ id: DETAIL.id })
+      rerender(<IncidentDetailPage />)
+      await screen.findByRole('heading', { name: DETAIL.id })
+
+      await act(async () => {
+        if (outcome === 'success') {
+          resolvePrevious({ ...DETAIL, id: 'INC-1002', threat: 'Previous incident threat' })
+        } else if (outcome === 'not-found') {
+          rejectPrevious(new IncidentNotFoundError('INC-1002'))
+        } else {
+          rejectPrevious(new IncidentApiError('Previous incident load failed'))
+        }
+      })
+
+      expect(screen.getByRole('heading', { name: DETAIL.id })).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'INC-1002' })).not.toBeInTheDocument()
+      expect(screen.queryByText('Previous incident threat')).not.toBeInTheDocument()
+      expect(screen.queryByText('Previous incident load failed')).not.toBeInTheDocument()
+      expect(screen.queryByText(/incident not found/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/something went wrong/i)).not.toBeInTheDocument()
+      expect(screen.queryByRole('status', { name: /loading/i })).not.toBeInTheDocument()
+      expect(screen.getAllByText('Locked')).toHaveLength(3)
+    }
+  )
 })

@@ -1,8 +1,10 @@
 import { defineConfig, configDefaults } from 'vitest/config'
 import react from '@vitejs/plugin-react'
-import { resolve } from 'path'
+import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
+  // Unit tests never consume private application configuration.
+  envDir: false,
   plugins: [react()],
   test: {
     environment: 'jsdom',
@@ -25,6 +27,6 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: { '@': resolve(__dirname, './src') },
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
 })
