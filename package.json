@@ -25,7 +25,11 @@
     "tidecloak:status": "node scripts/tidecloak.js status",
     "tidecloak:logs": "node scripts/tidecloak.js logs",
     "hooks": "lefthook install",
-    "prepare": "lefthook install"
+    "prepare": "lefthook install",
+    "demo:emulator": "node scripts/demo.cjs emulator",
+    "demo:backend": "node scripts/demo.cjs backend",
+    "demo:frontend": "pnpm --filter frontend dev",
+    "test:emulator": "pnpm --filter backend build && node scripts/test-emulator.cjs"
   },
   "devDependencies": {
     "lefthook": "^1.11.13",
