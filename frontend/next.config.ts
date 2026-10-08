@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next'
+import { resolve } from 'node:path'
 
 // Security headers applied to every response.
 const baseSecurityHeaders = [
@@ -38,6 +39,8 @@ const silentSsoHeaders = [
 ]
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
+  outputFileTracingRoot: resolve(__dirname, '..'),
   async headers() {
     return [
       {

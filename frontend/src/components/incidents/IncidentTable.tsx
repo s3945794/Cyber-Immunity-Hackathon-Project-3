@@ -10,7 +10,7 @@ interface IncidentTableProps {
 /** Renders the incident list as linked rows. Each row links to `/incidents/[id]`. */
 export function IncidentTable({ incidents }: IncidentTableProps) {
   return (
-    <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <table className="w-full text-left text-sm">
         <thead className="border-b border-zinc-200 bg-zinc-50 text-xs text-zinc-500 uppercase dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
           <tr>

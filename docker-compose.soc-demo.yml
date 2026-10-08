@@ -1,0 +1,93 @@
+# Explicit application demo only. Existing TideCloak/realm/volume is not managed here.
+name: soc-incident-demo
+services:
+  firestore:
+    build:
+      context: .
+      dockerfile: docker/firestore.Dockerfile
+    volumes:
+      - ./demo-data:/demo-data
+    ports:
+      - '127.0.0.1:8085:8085'
+    networks: [storage]
+    stop_grace_period: 60s
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "const s=require('net').connect(8085,'127.0.0.1',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1));setTimeout(()=>process.exit(1),3000)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      SOC_LOCAL_DEMO: 'true'
+      SOC_CONTAINER: 'true'
+      GCLOUD_PROJECT: demo-soc-incident-protection
+      FIRESTORE_EMULATOR_HOST: firestore:8085
+      SOC_DEMO_SHORT_DURATION: ${SOC_DEMO_SHORT_DURATION:-false}
+      PORT: '5001'
+      CORS_ORIGIN: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      # Server-only runtime configuration, never an image build argument.
+      CLIENT_ADAPTER: ${CLIENT_ADAPTER:-}
+    volumes:
+      - type: bind
+        source: ./data/tidecloak.json
+        target: /app/data/tidecloak.json
+        read_only: true
+        bind:
+          create_host_path: false
+    ports:
+      - '127.0.0.1:5001:5001'
+    networks: [storage, app]
+    depends_on:
+      firestore: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:5001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5001}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-SOC}
+        NEXT_PUBLIC_TIDECLOAK_AUTH_SERVER_URL: ${NEXT_PUBLIC_TIDECLOAK_AUTH_SERVER_URL:?Provide public Tide URL}
+        NEXT_PUBLIC_TIDECLOAK_REALM: ${NEXT_PUBLIC_TIDECLOAK_REALM:?Provide public realm name}
+        NEXT_PUBLIC_TIDECLOAK_CLIENT_ID: ${NEXT_PUBLIC_TIDECLOAK_CLIENT_ID:?Provide public client ID}
+        NEXT_PUBLIC_TIDECLOAK_SSL_REQUIRED: ${NEXT_PUBLIC_TIDECLOAK_SSL_REQUIRED:-external}
+        NEXT_PUBLIC_TIDECLOAK_REDIRECT_URI: ${NEXT_PUBLIC_TIDECLOAK_REDIRECT_URI:-}
+    ports:
+      - '127.0.0.1:3000:3000'
+    networks: [app]
+    depends_on:
+      backend: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/auth/signin').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+networks:
+  storage: { internal: true }
+  app: {}

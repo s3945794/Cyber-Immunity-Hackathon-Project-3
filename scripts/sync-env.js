@@ -88,6 +88,9 @@ const backendLines = [
   `CORS_ORIGIN=${get('CORS_ORIGIN')}`,
   `PORT=${get('PORT')}`,
   `CLIENT_ADAPTER=${get('CLIENT_ADAPTER')}`,
+  ...['SOC_LOCAL_DEMO', 'GCLOUD_PROJECT', 'FIRESTORE_EMULATOR_HOST', 'SOC_DEMO_SHORT_DURATION'].map(
+    (key) => key + '=' + get(key)
+  ),
 ]
 
 fs.writeFileSync(path.join(root, 'frontend', '.env.local'), frontendLines.join('\n') + '\n')

@@ -65,6 +65,8 @@ docs/BOILERPLATE-BENCHMARK.md
 # Never commit any of this; it is environment-specific and may carry secrets.
 # (.gitignore has no inline comments — keep notes on their own lines.)
 /data/
+/demo-data/
+/.emulator-tests/
 # adapter JSON (Phase 1B output) — explicit, though /data/ already covers it
 data/tidecloak.json
 # any machine-local TideCloak config

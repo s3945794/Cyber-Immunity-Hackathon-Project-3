@@ -1,58 +1,85 @@
-# Firestore Schema
+# Firestore schema
 
-## Overview
+Only the backend Firebase Admin SDK accesses storage, after verified Tide
+authentication and SOC membership. Browser rules remain deny-all. Explicit local
+demo mode requires the dedicated demo project and emulator; it cannot fall back
+to cloud storage. No new cloud writes or deployments were performed.
 
-Firestore is server-only — all access happens through the backend's `adminDb`
-(`backend/src/lib/firebase.ts`), after the TideCloak auth middleware has verified and authorized
-the request. The browser never connects to Firestore directly — `firebase/firestore.rules`
-denies all direct client access with a single default-deny rule. No current collection exists
-yet; the `users` collection below is a documented example pattern.
+## Collections
 
-## Schema versioning
+| Collection / key                                      | Purpose and safe fields                                                                                                                                                                                                   |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| accessRequests / UUID                                 | Immutable requesterRef, incidentId, one resource, read permission, trimmed reason, durationSeconds, acknowledgement, version; status, distinct approvals, server millisecond timestamps, rejectionReason, authorityStatus |
+| requestScopes / SHA-256 of identity/incident/resource | Points to the newest request for atomic duplicate prevention; no hard deletes                                                                                                                                             |
+| requestOperations / SHA-256 of actor/operation UUID   | Fingerprint and requestId enforce safe identical retries; conflicting input returns 409                                                                                                                                   |
+| approvalRecords / operation hash                      | Actor reference, requestId, approve/reject, rejection reason and server timestamp; append-only                                                                                                                            |
+| authorityJobs / request UUID                          | Stable immutable version/scope/duration correlation; currently blocked with tide_authority_unavailable; no fabricated authority bytes                                                                                     |
+| auditEvents / operation hash or stable lifecycle ID   | Event type, actor reference, request/version, incident/resource, permission, duration, safe reason, effective and observation timestamps; append-only                                                                     |
 
-Every document in every collection **must** include a `_schemaVersion` field:
+All documents include _schemaVersion: 1 and deletedAt: null. No deletion or
+audit-update API exists. Hashes are stable pseudonymous identifiers, not encryption,
+signatures or Tide capabilities. The actor reference hashes the verified issuer
+and subject. Display names and submitted identities never determine ownership.
 
-\`\`\`typescript
-_schemaVersion: 1 // increment when doing a breaking schema change
-\`\`\`
+Timestamps are integers in Unix milliseconds. Durations are explicitly seconds:
+900, 1800 or 3600; optional 60 only when trusted local-demo configuration enables
+it. Active grant timestamps are reserved; current code never activates a grant.
 
-This enables **lazy migration** — when a document is read, check `_schemaVersion` and migrate on the fly if it's behind current.
+## Transactions and state
 
-**Rules:**
+Creation reads the operation ledger and scope pointer in one transaction, checks
+the current lifecycle, creates the request, replaces the pointer and appends an
+audit event atomically. Decisions/cancellation also write their operation, safe
+decision record and audit atomically. Firestore transaction writes are buffered
+until all reads complete. Retried transactions do not call Tide or any external
+authority service.
 
-- `_schemaVersion` is always `1` on creation
-- Non-breaking changes (adding optional fields with defaults) keep the same version
-- Breaking changes (rename, remove, type change) increment the version and require a migration function
-- Never remove `_schemaVersion` from a schema
+State machine:
+pending -> pending after first distinct approval;
+pending -> authorising after second;
+pending -> rejected after one eligible rejection;
+pending -> cancelled by requester.
+Rejected/cancelled/expired are terminal. Authorising remains blocked until a
+real verified Tide integration exists. There is no current authorising -> active
+operation, server-signed substitute or configuration switch.
 
----
+Reserved active -> expired reconciliation checks server time at each operation.
+The effective expiry timestamp is separate from the observation timestamp.
+Expiry audit uses a stable ID and is materialised once. Public views never accept
+an active database flag as authority; they report authorising/locked.
 
-## `users` collection
+A rejected/cancelled/expired scope can be requested again. Pending/authorising
+or unexpired active records block duplicate scope creation atomically. Read paths
+validate stored request shape and distinct-user/quorum invariants.
 
-**Path:** `/users/{userId}`
-**Access:** Owner-only (user can read/write their own document; admins can read all)
+## Queries and indexes
 
-| Field            | Type                | Required | Description                                           |
-| ---------------- | ------------------- | -------- | ----------------------------------------------------- |
-| `uid`            | `string`            | Yes      | TideCloak subject (`sub`) claim (same as document ID) |
-| `email`          | `string`            | Yes      | User's email address                                  |
-| `displayName`    | `string \| null`    | Yes      | Display name from Auth or profile                     |
-| `photoURL`       | `string \| null`    | Yes      | Profile photo URL                                     |
-| `role`           | `'user' \| 'admin'` | Yes      | User role — immutable by user after creation          |
-| `createdAt`      | `Timestamp`         | Yes      | When the document was created                         |
-| `updatedAt`      | `Timestamp`         | Yes      | When the document was last updated                    |
-| `_schemaVersion` | `1`                 | Yes      | Schema version for lazy migration                     |
+My Requests filters requesterRef and sorts createdAt/name descending. Approvals
+filters pending status and applies requester/previous-approver exclusions. Each
+page examines at most 50 rows plus a sentinel; a page can be empty after eligibility
+filtering while an older-page cursor still exists. Audit uses createdAt/name
+descending. Cursors contain only a timestamp/document ID and are validated.
+Required composite indexes are in firebase/firestore.indexes.json.
 
-**Creation:** Not yet implemented. This collection is a documented example only — no current
-route creates, reads, or writes it. When implemented, creation would happen server-side (a
-backend route using `adminDb`, called after TideCloak authentication), not from the frontend.
-**Deletion:** Hard-delete would be disabled in security rules if implemented. Use `deletedAt`
-field for soft-delete.
+Incident status reads three exact scope pointers instead of scanning an unbounded
+history list. Current incident data remains synthetic in backend/src/data/incidents.ts.
 
----
+## Evidence storage boundary
 
-<!-- Add new collection schemas below -->
+Ciphertext/authority persistence, evidence seeding and real grant records are
+blocked pending the verified Tide contract/wire format. No protected plaintext,
+mock ciphertext, private policy bytes or master keys are stored in these
+collections. Future evidence storage must contain only validated Tide ciphertext,
+safe scope metadata and references, and must not be exposed through ordinary
+incident/request/audit APIs.
 
-```
+These are normal Firestore records, append-only through application APIs.
+They are not cryptographically tamper-proof. Fabric authority must be verified
+independently of every status/count/metadata flag.
 
-```
+## Retention
+
+Native and Docker demos export/import a dedicated ignored demo-data/ directory.
+Graceful export/import retention is implemented in scripts but not verified in
+this restricted environment. Crashes can lose changes since the last completed
+export. Isolated tests use a different project, ports and .emulator-tests/ directory.

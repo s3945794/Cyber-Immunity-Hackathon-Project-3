@@ -1,0 +1,15 @@
+diff --git a/pnpm-workspace.yaml b/pnpm-workspace.yaml
+index 9058d13..5b56c52 100644
+--- a/pnpm-workspace.yaml
++++ b/pnpm-workspace.yaml
+@@ -16 +16 @@ overrides:
+-  sharp: '^0.35.0'
++  sharp: '0.35.5'
+@@ -27,0 +28,7 @@ overrides:
++  # Compatible security fixes; keep existing parent release lines.
++  'firebase-admin@13>@fastify/busboy': '3.2.2'
++  'postcss@8>source-map-js': '1.2.2'
++  'magicast@0.3.5>source-map-js': '1.2.2'
++  '@tailwindcss/node@4>source-map-js': '1.2.2'
++  'express@4>proxy-addr': '2.0.8'
++  'express@5>proxy-addr': '2.0.8'
