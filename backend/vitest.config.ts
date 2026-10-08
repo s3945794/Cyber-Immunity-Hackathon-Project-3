@@ -1,7 +1,9 @@
 import { defineConfig } from 'vitest/config'
-import { resolve } from 'path'
+import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
+  // Unit tests must never load private application environment files.
+  envDir: false,
   test: {
     globals: true,
     environment: 'node',
@@ -20,6 +22,6 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: { '@': resolve(__dirname, './src') },
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
 })
