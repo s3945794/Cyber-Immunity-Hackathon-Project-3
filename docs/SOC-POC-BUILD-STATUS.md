@@ -1,7 +1,35 @@
 # SOC PoC build status
 
+## Owner production-build verification — 16 October 2026
+
+**Owner-reported PASS:** `pnpm --filter frontend build`, exit **0**, using
+**Next.js 16.3.8**, on 16 October 2026. This is the owner's normal-terminal
+verification of the current candidate after the latest F10 correction, not an
+agent rerun. Private configuration and build output were not inspected.
+
+The previously missing production frontend build is now recorded. The scoped
+Week 8 fixes are ready for final file/hunk and commit-procedure review; no
+already-passed checks need repeating for these documentation-only updates.
+No staging, commits or publication have occurred. HEAD remains
+`bc2f22bae66b6283c0acef0841cecfea28157a3c`; it is the baseline, not the fixes SHA.
+
+The compatible dependency patch was already applied and installed locally;
+do not apply it again. A successful build does **not** establish that every
+dependency vulnerability is fixed. Historical audit runs/counts below retain
+their separate attribution; no fresh audit or clean-audit claim is made.
+The earlier 8 October blocked attempts are historical, not current build status.
+
+F8 peer fresh-client DPoP login remains unresolved; the end-to-end migration is
+deferred, not approved. TideCloak security settings, PKCE/state/nonce, SDKs,
+accounts and private configuration are unchanged. Genuine Tide/Fabric access
+remains unverified and evidence remains locked. Overall PoC acceptance is still
+incomplete. Handoff and triage contain the separate owner/browser/emulator/unit
+results and remaining limitations.
+
+Historical build-status content begins below; retain its original dates and attribution.
+
 Updated: 8 October 2026 (Australia/Sydney). Overall PoC: **incomplete**.
-The candidate is ready for review. R-01 incident recovery is corrected and all
+Dependency remediation remains blocked as recorded below. R-01 incident recovery is corrected and all
 14 incident-detail tests passed in the owner normal-terminal run, including its
 six new regressions. Both typechecks/lint, all 114 backend and 98 frontend tests,
 and both production builds passed. Security/publication review and independent
@@ -9,7 +37,64 @@ startup remain incomplete. The latest owner evidence and earlier agent results
 are separately attributed below and in SOC-POC-HANDOFF.md.
 Real Tide/Fabric evidence access remains blocked and locked.
 
-## Current evidence — 8 October 2026
+## Latest dependency-security attempt — 8 October 2026
+
+**Dependency remediation is blocked; no finding is confirmed resolved.** The normal
+lockfile-only install failed its existing supply-chain policy check because public
+registry metadata could not be fetched (exit 1). Provisional manifest/override
+edits were restored exactly; the active manifests, workspace, lockfile and installed
+dependencies are unchanged. No security checks were weakened.
+
+| Evidence source                                                               | Recorded unresolved findings               |
+| ----------------------------------------------------------------------------- | ------------------------------------------ |
+| Owner-reported GitHub CI, pnpm audit --audit-level=high, exit 1               | 33: 3 Critical, 8 High, 20 Moderate, 2 Low |
+| Owner-supplied local JSON, pnpm audit --json; shell exit not included in JSON | 24: 3 Critical, 6 High, 14 Moderate, 1 Low |
+| Fresh final agent audit, pnpm audit --audit-level=high                        | Exit 1; EACCES/fetch failed; no new counts |
+
+The order/cause of the count discrepancy is unconfirmed. The lower local count
+does not prove fixes. Nine supplied CI advisory blocks match local entries and
+their locked versions; the incomplete CI listing cannot establish findings unique
+to either result. All 24 local finding versions match the lockfile. Installed Next
+could not be read (EPERM), so its installed version is unverified. The previous
+18-finding totals below are historical. The complete comparison is in
+[SOC-POC-HANDOFF.md](SOC-POC-HANDOFF.md#current-dependency-security-attempt--8-october-2026).
+
+| Executed check in this attempt            | Exit / actual result                                                                          |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------- |
+| pnpm run typecheck                        | 0; frontend and backend pass                                                                  |
+| pnpm run lint                             | 1; both packages stop before source linting with EPERM reading installed brace-expansion      |
+| pnpm run test:all                         | 1; backend 114/114 pass; frontend 37 pass, seven suites fail to resolve Next imports          |
+| pnpm run build                            | 1; frontend Next executable read fails with EPERM before compilation; chained backend skipped |
+| pnpm --filter backend run build           | 0; backend production compilation passes separately                                           |
+| pnpm audit --audit-level=high             | 1; no advisory data retrieved                                                                 |
+| Zero-context proposal applicability check | 0; proposal remains unapplied                                                                 |
+| git diff --check                          | 0; whitespace only                                                                            |
+
+These are checks of unchanged installed packages, not successful validation of
+updated dependencies. Existing owner typecheck/lint, 114 backend and 98 frontend
+tests, both builds and isolated Firestore persistence passes remain separate
+owner evidence.
+
+The expanded unapplied SOC-DEPENDENCY-PATCH-PLAN.patch includes Next 16.3.8 in both
+existing manifests, Sharp 0.35.5 and scoped Busboy 3.2.2, source-map-js 1.2.2,
+proxy-addr 2.0.8 and ip-address 10.7.1 overrides. It uses zero context, UTF-8 without
+BOM and LF endings; validation requires --unidiff-zero. Official sources, parent
+range checks and exact normal-PowerShell completion commands are in the handoff.
+
+Approval is needed for coordinated Vitest/coverage-v8 4.1.11 major migration in
+both packages and its backend pool-configuration migration. Tinypool is not forced
+outside Vitest 3's ^1.1.1 range. Braces has no verified published fix; the affected
+Next ESLint > fast-glob > micromatch chain remains. No unverified replacement or
+lint-rule removal is proposed. Remaining CI blocks are needed for full comparison.
+
+Only the proposal, handoff and this build-status file change. Application source,
+authentication, Tide SDKs and equal-role guardrails remain unchanged. No private
+configuration was inspected and no accounts, realms or Docker data were changed.
+Evidence remains locked after two approvals. Independent startup and live
+Tide/JWT/Fabric verification remain unverified; genuine scoped authority and expiry
+are unfinished. Nothing was staged, committed, pushed, merged or deployed.
+
+## Earlier owner verification — 8 October 2026
 
 | Check                         | Latest owner transcript result                                                                |
 | ----------------------------- | --------------------------------------------------------------------------------------------- |

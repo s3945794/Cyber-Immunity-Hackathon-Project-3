@@ -1,9 +1,521 @@
 # SOC PoC implementation handoff
 
+## Current Week 8 review candidate — 16 October 2026
+
+**Scoped fixes ready for final commit review; recorded execution gate passed.**
+Branch: `feature/soc-emergency-access-poc`; HEAD:
+`bc2f22bae66b6283c0acef0841cecfea28157a3c`. Fixes are uncommitted and unstaged;
+this HEAD does not identify their contents. The current triage's **Week 8
+publication review — 16 October 2026** is the authoritative evidence summary.
+
+The earlier compatible dependency patch was already applied and installed by
+the owner. Preserve it; do not reapply it. The older 8 October dependency/audit
+sections below describe their own attempts and remain historical. Their totals,
+failures and owner successes are not fresh checks of this worktree.
+
+Reviewed fixes: F1 shell-free JavaScript/native pnpm invocation; F3 fixed safe
+startup-stage diagnostics; bounded emulator shutdown/free-port/export-metadata
+gates; F10 fixed accessible feedback plus the approved initialization boolean
+and callback-state guard. No publication-blocking code defect was established
+by this source review. No runtime code changed in this preparation.
+
+Owner evidence, distinct from mocks and earlier 8 October results:
+
+- 15 October normal Windows backend suite: **135 tests / nine files passed**,
+  including all 21 startup tests. Agent loopback EACCES failures remain separate.
+- Actual Windows JavaScript pnpm version probe passed. Native pnpm.exe remains
+  **Not tested: no native executable found on PATH**; no installation/PATH change
+  is needed. Its mocked selection tests do not establish real native startup.
+- 15 October isolated emulator run using existing actual JDK 23.0.2.0 temporarily
+  first on terminal PATH: seed/export/reload, both gates and final PASS; exit 0;
+  original PATH restored in finally. Two prior failed runs stay historical.
+  This is a verified workaround, not proof of the shim's internal mechanism.
+- Live emulator-unavailable diagnostic: **SOC_STARTUP_EMULATOR**, exit 1, no ready
+  message. Demo services started; health 200 and unsigned incidents 401.
+- Owner login/pages and displayed request/approval/cancellation/audit retention
+  after restart passed; backup existed. Recovery alone does not prove export.
+  The earlier repeated Ctrl+C session had no completion confirmation. A later
+  16 October shutdown separately showed **Export complete**, then shutdown.
+- F10 preview and keyboard retry passed. Latest corrected flow on 16 October:
+  fresh Edge InPrivate, no blocking rules, dashboard without failure alert,
+  incident pages working, evidence locked. Real blocked-token failure-to-alert
+  remains **inconclusive**. Peer fresh-client DPoP remains **unresolved**.
+
+Automated evidence: latest 39 mocked launcher/runner tests passed; F3 focused
+21 startup cases and backend typecheck/lint/build passed; F10 original full
+frontend suite 120/13 files passed before the final correction; final correction
+49 affected tests/four files passed with four unchanged SDK cases skipped,
+plus frontend typecheck/lint/format. Later F8's five installed-function tests
+use synthetic collaborators, not live Tide; typecheck/targeted lint/format passed.
+No already-passed unchanged tests were rerun for this documentation review.
+
+**Owner production-build verification — 16 October 2026:**
+`pnpm --filter frontend build` **passed, exit 0, using Next.js 16.3.8**.
+Source: the owner's normal-terminal report in this conversation, not an agent
+rerun or inspection of private configuration/build output. This closes the
+post-F10 frontend production-build gate for the reported current candidate.
+It does not prove all dependency vulnerabilities are fixed or verify peer F8.
+Agent documentation checks remain separately attributed. No passed test/build
+needs repeating for these documentation-only updates.
+
+**Remaining publication procedure:** review the exact file/hunk groups below;
+staging and commits require later owner approval. Associate the eventual
+published SHA with the recorded evidence. No service/login repetition, audit,
+installation or dependency implementation is part of this preparation.
+
+This is a scoped review publication, not full fresh-client, Windows-native,
+live diagnostic matrix, screen-reader/contrast or Tide/Fabric acceptance.
+Evidence stays locked. F8 migration is explicitly **deferred, not approved**;
+its proposal and unresolved gates are retained in the triage. No Tide security
+setting, SDK, account, realm or authentication change is authorized.
+
+### Exact future commit groups — proposal only, nothing staged
+
+These groups partition all 32 current changed paths, with two explicitly shared
+files: this handoff and SOC-POC-BUILD-STATUS.md. Old dependency hunks and new
+owner/build/Week 8 summaries must be
+separated if commit preparation is later approved. Do not stage whole directories
+or stage a whole shared file. No commands below imply staging authorization.
+
+**A. Earlier dependency work — `fix(deps): apply compatible security patches`**
+
+```text
+docs/SOC-DEPENDENCY-PATCH-PLAN.patch
+docs/SOC-POC-BUILD-STATUS.md             [pre-existing dependency hunks only]
+docs/SOC-POC-HANDOFF.md                  [pre-existing dependency hunks only]
+frontend/package.json
+package.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
+```
+
+These seven pre-existing paths are not Week 8 implementation files. This review
+only adds new handoff hunks; existing dependency content is retained. Build
+approval policy and supply-chain protections remain unchanged. Audit totals
+retain their original source/date; no fresh audit is claimed.
+
+**B. F1 and emulator safeguards — `fix(demo): support pnpm executables and gate emulator reload`**
+
+```text
+scripts/demo.cjs
+scripts/test-emulator.cjs
+scripts/pnpm-launcher.cjs
+scripts/check-pnpm-launcher.cjs
+scripts/tests/demo-launchers.test.cjs
+```
+
+**C. F3 — `fix(backend): report safe startup stage diagnostics`**
+
+```text
+backend/src/server.ts
+backend/tests/unit/server.test.ts
+```
+
+**D. F10 — `fix(auth): show safe sign-in failures and guard callback recovery`**
+
+```text
+frontend/src/app/(auth)/auth/redirect/page.tsx
+frontend/src/app/(auth)/auth/signin/page.tsx
+frontend/src/components/auth/AuthRedirect.tsx
+frontend/src/components/auth/SignInFailureAlert.tsx
+frontend/src/components/auth/SignInPanel.tsx
+frontend/src/lib/tidecloak/signin-feedback.ts
+frontend/src/providers/AuthProvider.tsx
+frontend/src/types/auth.ts
+frontend/tests/unit/app/signin.test.tsx
+frontend/tests/unit/components/AuthRedirect.test.tsx
+frontend/tests/unit/components/SignInPanel.test.tsx
+frontend/tests/unit/investigations/auth-feedback-boundaries.test.tsx
+```
+
+**E. Evidence and setup limits — `docs(soc): reconcile Week 8 fixes and verification limits`**
+
+```text
+.env.example                           [public comments only]
+frontend/src/lib/tidecloak/config.ts    [comments only; no DPoP opt-in]
+frontend/tests/unit/investigations/dpop-integration-contract.test.ts
+docs/SOC-WEEK8-TRIAGE.md
+docs/SOC-POC-RUNBOOK.md
+docs/tide-mcp-learning.txt
+docs/SOC-POC-BUILD-STATUS.md             [new owner-build summary only]
+docs/SOC-POC-HANDOFF.md                  [new Week 8 summary/procedure only]
+```
+
+The installed-source contract test is an investigation test, not a DPoP migration.
+The group preserves peer attribution, historical failures and the future design;
+it does not approve or resolve F8. Do not add ignored exports, demo databases,
+backup data, private adapters, environment files, build artifacts or SDK files.
+The public `.env.example` is the sole environment-template path in these lists.
+
+### Final PowerShell commit procedure — future owner execution only
+
+No staging or commit was performed while preparing these commands. Run one group
+at a time only after approval. Group 1 must be committed before group 5 stages
+the shared documents' remaining changes. Do not apply the dependency patch again,
+install packages, operate services, rerun passed suites or push from this procedure.
+
+**Shared hunk selection for group 1:**
+
+| File                           | Stage in group 1                                                                                                                                             | Leave for group 5                                                                                                                                                                   |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/SOC-POC-HANDOFF.md`      | All pre-existing dependency edits in the dated 8 October body: dependency-security/audit/proposal changes and historical heading rename.                     | Entire inserted `Current Week 8 review candidate — 16 October 2026` section, through `Everything following this current summary is retained historical handoff content.`            |
+| `docs/SOC-POC-BUILD-STATUS.md` | Original 8 October intro change, `Latest dependency-security attempt — 8 October 2026` addition and rename to `Earlier owner verification — 8 October 2026`. | Entire inserted `Owner production-build verification — 16 October 2026` section, through `Historical build-status content begins below; retain its original dates and attribution.` |
+
+Git's default context can combine old and new changes. At `git add -p`, press
+`s` to split a mixed hunk, then `n` for the new 16 October summaries and `y` for
+the old dependency changes. Do not answer `y` to a mixed hunk or use `a` for all.
+If a mixed hunk cannot be split, quit with `q` and stop for review rather than
+stage the combined changes. Review the staged diff before each commit.
+
+The helper validates each staged path list and requests explicit confirmation.
+It does not verify semantic hunk selection: the group 1 diff review is required.
+Existing hooks must remain enabled; stop on failure or unexpected file changes.
+No reset, automatic cleanup, hook bypass or automatic push is included.
+
+```powershell
+Set-Location -LiteralPath 'C:\Users\Xnami\Tide MCP\soc-incident-report-protection'
+if ((git branch --show-current) -ne 'feature/soc-emergency-access-poc') {
+  throw 'Unexpected branch; stop'
+}
+if ((git rev-parse HEAD) -ne 'bc2f22bae66b6283c0acef0841cecfea28157a3c') {
+  throw 'Baseline changed; review the procedure before staging'
+}
+if (@(git diff --cached --name-only).Count -ne 0) {
+  throw 'Index is not empty; preserve it and stop'
+}
+
+function Confirm-SocCommit {
+  param([string]$Message, [string[]]$ExpectedFiles)
+  $socStaged = @(git diff --cached --name-only)
+  if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect the index' }
+  if (@(Compare-Object ($ExpectedFiles | Sort-Object -Unique) ($socStaged | Sort-Object -Unique)).Count -ne 0) {
+    throw 'Unexpected staged paths; preserve work and stop'
+  }
+  git diff --cached --check
+  if ($LASTEXITCODE -ne 0) { throw 'Staged whitespace check failed' }
+  git diff --cached --stat
+  git diff --cached
+  if ((Read-Host 'Review this group, including shared hunks. Type COMMIT to proceed') -cne 'COMMIT') {
+    throw 'Stopped for review; index left untouched'
+  }
+  git commit -m $Message
+  if ($LASTEXITCODE -ne 0) { throw 'Commit/hook failed; inspect changes and stop' }
+  if (@(git diff --cached --name-only).Count -ne 0) {
+    throw 'Unexpected staged changes remain; stop'
+  }
+  git status --short
+}
+
+# 1. Earlier compatible dependency patches: five full files and two partial files.
+$socDeps = @(
+  'docs/SOC-DEPENDENCY-PATCH-PLAN.patch'
+  'frontend/package.json'
+  'package.json'
+  'pnpm-lock.yaml'
+  'pnpm-workspace.yaml'
+)
+$socShared = @('docs/SOC-POC-HANDOFF.md', 'docs/SOC-POC-BUILD-STATUS.md')
+git add -- $socDeps
+if ($LASTEXITCODE -ne 0) { throw 'Dependency staging failed' }
+git add -p -- $socShared
+if ($LASTEXITCODE -ne 0) { throw 'Partial staging failed' }
+# Use s/n/y as described above. Neither new 16 October summary belongs here.
+Confirm-SocCommit -Message 'fix(deps): apply compatible security patches' -ExpectedFiles ($socDeps + $socShared)
+
+# 2. F1 launcher and emulator safeguards.
+$socLaunchers = @(
+  'scripts/demo.cjs'
+  'scripts/test-emulator.cjs'
+  'scripts/pnpm-launcher.cjs'
+  'scripts/check-pnpm-launcher.cjs'
+  'scripts/tests/demo-launchers.test.cjs'
+)
+git add -- $socLaunchers
+if ($LASTEXITCODE -ne 0) { throw 'Launcher staging failed' }
+Confirm-SocCommit -Message 'fix(demo): support pnpm executables and gate emulator reload' -ExpectedFiles $socLaunchers
+
+# 3. F3 startup diagnostics.
+$socStartup = @('backend/src/server.ts', 'backend/tests/unit/server.test.ts')
+git add -- $socStartup
+if ($LASTEXITCODE -ne 0) { throw 'Startup staging failed' }
+Confirm-SocCommit -Message 'fix(backend): report safe startup stage diagnostics' -ExpectedFiles $socStartup
+
+# 4. F10 authentication feedback and approved follow-up correction.
+$socAuth = @(
+  'frontend/src/app/(auth)/auth/redirect/page.tsx'
+  'frontend/src/app/(auth)/auth/signin/page.tsx'
+  'frontend/src/components/auth/AuthRedirect.tsx'
+  'frontend/src/components/auth/SignInFailureAlert.tsx'
+  'frontend/src/components/auth/SignInPanel.tsx'
+  'frontend/src/lib/tidecloak/signin-feedback.ts'
+  'frontend/src/providers/AuthProvider.tsx'
+  'frontend/src/types/auth.ts'
+  'frontend/tests/unit/app/signin.test.tsx'
+  'frontend/tests/unit/components/AuthRedirect.test.tsx'
+  'frontend/tests/unit/components/SignInPanel.test.tsx'
+  'frontend/tests/unit/investigations/auth-feedback-boundaries.test.tsx'
+)
+git add -- $socAuth
+if ($LASTEXITCODE -ne 0) { throw 'Auth staging failed' }
+Confirm-SocCommit -Message 'fix(auth): show safe sign-in failures and guard callback recovery' -ExpectedFiles $socAuth
+
+# 5. Documentation/setup limitations; shared documents now have only group 5 changes.
+$socDocs = @(
+  '.env.example'
+  'frontend/src/lib/tidecloak/config.ts'
+  'frontend/tests/unit/investigations/dpop-integration-contract.test.ts'
+  'docs/SOC-WEEK8-TRIAGE.md'
+  'docs/SOC-POC-RUNBOOK.md'
+  'docs/tide-mcp-learning.txt'
+  'docs/SOC-POC-BUILD-STATUS.md'
+  'docs/SOC-POC-HANDOFF.md'
+)
+git add -- $socDocs
+if ($LASTEXITCODE -ne 0) { throw 'Documentation staging failed' }
+Confirm-SocCommit -Message 'docs(soc): reconcile Week 8 fixes and verification limits' -ExpectedFiles $socDocs
+
+# Read-only final review; do not push or merge.
+git log -5 --oneline
+git status --short --untracked-files=all
+git diff --cached --name-only
+```
+
+Coverage: 7/5/2/12/8 file memberships respectively, **32 unique files** because
+handoff and build status appear in groups 1 and 5. Whole-file staging of either
+shared document is appropriate in group 5 only after group 1 has committed the
+correct dependency hunks. Any unexpected residual path stops publication review;
+do not add it automatically.
+
+These explicit lists exclude actual environment files, credentials, private
+adapters, keys, SDK/node_modules, build output, exports, emulator databases,
+backups and other generated files. `.env.example` contains public comments only;
+its actual private counterpart is excluded. No clean-audit or full PoC/F8/Tide
+acceptance is implied by the commit messages or owner production-build pass.
+
+Earlier documentation-review checks passed: targeted new-section formatting,
+`git diff --check`, exact group coverage of all 32 paths, preservation of the
+other 29 files and byte-for-byte retention of pre-existing handoff content.
+The document scan found no private-key blocks or access-key identifiers; it is
+not a general security audit. That preparation changed triage, handoff and
+existing learning-log entries. This owner-build update changes handoff, build
+status and triage only. Same branch/HEAD, 19 tracked modifications and
+13 untracked files; index empty. No tests or services rerun, dependencies changed,
+or staging/commits/pushes performed.
+
+Everything following this current summary is retained historical handoff content.
+
 Date: 8 October 2026 (Australia/Sydney). Branch: feature/soc-emergency-access-poc.
 Original candidate baseline: 27b09cbc52b6fb6ed69803b38c55e7f29c6699ee.
 
-## Unapplied dependency proposal repair — 8 October 2026
+## Current dependency-security attempt — 8 October 2026
+
+HEAD is bc2f22bae66b6283c0acef0841cecfea28157a3c on
+feature/soc-emergency-access-poc and remains unchanged. **No dependency fix was
+installed or resolved in this attempt.** Normal lockfile regeneration was blocked
+by registry access during pnpm's supply-chain policy check. Only the expanded
+unapplied proposal, this handoff and SOC-POC-BUILD-STATUS.md change.
+
+### Separate audit results and evidence limits
+
+| Source                                                                     | Command / options                                        | Actual recorded result                                                                                 |
+| -------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Owner-reported GitHub CI                                                   | pnpm audit --audit-level=high                            | Exit 1; 33 findings: 3 Critical, 8 High, 20 Moderate, 2 Low                                            |
+| Owner-provided local JSON, outside Git at $env:TEMP/soc-current-audit.json | pnpm audit --json, saved by Out-File with UTF-8 encoding | 24 findings: 3 Critical, 6 High, 14 Moderate, 1 Low; this file does not record the shell exit code     |
+| Fresh final agent audit in this attempt                                    | pnpm audit --audit-level=high                            | Exit 1; EACCES calling the public advisory endpoint, then fetch failed; no JSON or new counts obtained |
+
+The owner cannot confirm the order of the CI and local results. The lower local
+count is not evidence of remediation. The earlier 18-finding total is historical.
+The local JSON was read from the explicitly supplied temporary path and preserved
+outside the repository; it is not part of the publication candidate.
+
+The nine visible CI advisory blocks all match local JSON entries by package and
+GHSA. Every local audit finding version matches this lockfile. Both direct Next
+pins are 16.3.6; its locked root and frontend paths match the visible CI paths.
+The local JSON additionally includes frontend > @tidecloak/nextjs > next, which
+cannot be classified as local-only because the CI listing is incomplete. Installed Next manifest reads fail with EPERM, so its installed
+version is explicitly unverified. Other installed versions below were read from
+their public package manifests.
+
+| Package         | Shared advisory                                                          | Local severity | Locked | Installed        | Local path count |
+| --------------- | ------------------------------------------------------------------------ | -------------- | ------ | ---------------- | ---------------- |
+| @fastify/busboy | [GHSA-xjh9-v7x6-24jw](https://github.com/advisories/GHSA-xjh9-v7x6-24jw) | high           | 3.2.0  | 3.2.0            | 2                |
+| @fastify/busboy | [GHSA-x8mw-p69m-v3mx](https://github.com/advisories/GHSA-x8mw-p69m-v3mx) | high           | 3.2.0  | 3.2.0            | 2                |
+| braces          | [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) | high           | 3.0.3  | 3.0.3            | 1                |
+| source-map-js   | [GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q) | high           | 1.2.1  | 1.2.1            | 20               |
+| proxy-addr      | [GHSA-jqcg-44mw-7w3h](https://github.com/advisories/GHSA-jqcg-44mw-7w3h) | critical       | 2.0.7  | 2.0.7            | 4                |
+| tinypool        | [GHSA-5gmw-xhrv-c9v3](https://github.com/advisories/GHSA-5gmw-xhrv-c9v3) | critical       | 1.1.1  | 1.1.1            | 4                |
+| tinypool        | [GHSA-85c8-ppgw-ccpr](https://github.com/advisories/GHSA-85c8-ppgw-ccpr) | critical       | 1.1.1  | 1.1.1            | 4                |
+| sharp           | [GHSA-wq5f-xc86-pv6w](https://github.com/advisories/GHSA-wq5f-xc86-pv6w) | high           | 0.35.4 | 0.35.4           | 3                |
+| next            | [GHSA-cjq9-62q9-8jv4](https://github.com/advisories/GHSA-cjq9-62q9-8jv4) | high           | 16.3.6 | unreadable EPERM | 3                |
+
+P1–P6 in the retained complete path catalogue below still match the local JSON:
+Busboy has both direct and firebase-functions > firebase-admin paths; Proxy-addr
+has all four Express consumers; Tinypool has direct Vitest and coverage-provider
+paths in both packages; Source-map-js has all 20 PostCSS, Magicast and Tailwind
+paths. The current Next paths are:
+
+```text
+.>next
+frontend>@tidecloak/nextjs>next
+frontend>next
+```
+
+The following 15 local entries are not among the nine supplied CI blocks. They
+cannot be called local-only findings because the CI listing is incomplete.
+
+| Package         | Local advisory                                                           | Severity | Locked | Installed        |
+| --------------- | ------------------------------------------------------------------------ | -------- | ------ | ---------------- |
+| uuid            | [GHSA-w5hq-g745-h8pq](https://github.com/advisories/GHSA-w5hq-g745-h8pq) | moderate | 9.0.1  | 9.0.1            |
+| qs              | [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx) | moderate | 6.15.3 | 6.15.3           |
+| qs              | [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g) | moderate | 6.15.3 | 6.15.3           |
+| vitest          | [GHSA-82fw-gwwq-j7x9](https://github.com/advisories/GHSA-82fw-gwwq-j7x9) | moderate | 3.2.7  | 3.2.7            |
+| @vitest/mocker  | [GHSA-82fw-gwwq-j7x9](https://github.com/advisories/GHSA-82fw-gwwq-j7x9) | moderate | 3.2.7  | 3.2.7            |
+| ip-address      | [GHSA-rpw4-54j3-4h4q](https://github.com/advisories/GHSA-rpw4-54j3-4h4q) | moderate | 10.3.1 | 10.3.1           |
+| ip-address      | [GHSA-2vr4-cq9g-pvrc](https://github.com/advisories/GHSA-2vr4-cq9g-pvrc) | moderate | 10.3.1 | 10.3.1           |
+| ip-address      | [GHSA-j6r3-76f7-8jcv](https://github.com/advisories/GHSA-j6r3-76f7-8jcv) | moderate | 10.3.1 | 10.3.1           |
+| ip-address      | [GHSA-h3mg-xc3c-68pw](https://github.com/advisories/GHSA-h3mg-xc3c-68pw) | moderate | 10.3.1 | 10.3.1           |
+| @fastify/busboy | [GHSA-gxm5-99cw-xjw9](https://github.com/advisories/GHSA-gxm5-99cw-xjw9) | moderate | 3.2.0  | 3.2.0            |
+| next            | [GHSA-3w37-wq28-93x7](https://github.com/advisories/GHSA-3w37-wq28-93x7) | moderate | 16.3.6 | unreadable EPERM |
+| next            | [GHSA-4jqv-mc3x-m676](https://github.com/advisories/GHSA-4jqv-mc3x-m676) | moderate | 16.3.6 | unreadable EPERM |
+| next            | [GHSA-39w2-rjm5-chcv](https://github.com/advisories/GHSA-39w2-rjm5-chcv) | low      | 16.3.6 | unreadable EPERM |
+| next            | [GHSA-f87g-xv8r-7p7x](https://github.com/advisories/GHSA-f87g-xv8r-7p7x) | moderate | 16.3.6 | unreadable EPERM |
+| next            | [GHSA-mcj8-r9mp-w47p](https://github.com/advisories/GHSA-mcj8-r9mp-w47p) | moderate | 16.3.6 | unreadable EPERM |
+
+**No finding is confirmed to occur only in CI or only locally.** The remaining
+CI blocks, CI lockfile/commit identity and pnpm version, and its installation
+options for development/optional dependencies were not supplied. The threshold
+option and JSON output format are known; they do not establish why totals differ.
+A complete CI JSON is needed to finish that comparison. Do not invent the missing
+advisories, versions, chronology or cause.
+
+### Verified compatible candidates — expanded proposal, still unapplied
+
+The old proposal was reviewed rather than applied blindly. The replacement
+docs/SOC-DEPENDENCY-PATCH-PLAN.patch retains its compatible security edits and adds
+the two Next pins and the scoped ip-address fix. It remains a zero-context unified
+patch, UTF-8 without BOM, with LF endings. No lockfile integrity values were
+fabricated. The following versions are candidates, not installed fixes:
+
+| Target          | Proposed change                                                            | Official evidence and compatibility                                                                                                                                                                                                                                                                                                                                                                                         |
+| --------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Next            | Root and frontend 16.3.6 → 16.3.8                                          | [Advisory](https://github.com/advisories/GHSA-cjq9-62q9-8jv4), [release](https://github.com/vercel/next.js/releases/tag/v16.3.8), [manifest](https://raw.githubusercontent.com/vercel/next.js/v16.3.8/packages/next/package.json). Same patch line; Node >=20.9.0, compatible React 19 peers and TideCloak's existing Next >=13.5.0 peer.                                                                                   |
+| proxy-addr      | Existing Express 4 and 5 consumers → 2.0.8                                 | [Advisory](https://github.com/jshttp/proxy-addr/security/advisories/GHSA-jqcg-44mw-7w3h), [2.0.8 manifest](https://raw.githubusercontent.com/jshttp/proxy-addr/v2.0.8/package.json). Accepted by installed parent ~2.0.7 and ^2.0.7 ranges.                                                                                                                                                                                 |
+| @fastify/busboy | firebase-admin@13 > @fastify/busboy → 3.2.2                                | [Boundary advisory](https://github.com/advisories/GHSA-xjh9-v7x6-24jw), [header advisory](https://github.com/advisories/GHSA-x8mw-p69m-v3mx), [3.2.2 manifest](https://raw.githubusercontent.com/fastify/busboy/v3.2.2/package.json). Satisfies ^3.0.0; also includes the separately recorded Moderate fix.                                                                                                                 |
+| source-map-js   | Three existing PostCSS 8, Magicast 0.3.5 and Tailwind node 4 edges → 1.2.2 | [Advisory](https://github.com/advisories/GHSA-68fv-2mgg-jv7q), [manifest](https://raw.githubusercontent.com/7rulnik/source-map-js/v1.2.2/package.json). Satisfies all installed ^1.2.0/^1.2.1 parent ranges.                                                                                                                                                                                                                |
+| Sharp           | Existing override → 0.35.5                                                 | [Advisory](https://github.com/lovell/sharp/security/advisories/GHSA-wq5f-xc86-pv6w), [manifest](https://raw.githubusercontent.com/lovell/sharp/v0.35.5/package.json). Same 0.35 release line; Node >=20.9.0.                                                                                                                                                                                                                |
+| ip-address      | express-rate-limit@8 > ip-address → 10.7.1                                 | [Subnet advisory](https://github.com/advisories/GHSA-j6r3-76f7-8jcv), [input-length advisory](https://github.com/advisories/GHSA-h3mg-xc3c-68pw), [manifest](https://raw.githubusercontent.com/beaugunderson/ip-address/v10.7.1/package.json). Satisfies installed ^10.2.0; the exact two paths remain backend > express-rate-limit > ip-address and backend > @types/express-rate-limit > express-rate-limit > ip-address. |
+
+Installed parent ranges were checked with SemVer before the provisional edits.
+No new direct production dependency, Tide SDK update, unsupported major override,
+advisory ignore or audit-threshold reduction was introduced. A successful updated
+graph, installation, full checks and fresh audit are still required.
+
+### Blocked execution and actual checks
+
+The provisional root/frontend Next pins and workspace overrides were written,
+then **pnpm install --lockfile-only --ignore-scripts --fetch-retries=0 returned
+exit 1**: its supply-chain policy check could not fetch public registry metadata
+for the existing 898 entries (ERR_PNPM_META_FETCH_FAIL). Scripts were suppressed
+for this lockfile-only attempt; the package security policy was retained.
+No lockfile rewrite or dependency installation completed. Only those provisional
+edits were restored to their exact starting bytes, after verifying no concurrent
+changes. The active manifests, workspace and lockfile match the starting state.
+
+The new untracked .pnpm-store/v11/index.db created during this attempt was removed
+without reading its contents; no existing user cache, configuration or demo data
+was discarded. No further registry retry was made after the final audit failure.
+
+| Check                                                                    | Actual exit / result                                                                                                             |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| pnpm run typecheck                                                       | 0; both packages pass                                                                                                            |
+| pnpm run lint                                                            | 1; both ESLint processes fail before source linting with EPERM opening installed brace-expansion@1.1.21/index.js                 |
+| pnpm run test:all                                                        | 1; backend 114 tests / 8 files pass; frontend 37 tests / 4 files pass, seven suites fail to resolve next/link or next/navigation |
+| pnpm run build                                                           | 1; frontend Next executable read fails with EPERM before compilation; chained backend build is not reached                       |
+| pnpm --filter backend run build                                          | 0; backend production compilation passes separately                                                                              |
+| pnpm audit --audit-level=high                                            | 1; EACCES/fetch failed, no current counts                                                                                        |
+| git apply --check --unidiff-zero -- docs/SOC-DEPENDENCY-PATCH-PLAN.patch | 0; applicability only, not an applied dependency fix                                                                             |
+| git diff --check                                                         | 0; whitespace check, not runtime verification                                                                                    |
+
+These checks ran against the unchanged installed dependencies. They do not verify
+the proposed updated packages. Previous owner passes remain valid owner evidence
+and are separate from this attempt's failures.
+
+### Remaining findings and approval needed
+
+**Resolved findings: none.** Both supplied audit results remain unresolved:
+CI 33 (3 Critical, 8 High, 20 Moderate, 2 Low) and local JSON 24
+(3 Critical, 6 High, 14 Moderate, 1 Low). A failed fresh audit does not establish
+reduced counts or exploitability in this application.
+
+Tinypool 1.1.1 remains on all four P5 paths. Vitest 3.2.7 declares ^1.1.1, which
+excludes the published 2.1.1/2.1.2 fixes. Under the owner's major-upgrade restriction,
+approval is needed to change **vitest and @vitest/coverage-v8 to 4.1.11 in both
+frontend/package.json and backend/package.json**, migrate the existing backend
+poolOptions.forks.singleFork configuration using the [official migration guide](https://vitest.dev/guide/migration/),
+and normally regenerate the lockfile. Preserve envDir: false, mocked unit boundaries
+and the existing backend fork/isolation intent. The [Vitest manifest](https://raw.githubusercontent.com/vitest-dev/vitest/v4.1.11/packages/vitest/package.json)
+has no direct Tinypool dependency and supports Node 24; the
+[coverage manifest](https://raw.githubusercontent.com/vitest-dev/vitest/v4.1.11/packages/coverage-v8/package.json)
+is from the same release. The [Vitest/mocker advisory](https://github.com/advisories/GHSA-82fw-gwwq-j7x9)
+also identifies 4.1.11 as the fix. Verify the complete graph and both unit/coverage
+runs before claiming Tinypool removal or compatibility. This migration was not
+applied, and no incompatible Tinypool override is proposed.
+
+Braces 3.0.3 remains on frontend > eslint-config-next > @next/eslint-plugin-next >
+fast-glob > micromatch > braces. The local audit's >=3.0.4 suggestion is not a
+verified published fix: the [official advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)
+lists patched versions as None and the [maintainer manifest](https://raw.githubusercontent.com/micromatch/braces/master/package.json)
+still names 3.0.3. Even the [Next ESLint plugin 16.3.8 manifest](https://raw.githubusercontent.com/vercel/next.js/v16.3.8/packages/eslint-plugin-next/package.json)
+retains fast-glob 3.3.1. Supported routes are an upstream verified fixed release
+accepted by the existing parents, or a documented parent migration that removes
+this chain and preserves lint coverage. No such replacement is established here;
+no guessed Braces version, package alias, dropped lint rule or local patch was used.
+
+The current official [qs advisory](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx)
+lists 6.16.0 as fixed, while this local JSON suggests >=6.15.4. Installed Express 4
+and body-parser 1.x ranges stay on ~6.15.x, so no unsupported 6.16 override was
+applied. uuid 9→11 also needs a supported parent migration; missing CI-only details
+and all remaining Moderate/Low entries remain unresolved.
+
+### Normal PowerShell completion path after owner review
+
+Use the already-authorised compatible proposal in a normal terminal with registry
+access. This does not authorise the separate major migration above. Do not bypass
+supply-chain policy failures. Capture exits immediately and stop application
+validation if dependency installation fails.
+
+```powershell
+git apply --check --unidiff-zero -- docs/SOC-DEPENDENCY-PATCH-PLAN.patch
+if ($LASTEXITCODE -ne 0) { throw 'Proposal applicability failed' }
+git apply --unidiff-zero -- docs/SOC-DEPENDENCY-PATCH-PLAN.patch
+if ($LASTEXITCODE -ne 0) { throw 'Proposal application failed' }
+pnpm install --lockfile-only --ignore-scripts --fetch-retries=0
+if ($LASTEXITCODE -ne 0) { throw 'Lockfile generation failed; preserve security policy' }
+pnpm install --frozen-lockfile
+if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed' }
+pnpm run typecheck
+Write-Output "typecheck exit: $LASTEXITCODE"
+pnpm run lint
+Write-Output "lint exit: $LASTEXITCODE"
+pnpm run test:all
+Write-Output "unit tests exit: $LASTEXITCODE"
+pnpm run build
+Write-Output "production build exit: $LASTEXITCODE"
+pnpm audit --audit-level=high --json --fetch-retries=0 |
+  Out-File -FilePath (Join-Path $env:TEMP 'soc-after-security-audit.json') -Encoding utf8
+Write-Output "audit exit: $LASTEXITCODE"
+git diff --check
+Write-Output "diff check exit: $LASTEXITCODE"
+```
+
+Keep audit output outside Git. No commits or pushes are authorised.
+Authentication, equal SOC roles and locked evidence remain unchanged. Owner
+Firestore persistence verification is preserved; independent laptop startup and
+live Tide/JWT/Fabric checks remain unverified. Genuine Tide encryption, scoped
+authority and expiry remain unfinished; two application approvals still do not
+unlock evidence.
+
+## Historical unapplied dependency proposal repair — earlier 8 October 2026
 
 At this repair's start, HEAD is 8d59f4009c626e828216c792417b8b28533061bf on
 feature/soc-emergency-access-poc. The existing 15-file staged documentation group

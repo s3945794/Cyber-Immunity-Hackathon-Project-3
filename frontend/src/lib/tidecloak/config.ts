@@ -6,11 +6,12 @@
  * public configuration from the root `.env` (`docs/ENV-VARS.md`), so the
  * connection details are provided as `NEXT_PUBLIC_TIDECLOAK_*` env vars instead.
  *
- * Only the OIDC/PKCE fields needed for front-channel login are read here. The
- * Tide-specific adapter fields (`jwk`, `vendorId`, `homeOrkUrl`,
- * `client-origin-auth-*`) are used for DPoP, end-to-end encryption and
- * server-side JWKS verification — none of which is wired in this branch. They
- * are deferred to `feature/tidecloak-protect`.
+ * This browser integration uses OIDC/PKCE and Bearer API requests. SDK 0.14.20
+ * supports explicit `useDPoP` opt-in, which this config does not supply.
+ * Public-client mode and PKCE do not enable DPoP. A DPoP-required client needs
+ * coordinated proof generation, API transport and backend proof validation;
+ * do not enable just the SDK flag or weaken the client's requirements.
+ * Backend JWT/JWKS verification is configured separately and remains active.
  */
 
 /** Keys consumed by `IAMService.initIAM` for front-channel mode. */

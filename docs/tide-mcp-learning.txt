@@ -1150,10 +1150,52 @@ DPoP proof the server required.
         bound tokens" setting and the SDK token-exchange implementation.
       - Have the SDK safely surface the OAuth error code and reason without
         exposing tokens.
-      - Document when DPoP may be temporarily disabled for local development,
-        and how to implement it correctly before production.
+      - Document the supported proof-aware integration and its prerequisites.
+        Do not recommend disabling DPoP as a setup workaround (16 October update).
   * How it helps others: any builder using the front-channel SDK against a
     DPoP-required client hits this loop with only a generic error to go on.
+
+9. Local F8 follow-up (16 October 2026; source evidence, not live verification)
+  * SDK 0.14.20 already supports explicit useDPoP opt-in. buildInitOptions
+    forwards it only when configured and retains PKCE S256. The installed
+    exchange generates a proof only when its DPoP provider is initialized.
+  * This application's config has no opt-in; incident/access calls use Bearer
+    tokens. Backend JWT verification exists but DPoP proof/key-binding/replay
+    verification does not. Enabling only a browser flag is not a secure fix.
+  * Confirmed setup-documentation gap corrected: public template and config
+    comments now distinguish the Bearer integration from DPoP-required setup.
+    The old comment saying server-side JWKS was unwired was also corrected.
+    No runtime security behaviour, SDK, dependency or client policy changed.
+  * Five exact installed-function contract tests passed with synthetic
+    collaborators, not live Tide. Initial helper discovery failed on named
+    function expressions; the helper was corrected, not the SDK. Tests cover
+    opt-in absence/forwarding, retained S256/verifier, conditional proof
+    generation and rejection without retry. They do not prove live DPoP login.
+  * Peer report records tideorg/tidecloak-dev:latest and mytidecloak, with
+    software version/digest not obtained. No version incompatibility is
+    established. Original failure cause is not confirmed; a DPoP-required
+    policy plus absent proof is a source-supported conditional explanation.
+  * Official docs.tide.org/Core-Concepts/dpop and the Next.js how-to describe
+    opt-in, verification page, proof-aware requests and server verification;
+    they do not establish a version matrix. No teammate action is requested.
+  * Smallest next action requires approval for coordinated strict opt-in,
+    reviewed pinned-version verification page with issuer/client checks,
+    proof-aware API transport, backend proof/binding/replay checks and tests.
+    Preserve PKCE/state/nonce/JWT validation. Do not repeat the historical
+    requirement-disable workaround. See the existing F8 triage section.
+  * Owner login success remains separate from unresolved peer fresh-client
+    DPoP login. Blocked-token failure-to-alert remains inconclusive.
+
+10. Publication review decision (16 October 2026)
+  * Owner explicitly deferred the proposed end-to-end DPoP migration. F8 stays
+    unresolved. Do not implement strict opt-in, install a validator, or change
+    any TideCloak security setting from the proposal alone.
+  * The current triage retains the future scope and its unresolved artifact,
+    token-profile/audience, offline-key, server and shared-state gates. No
+    package/version or configuration change has been selected or approved.
+  * Owner normal login success, including fresh Edge InPrivate on 16 October,
+    does not resolve the peer's missing-proof report. Root cause of that
+    historical exchange is still not confirmed.
 
 ============================================================
 ISSUE 011 - Global X-Frame-Options DENY blocked TideCloak silent SSO
@@ -1275,6 +1317,27 @@ restart was required):
   * How it helps others: developers get a working, still-secure header
     configuration on the first pass, and a clear signal when the silent
     check is blocked.
+
+9. Week 8 evidence boundary update (16 October 2026)
+  * Keep the verified historical frame-header defect above separate from the
+    later blocked-token experiment. That experiment referenced silent-check-
+    sso.html, but did not confirm the fixed failure alert appeared. Its cause
+    remains unknown; it does not establish a recurrence of this header bug.
+  * Installed-source synthetic tests separately showed initialization failure
+    reporting and silent-SSO failure returning unauthenticated state. Current
+    application feedback presents an SDK initialization-failure boolean and
+    uses SDK callback state after query cleanup. SDK validation is unchanged;
+    ordinary unauthenticated silent SSO is not labelled a failure.
+  * Final application correction: 49 affected tests/four files passed, four
+    unchanged SDK cases skipped; frontend typecheck/lint/format passed. These
+    are automated application/mocked checks, not a live SDK failure pass.
+  * Owner preview/keyboard retry passed. On 16 October fresh Edge InPrivate
+    login with blocking removed passed; dashboard had no failure alert,
+    incident pages worked and protected evidence stayed locked. Production
+    frontend build after this correction is not yet recorded.
+  * No frame/header change or new Tide issue was introduced by this review.
+    Do not request broad token blocking or logpoint tracing again. F8 and
+    genuine Tide/Fabric verification remain separate unresolved work.
 
 ============================================================
 ISSUE 012 - TideCloak browser authentication redirects required
