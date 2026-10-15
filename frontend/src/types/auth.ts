@@ -30,6 +30,8 @@ export interface AuthContextValue {
   authenticated: boolean
   /** `true` while the TideCloak SDK restores/initialises the session. */
   loading: boolean
+  /** Presentation-only SDK initialization failure; absence means false. */
+  initializationFailed?: boolean
   /** Send the browser to TideCloak to authenticate. */
   login: () => Promise<void>
   /** End the TideCloak session and return to the app. */
