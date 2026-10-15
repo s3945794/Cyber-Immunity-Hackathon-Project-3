@@ -3,6 +3,7 @@ const { spawn } = require('node:child_process')
 const { existsSync } = require('node:fs')
 const path = require('node:path')
 const { createServer } = require('node:net')
+const { getPnpmInvocation } = require('./pnpm-launcher.cjs')
 const root = path.resolve(__dirname, '..')
 const action = process.argv[2]
 const cli = process.env.npm_execpath
@@ -27,12 +28,12 @@ async function unused(port) {
   })
 }
 async function main() {
+  let command = process.execPath
   let args
   if (action === 'emulator') {
     for (const port of [8085, 4405, 4505]) await unused(port)
     const data = path.join(root, 'demo-data', 'firestore')
     args = [
-      cli,
       'dlx',
       'firebase-tools@14.16.0',
       'emulators:start',
@@ -45,17 +46,21 @@ async function main() {
       '--export-on-exit=' + data,
     ]
     if (existsSync(path.join(data, 'firebase-export-metadata.json'))) args.push('--import=' + data)
+    const invocation = getPnpmInvocation(cli, args)
+    command = invocation.command
+    args = invocation.args
   } else if (action === 'backend') {
     args = ['--env-file-if-exists=backend/.env', 'backend/lib/server.js']
     // CLI switches override private cloud/project values for this explicit demo process.
     env.CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3000'
     env.PORT = '5001'
   } else throw new Error('Unknown demo command')
-  const child = spawn(process.execPath, args, {
+  const child = spawn(command, args, {
     cwd: root,
     env,
     stdio: 'inherit',
     windowsHide: true,
+    shell: false,
   })
   // Windows console Ctrl+C reaches inherited child processes. Node kill() would
   // terminate them forcibly on Windows and can interrupt emulator export.
