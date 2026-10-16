@@ -35,6 +35,15 @@ overrides:
   'express@4>proxy-addr': '2.0.8'
   'express@5>proxy-addr': '2.0.8'
   'express-rate-limit@8>ip-address': '10.7.1'
+  # Compatible qs remediation: upgrade the Express 4/body-parser 1 parents
+  # before pinning their qs edges; keep Firebase Functions and Express 5.
+  'firebase-functions@6>express': '4.22.3'
+  'express@4>body-parser': '1.20.8'
+  'express@4>qs': '6.16.0'
+  'body-parser@1>qs': '6.16.0'
+  'express@5>qs': '6.16.0'
+  'body-parser@2>qs': '6.16.0'
+  'superagent@10>qs': '6.16.0'
 
 allowBuilds:
   '@firebase/util': true
