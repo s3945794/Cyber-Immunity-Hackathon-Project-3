@@ -1,5 +1,11 @@
 # Week 8 testing-findings triage
 
+Latest follow-up: **Frontend CI test portability — published HEAD 9666691**
+below records the current test-only correction and verification. Earlier
+readiness, Git status and check statements retain their original snapshot
+attribution; the owner has since published the reviewed commits. F8 remains
+unresolved and DPoP migration remains deferred.
+
 Current review: **Week 8 publication review — 16 October 2026** below is the
 current readiness summary. Original findings, peer attribution and dated checks
 are retained as historical evidence. Earlier references to documentation-only
@@ -1509,3 +1515,110 @@ blocks or access-key identifiers; that limited scan is not a general security
 audit. No services/private files/Tide MCP/dependency changes or Git mutations
 occurred. Existing learning ISSUE 010/011 were updated in place; ordinary
 launcher/backend/application issues were not invented as new Tide issues.
+
+## Frontend CI test portability — published HEAD 9666691
+
+Source baseline: `feature/soc-emergency-access-poc` at
+`96666911cd0fe5c78f625d8864b0aec19e24702d`, initially clean. This follow-up fixes
+only the frontend investigation test and updates this triage. No runtime auth,
+SDK, dependency, lockfile, CI configuration or service changes are included.
+
+### Latest supplied CI evidence, separate from local checks
+
+- Owner reports **138 frontend tests passed**, with
+  `frontend/tests/unit/investigations/dpop-integration-contract.test.ts` failing
+  before its tests executed: ENOENT reading the hardcoded
+  `node_modules/.pnpm/@tidecloak+js@0.14.20/node_modules/@tidecloak/js/dist/esm/src/utils/initOptions.js`.
+- Backend tests and lint/typecheck passed in that supplied CI evidence.
+- Security audit: **2 Critical, 1 High, 7 Moderate**, separately attributed to
+  this supplied CI result. No advisory JSON/package list was supplied here.
+  Do not merge these counts with earlier peer/owner audits or claim all findings
+  fixed. No audit was rerun during the test correction.
+
+### Confirmed defect, resolution evidence and unknowns
+
+The suite synchronously reads `buildInitOptions` while its describe block is
+being collected. That private-file read occurs before any test runs, explaining
+why a single missing file aborts the suite instead of producing a test failure.
+Its path is constructed from process.cwd(), a specific pnpm virtual-store name,
+a pinned version and a private dist file, bypassing package resolution entirely.
+This is a confirmed test-portability defect, not a confirmed SDK incompatibility.
+
+The workflow uses Ubuntu, Node 22, pnpm 10 and `pnpm install --frozen-lockfile`;
+frontend tests run through the existing workspace filter. The committed lockfile
+pins `@tidecloak/nextjs`, `@tidecloak/react` and `@tidecloak/js` to 0.14.20.
+Read-only Node resolution from Next.js through React reaches installed JS
+0.14.20 locally. Its public exports contain no initOptions entry. The hardcoded
+helper happens to exist locally, but that local success does not establish a
+published package contract or a portable installation layout. Local tools for
+this run: Node **24.19.0**, pnpm **11.20.0**.
+
+**Evidence limit:** CI's ENOENT establishes absence at that exact path, not why
+its package/layout differs. The exact CI package file inventory was not provided.
+Public-registry metadata/artifact inspection could not be completed: the web
+access attempt was unavailable, and one sandbox request plus one approved
+outside-sandbox retry both returned `fetch failed`. No tarball was installed or
+written, and no further retry was made. It is therefore **not established** that
+the published tarball omits the helper, that pnpm 10 caused it, or that SDK
+versions differ. Do not invent a version/packaging root cause beyond the unsafe
+private-path assumption in the test.
+
+### Portable replacement and coverage boundary
+
+The same test file now imports actual application modules through the normal
+Vitest alias and mocks only the public SDK boundary and network. It no longer
+reads/parses/executes package source, uses a pnpm directory or depends on a private
+SDK helper. No skip, ENOENT suppression, fallback path or runtime change was added.
+
+Seven application assertions cover:
+
+- Actual public-client config: no DPoP opt-in, no application PKCE override,
+  request enclave remains false.
+- AuthProvider passes that actual config to the mocked SDK and preserves its
+  token accessor; unsigned context remains unauthenticated.
+- Incident requests read the current token on each call, use Bearer without
+  fabricating a DPoP proof and retain no-store behaviour.
+- Access GET/POST retain Bearer/no-proof behaviour, JSON/idempotency, abort
+  signal, no-store and credentials-omit safeguards.
+- Both clients reject a missing session before fetch.
+
+All environment values and transport responses are synthetic. Unit configuration
+keeps envDir false. These tests characterize the existing application boundary;
+they do **not** certify SDK proof generation, PKCE internals, a live Tide exchange
+or peer fresh-client DPoP login. The earlier five SDK-source passes remain dated
+historical evidence, not current portable coverage. F8 remains unresolved,
+DPoP migration deferred and evidence locked.
+
+### Actual local verification after the test correction
+
+These are fresh agent checks of the modified test on the local Windows
+Node 24.19.0 / pnpm 11.20.0 installation, separate from supplied CI results and
+all earlier owner runs:
+
+| Command / check                                                                               | Actual result                                                                                                   |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `pnpm --filter frontend test -- tests/unit/investigations/dpop-integration-contract.test.ts`  | **7 passed / one file**, exit 0.                                                                                |
+| `pnpm --filter frontend test`                                                                 | **145 passed / 15 files**, exit 0. The other 138 tests passed and the corrected suite executed all seven cases. |
+| `pnpm --filter frontend typecheck`                                                            | **Passed**, exit 0.                                                                                             |
+| `pnpm --filter frontend lint`                                                                 | **Passed**, exit 0; existing script checks src.                                                                 |
+| From frontend: `pnpm exec eslint tests/unit/investigations/dpop-integration-contract.test.ts` | **Passed**, exit 0; changed test checked separately.                                                            |
+| Targeted formatting of the test/new triage section and `git diff --check`                     | **Passed**; existing line-ending notices do not indicate whitespace errors.                                     |
+| Static corrected-suite scan                                                                   | No package filesystem lookup, private SDK helper, skip or todo remains.                                         |
+
+No services, real Tide login, backend suite, production build or audit were run.
+The official package-content lookup remained blocked as recorded above. A hosted
+Node 22/pnpm 10 CI rerun has not happened; local passes are not reported as that
+CI result. No dependency changes are proposed as part of the portability fix.
+Final intended diff: only this triage and the investigation test; nothing staged,
+committed or pushed. Authentication, private configuration, accounts, data and
+locked evidence are preserved.
+
+### Separate next dependency-review proposal
+
+Obtain the machine-readable audit from the matching CI run/lockfile and map the
+**two Critical and one High** findings to their advisory IDs, affected installed
+versions, dependency paths and fixed ranges. Review focused official advisories
+and prepare the smallest supported compatible patch proposal; identify any major
+migration separately for approval. Do not infer package identities from counts,
+force unsupported overrides, lower audit thresholds or install anything from
+this test-only task. Fresh audit reconciliation is separate from test success.
