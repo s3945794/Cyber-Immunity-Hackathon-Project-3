@@ -1,5 +1,6 @@
 import { initializeApp, getApps, cert, type App } from 'firebase-admin/app'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
+import { getDemoConfig } from './demoConfig'
 
 /**
  * Server-side Firestore access only. Firebase Authentication is not used
@@ -15,7 +16,10 @@ import { getFirestore, type Firestore } from 'firebase-admin/firestore'
  * never require credentials, and so unit tests never touch the real SDK
  * unless a test explicitly imports this module without mocking it.
  *
- * Credential resolution, in order:
+ * Explicit local-demo mode first requires a demo-prefixed project and emulator;
+ * it never uses service-account credentials or a cloud fallback.
+ *
+ * Cloud credential resolution, in order:
  *   1. Deployed Cloud Functions: no explicit credential is supplied here —
  *      `initializeApp()` falls back to Application Default Credentials,
  *      which the Cloud Functions runtime provides automatically for the
@@ -36,6 +40,14 @@ let _adminDb: Firestore | undefined
 
 function getAdminApp(): App {
   if (_adminApp) return _adminApp
+
+  const demo = getDemoConfig()
+  if (demo) {
+    // The Admin SDK detects FIRESTORE_EMULATOR_HOST. No service account/ADC is used.
+    // Use a named app so an unrelated initialized cloud app cannot be reused.
+    _adminApp = initializeApp({ projectId: demo.projectId }, 'soc-local-demo')
+    return _adminApp
+  }
 
   const existing = getApps()
   if (existing.length > 0) {
@@ -79,7 +91,7 @@ function lazyProxy<T extends object>(factory: () => T): T {
   })
 }
 
-/** Server-side Firestore client. No route currently uses this — see module doc above. */
+/** Server-side Firestore client used by the authenticated access workflow. */
 export const adminDb: Firestore = lazyProxy(() => {
   _adminDb ??= getFirestore(getAdminApp())
   return _adminDb

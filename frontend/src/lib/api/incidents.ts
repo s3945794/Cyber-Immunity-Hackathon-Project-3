@@ -55,6 +55,7 @@ async function authorizedFetch(tokenSource: TokenSource, path: string): Promise<
 
   return fetch(`${getApiBaseUrl()}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
   })
 }
 

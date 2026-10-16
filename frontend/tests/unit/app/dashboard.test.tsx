@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { AuthContextValue } from '@/types/auth'
 import type { IncidentSummary } from '@/types/incident'
@@ -58,10 +58,14 @@ describe('DashboardPage', () => {
     await waitFor(() => {
       expect(screen.getByText('INC-1001')).toBeInTheDocument()
     })
-    expect(screen.getByText('Credential stuffing')).toBeInTheDocument()
-    expect(screen.getByText(/high/i)).toBeInTheDocument()
-    expect(screen.getByText(/investigating/i)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'INC-1001' })).toHaveAttribute(
+    const incidentRow = within(screen.getByRole('table')).getByRole('row', {
+      name: /\bINC-1001\b/,
+    })
+    const severityCell = within(incidentRow).getByRole('cell', { name: /^high$/i })
+    expect(within(incidentRow).getByText('Credential stuffing')).toBeInTheDocument()
+    expect(severityCell).toHaveTextContent(/^high$/i)
+    expect(within(incidentRow).getByRole('cell', { name: /^investigating$/i })).toBeInTheDocument()
+    expect(within(incidentRow).getByRole('link', { name: 'INC-1001' })).toHaveAttribute(
       'href',
       '/incidents/INC-1001'
     )

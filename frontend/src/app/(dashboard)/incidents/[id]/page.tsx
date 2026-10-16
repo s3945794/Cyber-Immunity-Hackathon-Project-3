@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { fetchIncidentById, IncidentApiError, IncidentNotFoundError } from '@/lib/api/incidents'
+import { IncidentRequestStatus } from '@/features/access-requests/components/RequestHistory'
 import { LockedField } from '@/components/incidents/LockedField'
 import {
   lockedFieldLabel,
@@ -62,13 +63,18 @@ export default function IncidentDetailPage() {
       .then((data) => {
         if (ignore) return
         setIncident(data)
+        setNotFound(false)
+        setError(null)
       })
       .catch((err: unknown) => {
         if (ignore) return
+        setIncident(null)
         if (err instanceof IncidentNotFoundError) {
           setNotFound(true)
+          setError(null)
           return
         }
+        setNotFound(false)
         const message = err instanceof IncidentApiError ? err.message : undefined
         setError(message ?? 'Could not load this incident. Please try again.')
       })
@@ -167,11 +173,12 @@ export default function IncidentDetailPage() {
             )}
           </section>
 
+          <IncidentRequestStatus key={incident.id} incidentId={incident.id} />
           <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <h2 className="text-sm font-semibold text-zinc-500">Protected evidence</h2>
             <p className="mt-1 text-sm text-zinc-500">
-              The following fields are protected and require emergency access approval, which is not
-              implemented in this view.
+              The following fields require two other SOC approvals and verified Tide authority.
+              Evidence remains locked while authorisation is unavailable.
             </p>
             <div className="mt-3 space-y-2">
               {incident.lockedFields.map((field) => (

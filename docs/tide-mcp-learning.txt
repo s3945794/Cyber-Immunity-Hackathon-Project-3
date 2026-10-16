@@ -469,14 +469,14 @@ ISSUE 005 - Canonical realm template not retrievable through Tide MCP; the
 ============================================================================
 
 Date: 2026-09-09
-Updated: 2026-09-09 (after a successful manual runtime test - see section 7)
+Updated: 2026-10-08 (independent setup gaps; original single-laptop test retained)
 Project feature: SOC Incident Report Protection PoC - local TideCloak setup
                  (feature/tidecloak-auth)
 Tide component: Tide MCP resources (tide_playbook bootstrap-realm-from-template,
                 tide_scenario_bootstrap, tide_list); the Tide pack
                 templates/shared/ directory; the built-in TideCloak
                 "Create a Tide realm" wizard
-Status: Resolved with workaround
+Status: Interactive local workaround; independent setup unverified
 Impact: Development time and reproducibility - interactive local setup works;
         scripted/automated setup for another machine is still not possible
 Priority for Tide: Medium (was High before the wizard path was confirmed)
@@ -599,6 +599,33 @@ interactive wizard that the current TideCloak build provides.
   * How it helps others: developers doing local PoC work get unblocked
     immediately via the wizard, and teams that need CI-reproducible realms know
     up front that they must request the template / automation path.
+
+9. Independent laptop handoff update - 8 October 2026
+  Evidence:
+  * Source review confirms the wrapper starts only the local Compose service,
+    retains its own ./data bind mount and checks HTTP reachability, not token
+    exchange or Fabric/governance readiness.
+  * The historical wizard pass was on one laptop. The repository does not
+    contain a verified clean-clone/four-account provisioning walkthrough.
+    Existing owner accounts and realm state are not included in Git.
+  Impact:
+  * A peer cannot assume cloning recreates the realm, client, governed
+    memberships or linked identities. The mutable latest image also leaves
+    the exact fresh-peer version unconfirmed.
+  Investigation:
+  * Reviewed TIDECLOAK-LOCAL.md, role design and current startup/configuration
+    source. No new Tide MCP call, private configuration read or realm change.
+  Workaround / next action:
+  * Use a new local instance and the established interactive wizard only
+    where available. Validate a sanitized, version-specific four-identity
+    linking/governance and client-security checklist; stop at missing steps.
+    Do not invent a realm template or copy a database/enrollment link.
+  Verification:
+  * Documentation/source review only. Fresh Docker, clean clone, independent
+    first launch and interactive restart remain NOT VERIFIED.
+  Value for Tide:
+  * Supply a versioned manual onboarding guide, exact governed role-assignment
+    steps/required approvers, recovery guidance and image compatibility facts.
 
 ============================================================
 ISSUE 006 - Realm wizard "Redirect URI" field behaved like a base URL
@@ -884,6 +911,7 @@ Tide component: TideCloak local realm users, the Tide Authorization Key, and
 Status: Resolved with workaround and Open for Tide
 Impact: Development time - time lost trying to authenticate a local realm
         identity on the external Tide sign-in page.
+Updated: 2026-10-08 (four-identity linking/governance findings)
 Priority for Tide: Medium
 
 1. What happened
@@ -956,19 +984,58 @@ returned the browser to the local application callback.
     Tide account meets both identities during enrollment and can confuse
     them.
 
+9. Four-identity linking and governed role assignment - 8 October 2026
+  Evidence:
+  * User-reported: account linking and governed SOC role assignment were
+    difficult; four separate identities were later used successfully for
+    application testing. No identity attributes or enrollment links are
+    recorded here.
+  * Existing guidance distinguishes bootstrap/local users from externally
+    authenticated Tide identities, but does not specify a repeatable four-user
+    linking sequence and governance-completion checks on a new laptop.
+  Impact:
+  * An enabled local user or requested role assignment alone does not prove
+    external login or effective governed SOC membership. One identity with
+    multiple roles cannot meet the two-distinct-other-reviewer requirement.
+  Investigation:
+  * Reviewed existing project guidance and equal-role application guards.
+    The cause of the reported linking/assignment difficulties is not confirmed;
+    no account inspection or change was performed during this handoff.
+  Workaround / next action:
+  * Tester provisions their own four distinct linked identities and matching
+    soc-analyst, soc-supervisor, soc-team-leader and soc-manager realm roles.
+    Complete the realm's actual governed approvals and validate effective
+    membership privately. All four roles can request and review other users.
+    Obtain the missing exact onboarding/governance walkthrough before claiming
+    reproducible independent setup; do not bypass governance or add passwords
+    as an assumed external-account fix.
+  Verification:
+  * Four-identity application testing is user-reported, not an agent rerun or
+    fresh-peer verification. Full live JWT/security and Fabric tests remain
+    independently unverified.
+  Value for Tide:
+  * Document linking versus local-user creation, governed membership lifecycle,
+    required approvers and non-destructive recovery for incomplete enrollment.
+
 ============================================================
 ISSUE 010 - TideCloak client required DPoP, but the frontend token
             exchange sent no proof
 ============================================================================
 
 Date: 2026-09-10
-Updated: 2026-09-15 (verified: setting change confirmed on the server side,
-         and end-to-end login now succeeds - see section 7)
+Updated: 2026-10-16 (Week 8 F8 evidence; September local history retained)
+Historical verification update: 2026-09-15 (server-side setting confirmation
+         and local end-to-end login; see section 7)
 Project feature: End-to-end frontend TideCloak login callback on
                  feature/tidecloak-auth.
 Tide component: TideCloak client configuration, the authorization-code token
                 exchange, and @tidecloak/nextjs.
-Status: Resolved
+Status: Historical local workaround; F8 peer DPoP login remains unresolved
+Time spent: Not recorded
+Current peer-handoff limit (8 October 2026): the setting change and local login
+success below are historical evidence. Do not repeat DPoP disabling, broaden
+redirects or weaken governance for peer setup. The unchanged SDK's supported
+fresh-client flow with DPoP preserved still needs a validated non-secret procedure.
 Impact: Correctness and security - login completed at the Tide sign-in page,
         but the application callback failed and looped back to /auth/signin.
 Priority for Tide: High
@@ -1083,26 +1150,116 @@ DPoP proof the server required.
         supports DPoP.
       - Include a compatibility check between the client's "Require DPoP
         bound tokens" setting and the SDK token-exchange implementation.
-      - Have the SDK safely surface the OAuth error code and reason without
-        exposing tokens.
-      - Document when DPoP may be temporarily disabled for local development,
-        and how to implement it correctly before production.
+      - Expose a documented safe failure category, not raw OAuth/SDK error
+        text, callback payloads, credentials or tokens.
+      - Document the supported proof-aware integration and its prerequisites.
+        Do not recommend disabling DPoP as a setup workaround (16 October update).
   * How it helps others: any builder using the front-channel SDK against a
     DPoP-required client hits this loop with only a generic error to go on.
+
+9. Local F8 follow-up (16 October 2026; evidence types kept separate)
+  Confirmed source findings:
+  * SDK 0.14.20 supports explicit useDPoP opt-in. buildInitOptions forwards
+    it when configured and retains PKCE S256. Token exchange generates a
+    proof only when its DPoP provider is initialized. SDK support is not
+    evidence that this application has enabled the complete secure flow.
+  * The application has no DPoP opt-in; incident/access requests use Bearer.
+    Backend JWT verification exists, but complete proof-aware transport and
+    backend signature/token-key binding, method/URL, freshness/replay and
+    applicable nonce handling are unfinished. Enabling only a flag is not a
+    secure fix. PKCE, state, nonce and SDK token exchange remain unchanged.
+  * Public setup comments now distinguish this Bearer integration from a
+    DPoP-required client. The stale server-side-JWKS comment was corrected.
+    These are integration/documentation corrections, not proof of an SDK bug.
+  Automated evidence and its historical limits:
+  * Earlier five installed-function contract tests passed with synthetic
+    collaborators. Initial discovery failed on named function expressions;
+    the test helper was corrected, not the SDK. Those tests covered opt-in,
+    S256/verifier preservation, conditional proof and rejection without retry.
+  * A later hosted suite failed before execution on a hardcoded private SDK
+    path. That was a test-portability defect, not established version
+    incompatibility. Seven replacement tests use actual application modules
+    and a mocked public SDK boundary; they cover current no-opt-in/Bearer
+    behaviour, token access and unsigned-request rejection. They do not test
+    live SDK proof generation. The earlier source-contract passes stay dated
+    historical evidence, not current portable proof of SDK internals.
+  Owner/peer observations and unknowns:
+  * F8 reports HTTP 400 invalid_dpop_proof / DPoP proof is missing. The peer's
+    precise failure cause is NOT CONFIRMED. The September server event above
+    identifies that historical request's rejection, not the peer's full
+    browser/client/server configuration or a general Tide outage.
+  * Peer records name tideorg/tidecloak-dev:latest and mytidecloak, but no
+    exact server version/digest was obtained. No SDK/server incompatibility
+    is confirmed. Required proof plus absent proof is a conditional source
+    explanation, not a completed diagnosis of that peer run.
+  * Owner fresh Edge InPrivate login on 16 October succeeded; ISSUE 013
+    records that observation. It does not resolve fresh-peer DPoP login.
+    The blocked-token failure-to-alert experiment remains inconclusive;
+    ISSUE 011 records its separate application-feedback evidence.
+  Hosted CI evidence:
+  * Owner-supplied hosted CI for f8a05a2 passed frontend/backend tests and
+    lint/typecheck. It is automated application evidence, not a live DPoP
+    exchange or browser login. No hosted test count or Node patch is inferred.
+  Useful Tide guidance improvements (proposed, not confirmed defects):
+  * The previously reviewed DPoP/Next.js guidance describes opt-in, a
+    verification page, proof-aware requests and server verification, but did
+    not establish a tested SDK/server version matrix for this peer setup.
+  * Supply a pinned-version end-to-end example covering issuer/client checks,
+    verification-page security, every authenticated API transport, refresh,
+    logout/silent SSO and server proof/binding/replay/nonce requirements.
+    Explain Bearer/DPoP compatibility and downgrade prevention explicitly.
+  * Keep the coordinated implementation proposal deferred for owner review.
+    Do not disable DPoP, weaken PKCE/state/nonce or change accounts/settings
+    to make setup pass. No Tide MCP call or private adapter inspection was
+    needed for this log update.
+
+10. Publication review decision (16 October 2026)
+  * Owner explicitly deferred the proposed end-to-end DPoP migration. F8 stays
+    unresolved. Do not implement strict opt-in, install a validator, or change
+    any TideCloak security setting from the proposal alone.
+  * The current triage retains the future scope and its unresolved artifact,
+    token-profile/audience, offline-key, server and shared-state gates. No
+    package/version or configuration change has been selected or approved.
+  * Owner normal login success, including fresh Edge InPrivate on 16 October,
+    does not resolve the peer's missing-proof report. Root cause of that
+    historical exchange is still not confirmed.
+
+11. Single authorised relay-asset lookup (16 October 2026)
+  * Direct tool evidence: one read-only tide_dpop_asset({}) call returned
+    isError: true and this text only:
+    tide_dpop_auth.html not found in any pack template. Expected e.g.
+    templates/nextjs-customer-portal/public/tide_dpop_auth.html.
+  * No HTML, provenance, hash, wiring or SDK 0.14.20 compatibility evidence
+    was returned. No asset was saved, installed, executed or integrated;
+    no retry or additional Tide call was made. Time spent: Not recorded.
+  * Impact: the advertised relay delivery cannot currently close the secure
+    integration gate. Root cause not confirmed. This is a pack delivery
+    finding, not proof of an SDK defect or the peer's original login cause.
+  * Proposed Tide improvement: supply a versioned relay with source commit,
+    independently verifiable SHA-256, declared compatible SDK versions and
+    origin/message/CSP/route requirements; report missing delivery clearly.
+    No workaround asset from an unpinned source is accepted.
+  * Verification: tool error only, not an automated authentication test or
+    live exchange. Existing owner login and hosted CI remain separate.
+    No DPoP implementation gap or evidence-authority contract was resolved.
+    F8 stays unresolved; runtime migration remains deferred for approval.
 
 ============================================================
 ISSUE 011 - Global X-Frame-Options DENY blocked TideCloak silent SSO
 ============================================================================
 
 Date: 2026-09-10
-Updated: 2026-09-15 (verified: response headers checked directly, and
-         end-to-end login now succeeds - see section 7)
+Updated: 2026-10-16 (Week 8 feedback; historical header evidence retained)
+Historical verification update: 2026-09-15 (direct header checks and local
+         end-to-end login; see section 7)
 Project feature: End-to-end frontend TideCloak browser login on
                  feature/tidecloak-auth (found straight after ISSUE 010's
                  DPoP setting change).
 Tide component: @tidecloak/nextjs silent-SSO hidden iframe
                 (/silent-check-sso.html) vs. application security headers.
-Status: Resolved
+Status: Historical header defect resolved; application feedback corrected;
+        live blocked-token failure-to-alert remains inconclusive
+Time spent: Not recorded
 Impact: Correctness - the "Continue with TideCloak" button appeared to reload
         /auth/signin without opening the external login window, because the
         silent session check could not complete.
@@ -1210,6 +1367,75 @@ restart was required):
   * How it helps others: developers get a working, still-secure header
     configuration on the first pass, and a clear signal when the silent
     check is blocked.
+
+9. Week 8 sign-in feedback and callback recovery (16 October 2026)
+  Confirmed application feedback gaps, not confirmed Tide SDK/server defects:
+  * The auth bridge did not expose provider initialization failure to the
+    sign-in panel. A failed initialization could leave no useful notice.
+  * Callback fallback inferred a direct visit from current query parameters,
+    although the SDK can already have removed them while processing a real
+    callback. Focused automated investigation supported both application gaps.
+    Neither gap establishes the cause of the owner's blocked-token run.
+  Application solution (F10; existing layout, no auth redesign):
+  * One accessible alert beside the existing sign-in button uses fixed text:
+      We couldn’t complete sign-in. Please try again. If it still fails,
+      contact your project administrator.
+  * Callback, missing-verifier and login-initiation failures use only a fixed
+    safe marker. Arbitrary URL text, SDK errors, credentials, tokens and
+    callback payloads are not rendered, logged or persisted by this feedback.
+  * Retry requires an explicit click or keyboard action. Submission is guarded
+    against repeats, with the existing focus behaviour; no automatic login or
+    redirect/retry loop was added.
+  * The provider exposes only Boolean(tc.initError) as initializationFailed,
+    not an SDK error object. The panel uses it only for failure presentation.
+  * Direct-visit recovery now requires SDK state showing no callback,
+    processing, success or error. It no longer treats query cleanup as proof
+    of a direct visit. SDK-managed token exchange, state/nonce/PKCE validation,
+    successful login and fail-closed behaviour are preserved.
+  * Ordinary unauthenticated silent SSO is not labelled a failure. No SDK file,
+    DPoP policy, frame-header setting, realm or account was changed for F10.
+  Automated evidence (not live authentication):
+  * Historical approved-correction run: 49 affected tests/four files passed;
+    four unchanged SDK characterization cases were excluded by the name
+    filter. Typecheck/lint/format passed. Do not call those four cases passed
+    by that filtered run.
+  * Tests cover initialization failure arrival/clearance and presentation,
+    callback state after query cleanup, explicit keyboard retry and duplicate
+    submission, accessible alert behaviour, successful auth and synthetic-
+    secret non-disclosure. Test errors/auth data are synthetic; no live
+    credential exchange is inferred.
+  * Later agent full frontend suite and V8 coverage each passed 145 tests/
+    15 files. This includes application auth regressions, not live Tide/Fabric
+    verification. Earlier historical counts are not merged with these runs.
+  Owner observations (browser evidence, separate from tests):
+  * Alert preview and keyboard retry passed. This verifies presentation and
+    interaction, not that a real SDK callback failure reached that alert.
+  * With the token endpoint blocked, sign-in returned to the sign-in page;
+    repeated Continue actions returned/reloaded it. The fixed failure alert
+    was NOT confirmed. DevTools reported Request was blocked by DevTools and
+    1 affected; the source referenced silent-check-sso.html. The test remains
+    INCONCLUSIVE. That source reference does not identify a callback path,
+    a DPoP cause, or a recurrence of the historical frame-header defect.
+  * Removing blocking and using a new private window restored normal login.
+    Owner post-correction Edge InPrivate checks on 16 October passed login,
+    dashboard without a failure alert, incident pages and locked evidence;
+    see ISSUE 013. Real failure-to-alert handling is not marked browser-passed.
+  Hosted CI evidence:
+  * Owner-reported f8a05a2 frontend/backend tests and lint/typecheck passed.
+    No browser failure injection, peer login or live Fabric check is inferred.
+  Useful Tide guidance improvements (proposed, not confirmed SDK defects):
+  * Provide an accessible fixed-message/explicit-retry example with a safe
+    initialization-failure indicator. Do not forward raw errors to users.
+  * Explain callback-state ownership after SDK URL cleanup, and distinguish
+    normal unauthenticated silent SSO from a failed provider initialization.
+  * Give narrowly scoped failure tests whose expected SDK branch is known;
+    distinguish alert preview from real failure/retry verification. Document
+    iframe behaviour without promising that broad token blocking exercises
+    the application's callback. Do not repeat broad blocking or request
+    logpoint tracing as evidence of a known cause.
+  * Keep the verified historical header fix in sections 1-8 separate from F10.
+    F8 and genuine Tide encryption/scoped authority/expiry remain unverified;
+    evidence stays locked.
 
 ============================================================
 ISSUE 012 - TideCloak browser authentication redirects required
@@ -1358,14 +1584,14 @@ ISSUE 013 - TideCloak login rejected with "Requested session has not been
 ============================================================
 
 Date: 2026-09-23
-Updated: 2026-09-24 (resolved with workaround - root cause still not
-         confirmed)
+Updated: 2026-10-16 (owner Week 8 browser pass; voucher/ORK history retained)
 Project feature: SOC Incident Report Protection - live browser verification
                  of feature/incident-dashboard
 Tide component: TideCloak container (local dev realm
                  "soc-incident-report-protection"), Tide voucher/session
                  identity-broker step
 Status: Resolved with workaround (root cause not confirmed)
+Time spent: Not recorded
 
 1. What happened
 During live browser verification of the incident dashboard, two previously
@@ -1474,6 +1700,151 @@ Root cause not confirmed.
         "Locked" with no protected value displayed.
   * TideCloak was left running throughout in its existing state; no
     restart was performed; all volumes and realm data remained untouched.
+
+7. Current browser workaround and separate ORK observation - 8 October 2026
+  Evidence:
+  * User-reported: Chrome login failed and subsequent Edge login succeeded.
+    Status: workaround; root cause not confirmed. No fresh-peer browser run
+    was executed for this handoff.
+  * The earlier reported token endpoint HTTP 502 and inaccessible browser
+    response body do not identify a voucher-session or DPoP cause. Docker
+    exception context could not be obtained by the read-only agent diagnosis
+    because log access was denied.
+  * User-reported Midgard signing logs indicated insufficient successful ORK
+    responses. No sanitized timestamp/request correlation is available here.
+    These logs are not established as the cause of the browser failure.
+  Impact:
+  * Root HTTP readiness is insufficient for authentication readiness.
+    Browser-specific success can unblock testing without explaining the fault.
+  Investigation:
+  * Reused the existing voucher-session finding and confirmed historical
+    fresh-Edge-session workaround; reviewed current user reports. No login
+    attempt, authentication replay, log dump or private session inspection.
+  Workaround / next action:
+  * A genuinely fresh Edge session/profile is the recorded workaround.
+    Collect only sanitized times/timezone, safe errors, statuses and destination
+    hostnames if diagnosis is separately authorised. Keep voucher errors,
+    token 502s and ORK signing observations separate until correlated.
+  Verification:
+  * Historical fresh-session recovery and current Edge success are reported
+    evidence; browser failure root cause remains NOT CONFIRMED.
+  Value for Tide:
+  * Surface safe, stage-specific authentication/threshold diagnostics and
+    document supported browser/session recovery without exposing session data.
+
+8. Week 8 owner browser verification (16 October 2026)
+  Owner observations:
+  * After the latest application feedback correction, fresh Edge InPrivate
+    login with blocking rules removed passed. The dashboard loaded without
+    the failure alert; incident pages worked and protected evidence remained
+    locked. Private credential entry stayed with the owner.
+  * The earlier preview/keyboard retry passed, and normal login after removing
+    the blocking rule also passed. The separate blocked-token failure-to-alert
+    experiment did not confirm the alert and remains inconclusive (ISSUE 011).
+  Evidence limits:
+  * This is owner-run browser evidence, not an agent browser action or hosted
+    CI login. Automated application regressions and hosted test/lint/typecheck
+    results are separately attributed in ISSUE 011.
+  * Success in this fresh browser is not proof that a stale voucher caused
+    the earlier error, that peer F8 DPoP login works, or that an SDK/server
+    outage occurred. Historical voucher, 502 and ORK observations above remain
+    distinct and uncorrelated where recorded as such.
+  * Genuine Tide encryption, scoped authority and expiry are NOT complete.
+    Locked evidence confirms the retained application boundary, not completed
+    cryptographic grant or Fabric expiry enforcement. ISSUE 014 remains open.
+  Useful Tide guidance improvements (proposed):
+  * Explain fresh-session recovery with private credential entry and safe
+    status-only observations. State when a result is a workaround, an owner
+    happy-path check or a confirmed causal diagnosis; do not equate them.
+  * Warn that one working local identity/browser does not establish a separate
+    peer's client compatibility or complete proof-aware integration (ISSUE 010).
+  * No new service, account, authentication or configuration operation was
+    needed to update this evidence.
+
+============================================================
+ISSUE 014 - Installed React wrapper does not forward signed E2EE policy
+============================================================
+
+Date: 7 October 2026
+Updated: 8 October 2026 (completed guidance report and peer-handoff limits)
+Status: Open integration blocker; no live Fabric verification
+
+1. Evidence
+The installed @tidecloak/nextjs/react/js versions are 0.14.20. React declarations
+accept a single data argument; the installed runtime calls IAMService.doEncrypt(data)
+and IAMService.doDecrypt(data) without the optional policy argument present in JS
+types. Frontend configuration explicitly disables the request enclave.
+The earlier 0.14.28 release-note assessment mentions React policy forwarding,
+signed expiry and per-grant JIT signing. This is not a confirmed SOC expiry
+solution or minimum compatible SDK/enclave/ORK version. General Forseti documentation describes approver,
+executor and request-data checks, but no SOC-specific integration was verified.
+
+2. Impact
+Application business approval records cannot safely substitute for a cryptographic
+grant. Merely refusing another ciphertext download or hiding a field would not
+prove that earlier ciphertext/authority cannot decrypt after expiry.
+
+3. Investigation
+Initial inspection, 7 October: focused official documentation and installed
+public SDK code/types were inspected; no Tide MCP call was made in that initial
+inspection. The requested Next.js reference URL failed document retrieval.
+Later user-reported guidance: the specifically authorised setup-forseti-e2ee,
+custom-contracts and version-policy calls completed. They are not awaiting
+approval. No call was repeated in this peer-handoff task.
+Those sources still did not establish a complete network-tested SOC contract,
+immutable intent, two-other-user endorsements, completion verification or direct
+Fabric expiry. Policy v3/v4 suitability and minimum SDK/enclave/ORK versions remain
+unconfirmed. No private configuration, credentials, realm or SDK/image change was
+made; an upgrade must not be represented as a confirmed solution.
+
+4. Workaround / exact next action
+Keep evidence locked and second business approval in authorising/unavailable.
+Obtain tested SOC contract/endorsement/completion and expiry guidance with exact
+compatible policy flow and minimum versions. The three completed lookups did not
+close these gaps. No further research or Tide MCP call is part of this handoff.
+Any future required SDK/image change needs separate owner review and approval.
+Never enable broad selfdecrypt or invent a capability/TTL format.
+
+5. Verification
+Backend unit checks deny an active database flag without Tide authority. This is
+not live encryption, policy completion or cached-ciphertext expiry verification.
+Those must be exercised with distinct real authorised test accounts.
+Sources:
+https://docs.tide.org/ReleaseNotes/Tidecloak-0.14.28
+https://docs.tide.org/Core-Concepts/forseti-engine
+https://docs.tide.org/Admin/e2ee
+
+6. Application quorum reaches unavailable authority - 8 October 2026
+  Evidence:
+  * User-reported: four separate identities were used successfully in application
+    tests; two distinct other approvals were followed by authority.failed and
+    evidence correctly stayed locked.
+  * Source-confirmed: the second distinct other application approval sets
+    authorising/unavailable, creates a blocked authority job and records
+    authority.failed. There is no activation/completion verifier; evidence
+    operations deny access.
+  Impact:
+  * Application approval rows and ordinary audit events do not establish Tide
+    cryptographic endorsements or authority. Correct locked behaviour protects
+    the boundary but does not complete the emergency-access PoC.
+  Investigation:
+  * Reviewed current service/view source and existing capability assessment.
+    No Tide MCP research, SDK/enclave update, encryption or unlocking was
+    performed during this handoff.
+  Workaround / next action:
+  * Keep evidence locked. Resolve supported SOC endorsement/immutable scope,
+    completion validation and expiry semantics before implementation.
+    Obtain explicit compatible SDK/enclave/ORK guidance and owner approval
+    for required changes; never invent functions or authority formats.
+  Verification:
+  * Application behaviour is source-confirmed and separately user-reported.
+    Genuine encryption, authorised decryption, cryptographic scope/quorum,
+    direct Fabric rejection of cached ciphertext/authority after expiry and
+    independent live JWT/security verification remain UNVERIFIED/BLOCKED.
+  Value for Tide:
+  * Provide a minimal tested SOC integration with two other recognised users,
+    requester exclusion, immutable read scope/duration and enforceable expiry;
+    demonstrate what Fabric enforces independently of application decisions.
 
 ============================================================
 END OF LOG

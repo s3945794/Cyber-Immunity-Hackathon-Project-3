@@ -31,6 +31,7 @@ function getSocRoles(tc: ReturnType<typeof useTideCloak>): SocRole[] {
  */
 function AuthBridge({ children }: { children: ReactNode }) {
   const tc = useTideCloak()
+  const initializationFailed = Boolean(tc.initError)
 
   const value = useMemo<AuthContextValue>(() => {
     const user: AuthUser | null = tc.authenticated
@@ -46,6 +47,7 @@ function AuthBridge({ children }: { children: ReactNode }) {
       user,
       authenticated: tc.authenticated,
       loading: tc.isInitializing,
+      initializationFailed,
       login: tc.login,
       logout: tc.logout,
       // Delegates straight to the SDK's own accessor — the access token
@@ -57,7 +59,16 @@ function AuthBridge({ children }: { children: ReactNode }) {
     // Re-derive whenever auth state or the tokens change; the SDK accessor
     // identities are stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tc.authenticated, tc.isInitializing, tc.idToken, tc.token, tc.login, tc.logout, tc.getToken])
+  }, [
+    tc.authenticated,
+    tc.isInitializing,
+    initializationFailed,
+    tc.idToken,
+    tc.token,
+    tc.login,
+    tc.logout,
+    tc.getToken,
+  ])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

@@ -9,10 +9,19 @@ import { HttpError } from '../lib/errors'
  * Anything else → 500 with a generic message (internals are never exposed to the client)
  */
 export function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction): void {
-  const httpError = err instanceof HttpError ? err : HttpError.internal()
+  const parserError = err as Error & { type?: string }
+  const httpError =
+    err instanceof HttpError
+      ? err
+      : parserError.type === 'entity.too.large'
+        ? new HttpError(413, 'Payload Too Large', 'Request body is too large')
+        : parserError.type === 'entity.parse.failed'
+          ? HttpError.badRequest('Invalid JSON body')
+          : HttpError.internal()
 
   if (httpError.status >= 500) {
-    console.error(`[${httpError.status}]`, err.message, err.stack)
+    // Provider/parser errors may contain payloads or private configuration.
+    console.error(`API operation failed (${httpError.status})`)
   }
 
   res.status(httpError.status).json({

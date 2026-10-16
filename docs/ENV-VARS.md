@@ -87,3 +87,23 @@ See `docs/CI-CD.md` for the full list and how they're used.
 ## Adding a New Variable
 
 Use the `/add-env-var` Claude Code skill — it updates `.env.example`, `scripts/sync-env.js` (so the value reaches the right package), and this file consistently.
+
+## Explicit local SOC demo additions
+
+These names are backend-only and routed through scripts/sync-env.js. Real private
+configuration remains user-owned. No new secret value is documented.
+
+| Variable                | Secret | Required            | Purpose                                                                           |
+| ----------------------- | ------ | ------------------- | --------------------------------------------------------------------------------- |
+| SOC_LOCAL_DEMO          | No     | Demo only           | Must explicitly enable the emulator storage mode                                  |
+| GCLOUD_PROJECT          | No     | Demo only           | Dedicated demo project; a cloud project is rejected in demo mode                  |
+| FIRESTORE_EMULATOR_HOST | No     | Demo only           | Loopback native host or internal container host; required, no cloud fallback      |
+| SOC_DEMO_SHORT_DURATION | No     | Optional            | Enable clearly labelled 60-second duration only with local demo mode, default off |
+| SOC_CONTAINER           | No     | Container only      | Compose-controlled backend listener binding within the container                  |
+| SOC_TEST_MARKER         | No     | Isolated probe only | Internal ignored metadata path created by test-emulator.cjs                       |
+
+Normal duration units in APIs/data/audit are seconds. Native demo scripts force the
+dedicated project/host and use no service account. The short-duration flag must be
+set in the trusted backend process; a frontend flag is never trusted. Frontend
+public configuration remains embedded at Next.js build time. The complete
+server-only CLIENT_ADAPTER is never a frontend build argument. See SOC-POC-RUNBOOK.md.

@@ -6,9 +6,14 @@ import { createAuthMiddleware, verifyTideCloakToken, type VerifyToken } from './
 import { errorHandler } from './middleware/errorHandler'
 import { healthRouter } from './routes/health'
 import { apiRouter } from './routes'
+import { AccessService } from './access/service'
+import { FirestoreStore } from './access/store'
+import { createAccessRouter } from './routes/access'
 
 interface AppOptions {
   verifyToken?: VerifyToken
+  accessService?: AccessService
+  corsOrigin?: string
 }
 
 /** Global rate limiter — 300 requests per 15 min per IP */
@@ -31,7 +36,11 @@ const globalLimiter = rateLimit({
  * verifyToken defaults to TideCloak access token verification (production).
  * Pass a mock in tests: createApp({ verifyToken: mockVerifyToken })
  */
-export function createApp({ verifyToken = verifyTideCloakToken }: AppOptions = {}): Express {
+export function createApp({
+  verifyToken = verifyTideCloakToken,
+  accessService = new AccessService(new FirestoreStore()),
+  corsOrigin = process.env.CORS_ORIGIN,
+}: AppOptions = {}): Express {
   const app = express()
 
   const authMiddleware = createAuthMiddleware(verifyToken)
@@ -40,7 +49,17 @@ export function createApp({ verifyToken = verifyTideCloakToken }: AppOptions = {
   app.use(helmet())
 
   // CORS — defaults to deny-all if CORS_ORIGIN is not set
-  app.use(cors({ origin: process.env.CORS_ORIGIN ?? false }))
+  app.use(
+    cors({
+      origin: corsOrigin && corsOrigin !== '*' ? corsOrigin : false,
+      methods: ['GET', 'POST', 'OPTIONS'],
+      allowedHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key'],
+    })
+  )
+  app.use('/api', (_req, res, next) => {
+    res.set('Cache-Control', 'no-store')
+    next()
+  })
 
   // Rate limiting — applied before any route logic
   app.use(globalLimiter)
@@ -53,7 +72,7 @@ export function createApp({ verifyToken = verifyTideCloakToken }: AppOptions = {
   app.use('/api/health', healthRouter)
 
   // Protected routes — require a valid TideCloak access token
-  app.use('/api', authMiddleware, apiRouter)
+  app.use('/api', authMiddleware, createAccessRouter(accessService), apiRouter)
 
   // 404 handler
   app.use((_req, res) => {

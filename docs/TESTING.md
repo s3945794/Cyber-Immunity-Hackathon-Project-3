@@ -121,3 +121,41 @@ vi.mocked(mockVerifyToken).mockResolvedValue(mockUser)
 // Unauthenticated request:
 vi.mocked(mockVerifyToken).mockRejectedValue(new Error('invalid'))
 ```
+
+## SOC emergency-access stage
+
+Run pnpm run test:all, pnpm run typecheck, pnpm run lint, pnpm run build,
+pnpm run validate, git diff --check and pnpm audit --audit-level=high.
+
+Vitest uses its supported runner configuration loader and envDir:false. Unit tests
+never load private application environment files; no test is skipped and no auth
+bypass is introduced. Frontend framework-resolution failures in the restricted
+checkout are recorded as blocked suites, not passing tests.
+
+New backend unit tests cover validation boundaries, ownership/membership,
+concurrent duplicate scopes/decisions, self/duplicate approvals, retry idempotency,
+rejection/cancellation terminal states, wrong evidence scope, active-flag tampering,
+server-time expiry, audit consistency, CORS and no-store. These use an explicitly
+test-only memory store and verified-identity fixtures. They do not test live Tide
+or a live database. Expiry tests use tampered/reserved active metadata solely to
+exercise the fail-closed boundary; production has no authority activation path.
+
+Frontend API/state tests cover session loss, stale asynchronous metadata after
+context changes, no-store/header-only token use, reconnection/visibility rechecks
+and safe errors. Form tests are updated for real API submission, retained reason
+and double-submit prevention. No plaintext decryption is implemented or claimed
+tested while the Tide integration is blocked.
+
+pnpm run test:emulator builds the real backend and uses a new isolated demo project
+and ports, then performs actual transaction/query checks and graceful export/import
+retention. It does not reset existing demo data. On 8 October the owner reported
+successful isolated seed/export/reload; persistence is VERIFIED owner evidence.
+The current agent rerun stopped at Firebase CLI startup with EPERM before emulator
+execution. Interactive demo restart, independent laptop startup and live JWT/
+Fabric verification remain separate and unverified. Current exit codes are in
+SOC-POC-HANDOFF.md; earlier blocked agent results do not override the owner's run.
+
+Real Fabric tests require manual user sign-in with distinct authorised accounts,
+approved policies and a compatible enclave/SDK. Direct decryption after expiry and
+database-edit resistance must be exercised live, not inferred from mock assertions.
+Use the detailed group checklist in SOC-POC-RUNBOOK.md.

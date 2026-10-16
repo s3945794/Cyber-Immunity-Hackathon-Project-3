@@ -1,10 +1,15 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccessRequestView } from '@/features/access-requests/components/AccessRequestView'
 import type { AuthContextValue } from '@/types/auth'
 import type { IncidentDetail } from '@/types/incident'
 
+vi.mock('@/lib/api/access', () => ({
+  submitAccessRequest: vi.fn(),
+  accessApi: vi.fn(),
+  AccessApiError: class AccessApiError extends Error {},
+}))
 vi.mock('@/hooks/useAuth', () => ({ useAuth: vi.fn() }))
 vi.mock('@/lib/api/incidents', () => {
   class IncidentApiError extends Error {}
@@ -19,6 +24,7 @@ vi.mock('@/lib/api/incidents', () => {
 import { useAuth } from '@/hooks/useAuth'
 import { fetchIncidentById, IncidentApiError, IncidentNotFoundError } from '@/lib/api/incidents'
 
+import { submitAccessRequest, accessApi } from '@/lib/api/access'
 const getToken = vi.fn()
 
 const INCIDENT: IncidentDetail = {
@@ -77,13 +83,43 @@ async function submitValidRequest(
   await user.click(
     screen.getByRole('checkbox', { name: /I understand that access requires approval/i })
   )
-  await user.click(screen.getByRole('button', { name: 'Prepare request' }))
+  await user.click(screen.getByRole('button', { name: 'Submit request' }))
 }
 
 describe('AccessRequestView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockAuth()
+    vi.mocked(accessApi).mockResolvedValue({
+      durationSeconds: [900, 1800, 3600],
+      authorityAvailable: false,
+    })
+    vi.mocked(submitAccessRequest).mockImplementation(async (_auth, body) => {
+      const input = body as {
+        incidentId: string
+        resource: 'victimHost'
+        reason: string
+        durationSeconds: number
+      }
+      return {
+        ...input,
+        id: '00000000-0000-4000-8000-000000000001',
+        permission: 'read',
+        requesterRef: 'a'.repeat(64),
+        status: 'pending',
+        approvalCount: 0,
+        approvals: [],
+        createdAt: 1,
+        updatedAt: 1,
+        accessStartedAt: null,
+        expiresAt: null,
+        rejectionReason: null,
+        authorityStatus: 'not_requested',
+        evidenceAvailable: false,
+        canApprove: false,
+        canCancel: true,
+      }
+    })
   })
 
   it('shows authentication loading without fetching incident data', () => {
@@ -164,10 +200,10 @@ describe('AccessRequestView', () => {
     await loadForm()
 
     await user.type(screen.getByRole('textbox', { name: 'Reason' }), 'Too short')
-    await user.click(screen.getByRole('button', { name: 'Prepare request' }))
+    await user.click(screen.getByRole('button', { name: 'Submit request' }))
 
     expect(await screen.findByText('Reason must be at least 20 characters.')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Request prepared' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Request submitted' })).not.toBeInTheDocument()
   })
 
   it('rejects a reason longer than 500 characters', async () => {
@@ -177,7 +213,7 @@ describe('AccessRequestView', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Reason' }), {
       target: { value: 'a'.repeat(501) },
     })
-    await user.click(screen.getByRole('button', { name: 'Prepare request' }))
+    await user.click(screen.getByRole('button', { name: 'Submit request' }))
 
     expect(await screen.findByText('Reason must be 500 characters or fewer.')).toBeInTheDocument()
     expect(screen.getByText('501/500 characters')).toBeInTheDocument()
@@ -189,7 +225,7 @@ describe('AccessRequestView', () => {
 
     await submitValidRequest(user, '   12345678901234567890   ')
 
-    expect(await screen.findByRole('heading', { name: 'Request prepared' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Request submitted' })).toBeInTheDocument()
     expect(screen.getByText('12345678901234567890')).toBeInTheDocument()
   })
 
@@ -200,7 +236,7 @@ describe('AccessRequestView', () => {
 
     await submitValidRequest(user, reason)
 
-    expect(await screen.findByRole('heading', { name: 'Request prepared' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Request submitted' })).toBeInTheDocument()
     expect(screen.getByText(reason)).toBeInTheDocument()
   })
 
@@ -211,7 +247,7 @@ describe('AccessRequestView', () => {
     await submitValidRequest(user, `   ${'a'.repeat(19)}   `)
 
     expect(await screen.findByText('Reason must be at least 20 characters.')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Request prepared' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Request submitted' })).not.toBeInTheDocument()
   })
 
   it('requires a requested duration', async () => {
@@ -222,7 +258,7 @@ describe('AccessRequestView', () => {
     await user.click(
       screen.getByRole('checkbox', { name: /I understand that access requires approval/i })
     )
-    await user.click(screen.getByRole('button', { name: 'Prepare request' }))
+    await user.click(screen.getByRole('button', { name: 'Submit request' }))
 
     expect(await screen.findByText('Select a requested duration.')).toBeInTheDocument()
   })
@@ -233,14 +269,16 @@ describe('AccessRequestView', () => {
 
     await enterValidReason(user)
     await user.click(screen.getByRole('radio', { name: '30 minutes' }))
-    await user.click(screen.getByRole('button', { name: 'Prepare request' }))
+    await user.click(screen.getByRole('button', { name: 'Submit request' }))
 
     expect(
-      await screen.findByText('You must acknowledge the approval and demonstration requirements.')
+      await screen.findByText(
+        'You must acknowledge the two-person approval and temporary access requirements.'
+      )
     ).toBeInTheDocument()
   })
 
-  it('prepares a local-only summary and performs no backend mutation', async () => {
+  it('submits to the backend before showing a saved pending summary', async () => {
     const user = userEvent.setup()
     await loadForm()
 
@@ -252,11 +290,11 @@ describe('AccessRequestView', () => {
     await user.click(
       screen.getByRole('checkbox', { name: /I understand that access requires approval/i })
     )
-    await user.click(screen.getByRole('button', { name: 'Prepare request' }))
+    await user.click(screen.getByRole('button', { name: 'Submit request' }))
 
-    expect(await screen.findByRole('heading', { name: 'Request prepared' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Request submitted' })).toBeInTheDocument()
     expect(
-      screen.getByText('Demo only — this request was not submitted, saved or approved.')
+      screen.getByText('Pending — your request is saved. Evidence remains locked.')
     ).toBeInTheDocument()
     expect(screen.getByText('Victim Host')).toBeInTheDocument()
     expect(screen.getByText('Read-only')).toBeInTheDocument()
@@ -266,6 +304,17 @@ describe('AccessRequestView', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Two other SOC staff members')).toBeInTheDocument()
     expect(fetchIncidentById).toHaveBeenCalledTimes(1)
+    expect(submitAccessRequest).toHaveBeenCalledWith(
+      { getToken },
+      expect.objectContaining({
+        incidentId: 'INC-1001',
+        resource: 'victimHost',
+        permission: 'read',
+        durationSeconds: 1800,
+        acknowledged: true,
+      }),
+      expect.any(String)
+    )
   })
 
   it('clears a prepared request when the resource changes and does not restore it later', async () => {
@@ -274,22 +323,22 @@ describe('AccessRequestView', () => {
     const { rerender } = renderRequest()
     await screen.findByRole('heading', { name: 'Emergency access request' })
     await submitValidRequest(user)
-    expect(await screen.findByRole('heading', { name: 'Request prepared' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Request submitted' })).toBeInTheDocument()
 
     rerender(<AccessRequestView incidentId="INC-1001" resourceQuery="exposureEvidence" />)
 
-    expect(screen.queryByRole('heading', { name: 'Request prepared' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Request submitted' })).not.toBeInTheDocument()
     expect(await screen.findByText('Exposure Evidence')).toBeInTheDocument()
     expect(
-      screen.getByRole('form', { name: 'Prepare emergency access request' })
+      screen.getByRole('form', { name: 'Submit emergency access request' })
     ).toBeInTheDocument()
 
     rerender(<AccessRequestView incidentId="INC-1001" resourceQuery="victimHost" />)
 
     expect(await screen.findByText('Victim Host')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Request prepared' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Request submitted' })).not.toBeInTheDocument()
     expect(
-      screen.getByRole('form', { name: 'Prepare emergency access request' })
+      screen.getByRole('form', { name: 'Submit emergency access request' })
     ).toBeInTheDocument()
   })
 
@@ -301,15 +350,15 @@ describe('AccessRequestView', () => {
     const { rerender } = renderRequest()
     await screen.findByRole('heading', { name: 'Emergency access request' })
     await submitValidRequest(user)
-    expect(await screen.findByRole('heading', { name: 'Request prepared' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Request submitted' })).toBeInTheDocument()
 
     rerender(<AccessRequestView incidentId="INC-2002" resourceQuery="victimHost" />)
 
-    expect(screen.queryByRole('heading', { name: 'Request prepared' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Request submitted' })).not.toBeInTheDocument()
     expect(await screen.findByText('INC-2002')).toBeInTheDocument()
     expect(screen.getByText('Malware execution')).toBeInTheDocument()
     expect(
-      screen.getByRole('form', { name: 'Prepare emergency access request' })
+      screen.getByRole('form', { name: 'Submit emergency access request' })
     ).toBeInTheDocument()
   })
 
@@ -328,7 +377,7 @@ describe('AccessRequestView', () => {
     await user.tab()
     expect(firstDuration).toHaveFocus()
 
-    await user.click(screen.getByRole('button', { name: 'Prepare request' }))
+    await user.click(screen.getByRole('button', { name: 'Submit request' }))
 
     await screen.findByText('Reason must be at least 20 characters.')
     expect(reason).toHaveAttribute('aria-describedby', 'reason-help reason-error')
@@ -353,7 +402,7 @@ describe('AccessRequestView', () => {
     await user.click(
       screen.getByRole('checkbox', { name: /I understand that access requires approval/i })
     )
-    await user.click(screen.getByRole('button', { name: 'Prepare request' }))
+    await user.click(screen.getByRole('button', { name: 'Submit request' }))
 
     await waitFor(() => {
       expect(screen.getByRole('link', { name: 'Return to incident' })).toHaveAttribute(
@@ -361,5 +410,42 @@ describe('AccessRequestView', () => {
         '/incidents/INC-1001'
       )
     })
+  })
+})
+
+describe('real submission boundaries', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockAuth()
+    vi.mocked(fetchIncidentById).mockResolvedValue(INCIDENT)
+    vi.mocked(accessApi).mockResolvedValue({
+      durationSeconds: [900, 1800, 3600],
+      authorityAvailable: false,
+    })
+  })
+  it('retains entered reason after an API failure and never claims success', async () => {
+    vi.mocked(submitAccessRequest).mockRejectedValue(new Error('offline'))
+    const user = userEvent.setup()
+    await loadForm()
+    await submitValidRequest(user)
+    expect(await screen.findByText(/Your reason is retained/)).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Reason' })).toHaveValue(
+      'Temporary access is needed to complete incident triage.'
+    )
+    expect(screen.queryByRole('heading', { name: 'Request submitted' })).not.toBeInTheDocument()
+  })
+  it('disables submission while a write is pending', async () => {
+    vi.mocked(submitAccessRequest).mockReturnValue(new Promise(() => {}))
+    const user = userEvent.setup()
+    await loadForm()
+    await submitValidRequest(user)
+    expect(await screen.findByRole('button', { name: 'Submitting…' })).toBeDisabled()
+    await act(async () => {
+      const form = screen.getByRole('form', { name: 'Submit emergency access request' })
+      fireEvent.submit(form)
+      fireEvent.submit(form)
+    })
+    expect(submitAccessRequest).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('heading', { name: 'Request submitted' })).not.toBeInTheDocument()
   })
 })
