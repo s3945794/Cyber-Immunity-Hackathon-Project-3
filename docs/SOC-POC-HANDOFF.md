@@ -1,5 +1,63 @@
 # SOC PoC implementation handoff
 
+## Hosted CI confirms migration complete — f8a05a2, 16 October 2026
+
+**Approved Vitest migration: COMPLETE.** Owner-supplied hosted CI for f8a05a2
+confirms Backend Tests, Frontend Tests, and Lint & Typecheck passed. Security
+Scan reports **0 Critical, 1 High, 3 Moderate**; it is not claimed green. This
+hosted evidence is separate from prior local owner results and agent sandbox
+failures. No tests, builds, audit or CI job were repeated for this update.
+Exact hosted Node patch, test counts and raw exit codes were not supplied.
+
+Local HEAD is **f8a05a2f1e556c7cb54f91f46f39578f9595bf93**, matching the supplied
+hosted SHA, on feature/soc-emergency-access-poc. The worktree was initially clean;
+only the three existing status documents are edited here. Earlier pending-CI,
+HEAD and commit-readiness statements below describe their dated phases. No
+commit, push, branch movement or remote refresh was performed by this agent.
+
+**Preserved advisory discrepancy:** earlier local audit suggested Braces
+patched >=3.0.4, while this hosted CI reports patched_versions **<0.0.0**.
+The owner registry lookup found no matching 3.0.4 and the previously checked
+official advisory lists no patched version. Neither audit value proves a
+supported fix; <0.0.0 is not an installable remediation. Cause of the discrepancy
+is unconfirmed. Braces 3.0.3 / **GHSA-vfj7-8cjw-p6xm** remains the unresolved
+High through Next ESLint > fast-glob > micromatch. Retain the audit threshold;
+no suppression or clean-audit claim. Local and hosted counts match, but that
+does not prove all advisory metadata or Moderate identities match.
+
+Earlier local owner audit identified the three Moderates as uuid
+**GHSA-w5hq-g745-h8pq**, and qs **GHSA-x5fp-wj9c-mxmx** /
+**GHSA-4mjr-xmp4-gh2g**. Keep their separate proposed remediation review deferred;
+no further dependency change is made. Older audit counts and sandbox fetch
+failures retain their original attribution.
+
+Completed scoped Week 8 fixes: **F1** safe launcher invocation with JavaScript
+Windows probe; **F3** safe stage-specific diagnostics and focused tests;
+**emulator safeguards** with owner isolated JDK-workaround export/reload pass;
+**F10** accessible fixed sign-in feedback, explicit retry and callback/init guards;
+and the approved **Vitest/coverage-v8 4.1.11 / Vite 7.3.6 migration**, now verified
+by prior local checks and hosted tests/lint/typecheck. SDK authentication
+validation and locked evidence are preserved.
+
+Remaining limits: native pnpm.exe was not tested because none was found on PATH;
+other live startup-diagnostic branches and accessibility/real SDK failure paths
+are not all verified. The blocked-token failure-to-alert test remains
+inconclusive. The JDK workaround does not establish the Java shim's internal
+failure mechanism; successful recovery alone never proved export completion.
+Later owner Export complete evidence remains separate from earlier failures.
+
+**F8 peer fresh-client DPoP login remains unresolved; end-to-end DPoP migration
+is deferred; evidence remains locked.** Genuine Tide/Fabric authority/unlocking
+and full PoC acceptance remain outside this completion claim. Scoped approved
+migration/testing-fix completion does not mean all dependencies/findings are
+resolved. The triage's **Hosted CI completion — f8a05a2, 16 October 2026** section
+contains the detailed evidence and completed/deferred summary.
+
+Only documentation formatting and git diff --check were checked after editing.
+No new Tide-specific learning entry, private-file access, dependency/code/
+configuration/account change, check disabling, services, Tide MCP, staging,
+commit or push.
+
 ## Owner completion and commit readiness — 16 October 2026
 
 **Local Vitest migration checks complete; the remaining documentation update is

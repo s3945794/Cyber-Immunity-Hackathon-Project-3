@@ -1,5 +1,9 @@
 # Week 8 testing-findings triage
 
+Current completion: **Hosted CI completion — f8a05a2, 16 October 2026** marks
+the approved Vitest migration complete, records hosted passes and preserves the
+local/CI advisory discrepancy. Braces and F8 remain unresolved; evidence locked.
+
 Latest result: **Owner completion and final migration review — 16 October 2026**
 records completed local migration checks, the owner audit (0 Critical / 1 High /
 3 Moderate), exact Git history and the separate remaining remediation proposal.
@@ -2278,3 +2282,80 @@ F8 remains unresolved, DPoP deferred, evidence locked. No dependency changes,
 service operations, private-file reads, Tide MCP, authentication/account/realm
 changes, commits or pushes. New-section formatting and git diff --check were
 checked after editing; application checks were not repeated.
+
+## Hosted CI completion — f8a05a2, 16 October 2026
+
+**Approved Vitest migration: COMPLETE.** The owner supplied hosted CI evidence
+for **f8a05a2**: Backend Tests passed, Frontend Tests passed, and Lint & Typecheck
+passed. Hosted Security Scan reports **0 Critical, 1 High, 3 Moderate**; Braces
+remains the High. The security gate is **not** claimed green: the existing
+high-severity threshold remains in force. This is owner-supplied hosted evidence,
+not an agent CI rerun or a new local audit. Hosted test counts, exact Node patch
+and raw job exit codes were not supplied and are not invented.
+
+Local HEAD independently resolves to
+**f8a05a2f1e556c7cb54f91f46f39578f9595bf93** on
+feature/soc-emergency-access-poc. The working tree was clean at this follow-up's
+start. The supplied CI identity matches local HEAD; no checkout, commit, push,
+remote refresh, test rerun or CI dispatch was performed by this agent. Earlier
+HEAD/commit-readiness and pending-hosted-verification statements below retain
+their historical attribution and are superseded for the approved migration.
+
+### Advisory evidence must remain separately attributed
+
+| Evidence source                      | Result / limitation                                                                                                                                                                        |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Earlier owner local fresh audit      | 0 Critical, 1 High, 3 Moderate. Recorded IDs: Braces GHSA-vfj7-8cjw-p6xm; uuid GHSA-w5hq-g745-h8pq; qs GHSA-x5fp-wj9c-mxmx; qs GHSA-4mjr-xmp4-gh2g.                                        |
+| Owner hosted CI for f8a05a2          | Same aggregate counts; Braces High reports patched_versions **<0.0.0**. Other hosted advisory details were not resupplied; matching counts alone do not prove identical advisory metadata. |
+| Earlier local audit remediation hint | Braces **>=3.0.4** was suggested, but the owner registry lookup found no matching 3.0.4, and the recorded official advisory lists no patched version.                                      |
+
+Keep the local/hosted patched-range discrepancy: **>=3.0.4 versus <0.0.0**.
+The latter is a no-available-fix representation, not a version to install.
+Neither value establishes a supported remediation. Do not normalize away this
+difference, infer its cause, invent a Braces release or weaken/suppress the audit.
+**Braces remains unresolved**, at 3.0.3 through Next ESLint > fast-glob >
+micromatch. uuid and both qs advisories remain separate remediation work; the
+previous qs 6.16.0 and supported uuid-parent review proposals are not implemented
+or approved by this documentation task. Older audit totals and agent fetch
+failures remain dated evidence, not results of this hosted run.
+
+### Completed Week 8 work and explicit limits
+
+- **F1 launcher compatibility:** shell-free JavaScript/native-pnpm invocation
+  paths and focused regressions; actual Windows JavaScript probe passed. Native
+  pnpm.exe remains Not tested: no native executable found on PATH. Do not
+  install another pnpm or treat mocked native tests as actual process proof.
+- **F3 startup diagnostics:** fixed safe stage codes/recovery instructions and
+  regression/synthetic-secret checks; owner live emulator-unavailable case
+  produced SOC_STARTUP_EMULATOR with exit 1 and no ready message. Other live
+  diagnostic branches remain unverified; historical sandbox failures stay separate.
+- **Emulator safeguards:** bounded close/port/export gates and regressions;
+  isolated owner seed/export/reload/both gates passed with exit 0 using an existing
+  actual JDK on terminal-only PATH. This is a verified workaround, not proof of
+  the Java shim mechanism. Earlier two failed runs remain historical. Later owner
+  shutdown separately showed Export complete then shutdown; recovery alone was
+  never treated as proof of graceful export completion.
+- **F10 sign-in feedback:** one safe accessible alert, explicit retry/submission
+  guard, initialization-failure presentation and SDK callback-state guard;
+  automated coverage, owner preview/keyboard retry and normal private-window
+  login/pages passed. SDK validation, PKCE/state/nonce and successful login remain
+  preserved. Real blocked-token failure-to-alert is still inconclusive.
+- **Vitest migration:** both packages use matching Vitest/coverage-v8 4.1.11 and
+  compatible Vite 7.3.6, reviewed configuration/lockfile changes, no Tinypool;
+  prior agent and owner suites/coverage/typechecks/lint/builds/frozen installation
+  plus this hosted test/lint/typecheck evidence complete the approved scope.
+  Owner backend coverage percentages and hosted Node patch remain unreported.
+
+**Deferred/unresolved:** Braces High and the three local Moderate advisories;
+F8 peer fresh-client DPoP login and end-to-end DPoP migration; remaining native
+Windows/live diagnostic/accessibility/real callback checks; genuine Tide/Fabric
+protected-evidence authority/unlocking and full PoC acceptance. No application
+or Tide security setting/account/configuration changes are authorized here.
+**F8 remains unresolved; DPoP migration is deferred; evidence remains locked.**
+
+The completed scoped testing fixes and approved test-tool migration do not mean
+all Week 8 findings, dependencies or full PoC acceptance are complete. No passed
+check was repeated. Only the triage, handoff and build-status documents change;
+new-section formatting and git diff --check were checked after editing. No
+staging, dependency/code/configuration change, check disabling, Tide MCP,
+service operation, commit or push occurred.
