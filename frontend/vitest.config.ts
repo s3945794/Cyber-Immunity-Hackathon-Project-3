@@ -7,6 +7,7 @@ export default defineConfig({
   envDir: false,
   plugins: [react()],
   test: {
+    dir: './tests/unit',
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./tests/setup.ts'],
@@ -17,6 +18,7 @@ export default defineConfig({
     exclude: [...configDefaults.exclude, 'tests/e2e/**'],
     coverage: {
       provider: 'v8',
+      include: ['src/**/*.{ts,tsx}'],
       reporter: ['text', 'json', 'html'],
       exclude: [
         'src/components/ui/**', // shadcn components — not hand-authored
