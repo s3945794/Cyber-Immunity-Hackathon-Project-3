@@ -1,5 +1,143 @@
 # SOC PoC build status
 
+## Owner completion and commit readiness — 16 October 2026
+
+**Local Vitest migration checks complete; the remaining documentation update is
+ready for commit review. Security Scan remains non-clean.** This supersedes the
+pending owner commands and local execution blockers below while preserving their
+historical attribution. No passed application check was repeated in this update.
+
+New owner-reported evidence, separate from all agent/sandbox results:
+
+- Backend units: **135 passed / nine files**, Vitest **4.1.11**.
+- Backend coverage: **135 passed; report generated**. No fresh numeric coverage
+  percentages or shell exit codes were supplied, so none are invented.
+- Frontend production build: **passed**, Next.js **16.3.8**.
+- Fresh audit: **0 Critical, 1 High, 3 Moderate**.
+
+Prior agent frontend units/coverage (145 passed), both typechecks, lint, backend
+build, formatting and frozen installation remain valid separate evidence. Keep
+the earlier backend loopback EACCES, frontend protected-file/Turbopack failure
+and audit fetch failures recorded as agent-environment results, not owner failures
+or fresh passes. No root cause for those sandbox failures is claimed from the
+owner successes. Exact hosted Node patch/hosted CI execution remain unverified;
+local completion does not imply hosted verification or permission to publish.
+
+Current HEAD is **ba50ff09e9af3c5225b4ed20b5df4be2e99745a2**, not c6abb57.
+Fresh Git inspection confirms lineage c6abb57 -> **357a387** (migration) ->
+**ba50ff0** (documentation). Both commits were already present at the previous
+verification's start; this agent did not create them or move HEAD. The earlier
+report should have highlighted that transition. The branch is two commits ahead
+of the locally recorded remote-tracking ref; no remote refresh was performed.
+
+Final migration diff review against c6abb57 found only the intended direct tool
+upgrades and reviewed config/override changes across six implementation paths.
+The lockfile has no Tinypool, adds 18/removes 47 related toolchain records, and
+has no unexpected direct production upgrade. No application authentication or
+SDK change, test suppression or weakened coverage/security setting was found.
+The migration is already in 357a387; do not recommit its implementation.
+
+Current unstaged/uncommitted paths are exactly:
+
+```text
+docs/SOC-POC-BUILD-STATUS.md
+docs/SOC-POC-HANDOFF.md
+docs/SOC-WEEK8-TRIAGE.md
+```
+
+Nothing is staged; private/generated files are excluded. A future documentation
+commit may use `docs: record owner verification and remaining dependency advisories`.
+No staging, commit or push occurs here. Existing verification-document edits are
+preserved and supplemented with the new owner results.
+
+Separate remaining remediation, not part of the completed Vitest migration:
+
+- **Braces 3.0.3 — High GHSA-vfj7-8cjw-p6xm:** Next ESLint > fast-glob >
+  micromatch chain. Still no authoritative supported patched release; keep
+  unresolved and retain the high-severity audit gate.
+- **uuid 9.0.1 — Moderate GHSA-w5hq-g745-h8pq:** Firebase/Google client chains.
+  Review supported parent upgrades toward the advisory's patched 11.1.1 line;
+  no incompatible override into uuid 9 parents.
+- **qs 6.15.3 — Moderate GHSA-x5fp-wj9c-mxmx and GHSA-4mjr-xmp4-gh2g:**
+  Express/body-parser and Supertest/Superagent chains. Separately prepare a
+  **6.16.0** patch proposal after publication/all-parent compatibility checks.
+
+The triage records official advisory links and current dependency families.
+These are separate future-review candidates, not dependency changes or promises
+of a clean audit. No rerun of passed tests, coverage, builds or audit is needed
+for this documentation-only update. New-section formatting and git diff --check
+were checked after editing. Overall security remediation/full PoC acceptance
+remain incomplete; F8 unresolved, DPoP deferred, evidence locked. No new Tide-
+specific finding warranted a learning-log edit. No private configuration, accounts,
+services, dependency changes, Tide MCP, commits or pushes.
+
+## Migration verification after owner installation — 16 October 2026
+
+**Installed and lockfile-consistent; remaining checks blocked, not fully verified.**
+This supersedes the failed-install summary below, which remains historical.
+Owner normal Command Prompt: pnpm install, Already up to date, pnpm 11.20.0,
+exit 0. That owner report is separate from the following fresh agent checks.
+
+The agent resolved both packages' installed Vitest and coverage-v8 to 4.1.11,
+and each Vitest's Vite to 7.3.6. All manifest specifiers match lockfile importers.
+Agent frozen-lockfile installation passed, exit 0. Compared with c6abb57, only
+the four approved direct test-tool pins change; no direct production versions
+change. Lockfile adds 18/removes 47 toolchain records and removes Tinypool.
+Retained React-plugin 4.7.0 version/integrity is unchanged; its recorded Vite
+peer is narrowed to the reviewed 7.3.6 by the override. No unexpected runtime
+upgrade was identified. The dependency tree is no longer described as unusable.
+
+Current existing local HEAD is ba50ff09e9af3c5225b4ed20b5df4be2e99745a2, with
+migration 357a387 and documentation ba50ff0 already present at follow-up start;
+working tree initially clean, branch two commits ahead of tracked remote. This
+agent created no commit or push. Older HEAD and uncommitted-state statements
+below describe their dated attempts.
+
+Fresh agent evidence on Node 24.19.0 / pnpm 11.20.0:
+
+- Frontend units: **145 passed / 15 files**, exit 0 after one retry for sandbox
+  cache-rename EPERM. Frontend V8 coverage: the same 145 tests passed; statements
+  72.91%, branches 64.44%, functions 65.35%, lines 73.42%.
+- Backend units and backend coverage: each **82 passed / 53 failed / 135 total**,
+  exit 1; failures report loopback connect EACCES. Initial sandbox units had also
+  stopped before execution on cache renames. No tests were skipped or altered.
+- Both typechecks, source lint, backend production build and frozen installation:
+  **passed**. Targeted implementation formatting passed from frontend context;
+  the first root-context formatter invocation had a plugin-resolution error.
+- Frontend build: **blocked**, exit 1; denied opening the protected local
+  environment file plus Turbopack worker-connection failure. No private file,
+  panic log or report link was read, and no permission/configuration bypass used.
+- Fresh audit: **unavailable**, fetch failed, exit 1 in sandbox and one approved
+  outside-sandbox retry. No new counts/advisory IDs are claimed.
+
+Tinypool is absent from the current lockfile, but no green Security Scan or
+aggregate clean-audit result is claimed. Braces GHSA-vfj7-8cjw-p6xm remains at
+3.0.3 through Next ESLint > fast-glob > micromatch with no verified supported fix.
+Last owner-hosted 2 Critical / 1 High / 7 Moderate totals remain separately dated
+historical evidence, not a new audit. Moderate IDs/paths await successful audit.
+CI still selects Node 22 / pnpm 10 and audit-level high; Node 22 requires >=22.12.
+Exact hosted Node patch and hosted verification of this migration remain pending.
+
+Remaining normal-terminal commands only:
+
+```powershell
+pnpm --filter backend test
+pnpm --filter backend test:coverage
+pnpm --filter frontend build
+pnpm audit --json
+pnpm audit --audit-level=high
+```
+
+Full migration verification is **not complete** until remaining checks and audit
+reconciliation finish. Do not repeat already-passed checks for this documentation
+update. The triage's **Owner installation and agent migration verification —
+16 October 2026** section holds detailed attribution, lockfile review and results.
+Only the three status documents change in this follow-up; targeted documentation
+formatting and git diff --check were checked after editing. No Tide-specific
+learning entry was warranted. F8 unresolved, DPoP deferred, evidence locked;
+no service operations, authentication/dependency/configuration/account changes,
+Tide MCP calls, commits or pushes.
+
 ## Approved Vitest migration — blocked installation, 16 October 2026
 
 This is the current migration status; older readiness, baseline-SHA, build and

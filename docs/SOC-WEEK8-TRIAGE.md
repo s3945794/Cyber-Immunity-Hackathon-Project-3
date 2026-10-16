@@ -1,5 +1,14 @@
 # Week 8 testing-findings triage
 
+Latest result: **Owner completion and final migration review — 16 October 2026**
+records completed local migration checks, the owner audit (0 Critical / 1 High /
+3 Moderate), exact Git history and the separate remaining remediation proposal.
+Earlier permission failures remain attributed historical evidence.
+
+Latest verification: **Owner installation and agent migration verification — 16 October 2026**
+records the now-consistent installed/locked versions, passed checks and remaining
+permission/network blocks. Earlier proposal and failed-install sections are historical.
+
 Latest follow-up: **Hosted CI and dependency-fix proposal — c6abb57, 16 October 2026**
 below records the supplied hosted result and a proposal awaiting approval.
 The **Owner registry preflight follow-up — 16 October 2026** section completes
@@ -2019,3 +2028,253 @@ inconsistent intermediate state. No new Tide-specific evidence was found, so
 no learning-log entry was added or duplicated. No authentication, account,
 realm, private adapter/configuration or data change, Tide MCP, service startup,
 commit, push, merge or deployment occurred.
+
+## Owner installation and agent migration verification — 16 October 2026
+
+**Current state: migration installed and lockfile consistent; verification partly
+passed, with remaining permission/network blocks.** This supersedes the earlier
+incomplete-install and unusable-dependency-tree status. Preserve that history;
+do not describe it as the present installation state.
+
+### Evidence attribution and exact version gate
+
+Owner evidence: normal Command Prompt `pnpm install` reported Already up to date,
+pnpm 11.20.0, exit 0. This was not treated as version proof by itself.
+
+Fresh agent checks on local Node 24.19.0 / pnpm 11.20.0 independently resolved
+package.json through each importer's normal Node resolution: both frontend and
+backend request and resolve **vitest 4.1.11**, **@vitest/coverage-v8 4.1.11**;
+Vite resolved from each installed Vitest package is **7.3.6**. A parsed comparison
+of every root/frontend/backend dependency and devDependency manifest specifier
+against lockfile importer entries passed. Agent `pnpm install --frozen-lockfile`
+then passed, exit 0, Already up to date, with no lockfile change.
+
+At the start of this follow-up, the working tree was clean at existing local
+HEAD **ba50ff09e9af3c5225b4ed20b5df4be2e99745a2**, two commits ahead of the tracked
+remote. Commits 357a387 (migration) and ba50ff0 (documentation) were already
+present; the agent did not create, alter or publish them. Earlier c6abb57 status
+statements remain historical, not the current HEAD.
+
+### Manifest and regenerated lockfile review
+
+Compared the current committed lockfile with c6abb57 using parsed package and
+importer records. Only the two intended direct development tools in each package
+changed versions, 3.2.7 to 4.1.11. Direct production dependency versions are
+unchanged. The new graph adds 18 and removes 47 package/version records, reflecting
+Vitest/coverage and their toolchain changes: Vitest internal packages 4.1.11,
+Chai 6.3.0, ast-v8-to-istanbul 1.0.7, magicast 0.5.5, es-module-lexer 2.3.2,
+obug 2.2.1, std-env 4.3.0, tinyexec 1.3.1 and tinyrainbow 3.2.0, plus their
+required schema support. Old Tinypool, vite-node and obsolete coverage/glob
+chains are removed. No unexpected direct/runtime upgrade was identified.
+
+Among retained package/version records, only @vitejs/plugin-react 4.7.0 metadata
+changes: its Vite peer becomes 7.3.6 under the approved override. Its version,
+integrity and engines are unchanged; 7.3.6 is within its original ^7.0.0 range.
+Vite itself remains 7.3.6. The complete lockfile contains no Tinypool package
+entry. This confirms removal of the vulnerable dependency from the locked graph;
+it is not a fresh security-audit result or proof that every advisory is resolved.
+
+### Actual agent execution results
+
+| Check                                          | Actual result                                                                                                                                                                                                                                                                                                                                                                                                |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Initial frontend/backend units in sandbox      | Both stopped before executing tests: EPERM renaming Vitest temporary cache files. One outside-sandbox retry per suite followed; no cache/isolation/security settings changed.                                                                                                                                                                                                                                |
+| Frontend complete units, outside-sandbox retry | **145 passed / 15 files**, exit 0, Vitest 4.1.11.                                                                                                                                                                                                                                                                                                                                                            |
+| Frontend complete V8 coverage                  | **145 passed / 15 files**, exit 0. Statements 72.91% (280/384), branches 64.44% (232/360), functions 65.35% (83/127), lines 73.42% (257/350).                                                                                                                                                                                                                                                                |
+| Backend complete units, outside-sandbox retry  | **82 passed / 53 failed / 135 total**, five failed and four passed files; exit 1. All 53 reported connect EACCES on 127.0.0.1. No further repeat or source/test workaround.                                                                                                                                                                                                                                  |
+| Backend complete V8 coverage, outside sandbox  | Same **82 passed / 53 failed / 135 total**, exit 1, with loopback EACCES. No successful backend coverage result is claimed.                                                                                                                                                                                                                                                                                  |
+| Both typechecks                                | `pnpm run typecheck` passed.                                                                                                                                                                                                                                                                                                                                                                                 |
+| Both source lint checks                        | `pnpm run lint` passed; existing scripts check src.                                                                                                                                                                                                                                                                                                                                                          |
+| Backend production build                       | `pnpm --filter backend build` passed, exit 0.                                                                                                                                                                                                                                                                                                                                                                |
+| Frontend production build                      | Exit 1. Next.js 16.3.8 reported EPERM opening the protected local environment file, then a Turbopack worker/process-connection failure while processing CSS. No environment file, panic log or generated report link was inspected. No escalation was requested to access the denied file, and no build retry/configuration change was made. The complete cause of the Turbopack failure is not established. |
+| Targeted formatting                            | Root-context invocation could not resolve prettier-plugin-tailwindcss. Corrected invocation from frontend context passed all five implementation files, exit 0; no source/config formatting change required.                                                                                                                                                                                                 |
+| Frozen-lockfile install                        | Passed, exit 0; pnpm 11.20.0, no regeneration or dependency-tree rebuild required.                                                                                                                                                                                                                                                                                                                           |
+| Fresh audit                                    | `pnpm audit --json` failed with fetch failed, exit 1, both inside the sandbox and on one outside-sandbox retry. No advisory data, counts or new IDs were returned.                                                                                                                                                                                                                                           |
+| Documentation formatting and git diff --check  | Targeted new-section formatting and diff check completed after this update; no full historical-document reformat.                                                                                                                                                                                                                                                                                            |
+
+Coverage includes/excludes and file isolation remain as approved; no threshold,
+test, authentication or SDK validation was weakened. The frontend coverage run
+includes untested source modules through explicit coverage.include; percentages
+must not be equated with old runner/remapping totals. Tests are mocked/synthetic
+application checks, not live Tide or peer fresh-client login verification.
+
+### Remaining security and CI limitations
+
+The two Tinypool advisory paths no longer exist in this lockfile. Because fresh
+audit retrieval failed, do not claim a new aggregate audit count or a green
+Security Scan. The last owner-hosted **2 Critical, 1 High, 7 Moderate** result is
+historical, from before this verification. The current locked Braces path is:
+
+```text
+frontend > eslint-config-next@16.2.12 > @next/eslint-plugin-next@16.2.12 > fast-glob@3.3.1 > micromatch@4.0.8 > braces@3.0.3
+```
+
+Braces **GHSA-vfj7-8cjw-p6xm** remains unresolved; no authoritative supported fix
+has been established. The remaining Moderate IDs/paths cannot be freshly
+reconciled without audit output and are not invented. The unchanged hosted
+workflow uses Node 22, pnpm 10, frozen installation and audit-level high.
+Node 22 must be >=22.12.0. This agent used Node 24.19.0 / pnpm 11.20.0; it did
+not run hosted CI or obtain its exact Node patch. No commit/push/CI dispatch was
+performed. A local frozen pass is not reported as hosted pnpm 10 evidence.
+
+Only the following execution checks remain for the owner's normal terminal;
+do not repeat passed frontend tests/coverage, typechecks, lint, backend build,
+formatting or frozen install solely for this documentation update. Stop and
+record each failing result without disabling checks:
+
+```powershell
+pnpm --filter backend test
+pnpm --filter backend test:coverage
+pnpm --filter frontend build
+pnpm audit --json
+pnpm audit --audit-level=high
+```
+
+**Scope assessment:** approved migration implementation and local consistency
+are complete. Full migration verification remains incomplete until the blocked
+backend and frontend-build checks succeed and the fresh audit is reconciled.
+Braces remains a separate security blocker; no clean-audit promise. No new Tide-
+specific evidence warranted a learning-log edit. F8 remains unresolved, DPoP
+migration deferred and evidence locked. Only these three status documents were
+edited in this follow-up; no services, accounts, private configuration/adapters,
+authentication, dependencies, commits or pushes were changed by the agent.
+
+## Owner completion and final migration review — 16 October 2026
+
+**Decision: approved migration implementation and local verification are complete.
+The migration is already committed; the remaining three documentation updates
+are ready for commit review. This is not a clean Security Scan or release claim.**
+No passed application check was repeated in this documentation-only follow-up.
+
+### Latest owner evidence, separate from agent failures
+
+The owner supplied these results in the conversation:
+
+| Owner-run check             | Reported result                                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Backend complete unit suite | **135 passed across nine files**, Vitest **4.1.11**.                                                         |
+| Backend V8 coverage         | **135 passed; report generated**. Fresh numeric coverage percentages were not supplied and are not invented. |
+| Frontend production build   | **Passed**, Next.js **16.3.8**.                                                                              |
+| Fresh dependency audit      | **0 Critical, 1 High, 3 Moderate**; four advisory IDs below.                                                 |
+
+These are owner-run results, not new sandbox passes. Preserve the agent's
+82-pass/53-loopback-EACCES backend results, denied frontend environment access,
+Turbopack failure and audit fetch failures as their own historical evidence.
+The owner passes close those local execution gates without establishing the
+internal cause of the sandbox failures. Numeric shell exit codes and raw report
+contents for these new results were not provided. The earlier owner installation
+and agent frozen-lockfile/version checks remain separately attributed.
+
+Together with the prior fresh agent frontend 145/145 units and coverage, both
+typechecks, lint, backend build, targeted formatting and frozen installation,
+these results complete the agreed local migration checks. Frontend coverage
+percentages remain those of the earlier agent coverage run, not this owner run.
+No further emulator, browser or authentication repetition is needed for this
+migration. Exact hosted Node patch and hosted CI execution remain unverified;
+local/owner passes are not labelled hosted evidence. Security audit remains
+non-clean because the four advisories below are still present.
+
+### Exact Git identity and final diff review
+
+Fresh read-only Git inspection confirms branch feature/soc-emergency-access-poc
+at **ba50ff09e9af3c5225b4ed20b5df4be2e99745a2**. The local lineage is:
+
+```text
+c6abb57 test(frontend): remove SDK internal path dependency
+  -> 357a387fb3a171e4895a0e6fc128ab6cb2dccc3e
+     fix(deps): migrate Vitest and coverage to 4.1.11
+  -> ba50ff09e9af3c5225b4ed20b5df4be2e99745a2
+     docs: record Vitest migration verification and limitations
+```
+
+Git records both intervening commits on 16 October 2026, before this follow-up.
+They were already present when the preceding agent verification began. This
+agent did not create them, move HEAD or publish anything; Git history alone does
+not establish which tool created them. The previous report should have called
+out this transition from c6abb57 more clearly. No reset, rebase or branch change
+is needed or authorized. Branch status is two commits ahead of the locally
+recorded remote-tracking ref; that is not a fresh remote/network verification.
+
+Commit 357a387 contains exactly these six implementation paths:
+
+```text
+backend/package.json
+backend/vitest.config.ts
+frontend/package.json
+frontend/vitest.config.ts
+pnpm-lock.yaml
+pnpm-workspace.yaml
+```
+
+Commit ba50ff0 contains the three status documents. The **current uncommitted
+changed paths**, before and after this follow-up, are exactly:
+
+```text
+docs/SOC-POC-BUILD-STATUS.md
+docs/SOC-POC-HANDOFF.md
+docs/SOC-WEEK8-TRIAGE.md
+```
+
+Nothing is staged. No private/generated path is included. These documents also
+retain the preceding agent-verification edits; the new owner evidence supplements
+them. Do not create another migration commit for implementation already in
+357a387. A future documentation-only commit may use:
+`docs: record owner verification and remaining dependency advisories`.
+No staging or commit is performed by this task.
+
+Re-reviewed all six implementation paths and parsed lockfile changes against
+c6abb57. Both packages pin matching Vitest/coverage-v8 4.1.11; Vite remains 7.3.6.
+Only the four approved direct development-tool entries change version. No direct
+production dependency version changes. The lockfile adds 18/removes 47 toolchain
+records, has no Tinypool entry, and its only changed retained package record is
+the expected React-plugin Vite peer narrowing to 7.3.6, with version/integrity
+unchanged. Backend isolation and serialization, envDir: false, frontend unit
+scope and explicit source coverage are preserved. No test skip, relaxed security
+check, runtime-authentication change or publication-blocking migration defect
+was identified. The source review and supplied execution evidence support the
+scoped migration; they do not prove all dependency vulnerabilities are fixed.
+
+### Remaining advisories and separate remediation proposal
+
+These counts and IDs are **owner fresh-audit evidence**, replacing the previous
+pending audit gate for this run. They must not be merged with older hosted or
+local audit totals. Read-only lockfile mapping confirms the current versions:
+
+| Severity / advisory                | Current version and dependency families                                                                                                                | Separate proposed next step; no implementation                                                                                                                                                                            |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| High: Braces GHSA-vfj7-8cjw-p6xm   | 3.0.3: frontend > eslint-config-next 16.2.12 > @next/eslint-plugin-next 16.2.12 > fast-glob 3.3.1 > micromatch 4.0.8 > braces.                         | **Unresolved.** Official advisory still lists no patched version. Review a supported upstream fix or parent release removing the affected chain when available; do not invent 3.0.4, remove lint rules or suppress audit. |
+| Moderate: uuid GHSA-w5hq-g745-h8pq | 9.0.1: backend Firebase Admin/Functions peers > Firestore/Storage > google-gax, gaxios and teeny-request chains.                                       | Advisory names 11.1.1 as a patched line (also 12.0.1/13.0.1). Review supported Google/Firebase parent updates and CommonJS/ESM/API compatibility; do not force uuid 11+ into uuid 9 parents.                              |
+| Moderate: qs GHSA-x5fp-wj9c-mxmx   | 6.15.3: backend Express 5, its body-parser 2, Firebase Functions' Express 4/body-parser 1, and Supertest > Superagent; peer paths repeat these chains. | Review exact **6.16.0** as the shared patch candidate after checking publication and every parent range; a compatible resolution/override proposal needs separate approval.                                               |
+| Moderate: qs GHSA-4mjr-xmp4-gh2g   | The same qs 6.15.3 paths.                                                                                                                              | The same 6.16.0 candidate addresses both qs advisories according to the official advisory entries. Keep parsing limits/security behavior and verify negative parser cases in any later implementation.                    |
+
+Official advisory entries checked in this follow-up:
+
+- [Braces](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm).
+- [uuid](https://github.com/advisories/GHSA-w5hq-g745-h8pq).
+- [qs array-limit bypass](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx).
+- [qs isBuffer denial of service](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g).
+
+The qs candidate is a preliminary next-task recommendation, not a completed
+publication/parent-compatibility proposal. Installed Express 5.2.1 declares
+qs ^6.14.0, which admits 6.16.0; all remaining parents must still be checked.
+A public package.json lookup for Firebase Functions was rejected by its exports
+map; no internal/private-path workaround was used and no compatibility claim
+is based on that failed lookup. Registry access/install and full parent migration
+research were not repeated or expanded in this documentation-only task.
+
+Suggested separate order: first prepare the compatible qs 6.16.0 proposal for
+both Moderate advisories; then review supported uuid parent upgrades; retain
+Braces as the unresolved High requiring upstream remediation. The existing
+high-severity CI audit gate should remain blocking for Braces; no security
+exception, suppression or green-build promise is proposed. Aggregate reduction
+from older audit totals is not all attributed to Vitest without matching audit
+database/run evidence. Tinypool removal and the owner's zero-Critical result
+are mutually consistent, separately supported observations.
+
+**Final review status:** local testing-fix/migration scope is complete and the
+three-document update is ready to commit. Overall dependency remediation, clean
+Security Scan, hosted verification and full PoC acceptance are not complete.
+F8 remains unresolved, DPoP deferred, evidence locked. No dependency changes,
+service operations, private-file reads, Tide MCP, authentication/account/realm
+changes, commits or pushes. New-section formatting and git diff --check were
+checked after editing; application checks were not repeated.
