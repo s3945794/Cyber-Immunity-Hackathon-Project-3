@@ -1,7 +1,11 @@
 # Week 8 testing-findings triage
 
-Latest follow-up: **Frontend CI test portability — published HEAD 9666691**
-below records the current test-only correction and verification. Earlier
+Latest follow-up: **Hosted CI and dependency-fix proposal — c6abb57, 16 October 2026**
+below records the supplied hosted result and a proposal awaiting approval.
+The **Owner registry preflight follow-up — 16 October 2026** section completes
+the publication/version assessment using owner evidence; the later **Approved Vitest migration attempt — 16 October 2026** section records implementation and blockers.
+The earlier **Frontend CI test portability — published HEAD 9666691** section
+records that test-only correction and its verification. Earlier
 readiness, Git status and check statements retain their original snapshot
 attribution; the owner has since published the reviewed commits. F8 remains
 unresolved and DPoP migration remains deferred.
@@ -1622,3 +1626,396 @@ and prepare the smallest supported compatible patch proposal; identify any major
 migration separately for approval. Do not infer package identities from counts,
 force unsupported overrides, lower audit thresholds or install anything from
 this test-only task. Fresh audit reconciliation is separate from test success.
+
+## Hosted CI and dependency-fix proposal — c6abb57, 16 October 2026
+
+**Proposal only; dependency implementation is not approved.** Reviewed branch
+`feature/soc-emergency-access-poc` at
+`c6abb575c5cd06fd4409dfb6da8903b05597118b`; initial working tree was clean.
+Read root AGENTS.md, CLAUDE.md, the manifests, lockfile, both Vitest configs,
+test setup and CI workflow. Only this triage is changed by this review.
+
+### Supplied hosted evidence, separate from agent checks
+
+The owner reports that **Frontend Tests, Backend Unit Tests, and Lint & Typecheck
+passed** in the latest hosted CI. **Security Scan failed: 2 Critical, 1 High,
+7 Moderate**. This supersedes the preceding section's pending hosted-rerun note
+for this supplied run. No run URL or machine-readable audit was supplied; counts
+and named blockers are owner-supplied evidence, not a fresh agent audit. Earlier
+audit totals and local test results retain their original attribution.
+
+### Current lockfile mapping: all paths to the three named advisories
+
+Both package manifests request Vitest and coverage-v8 `^3.1.1`; both resolve to
+**3.2.7**. The two Vitest snapshots differ in Node type peer context, not Vitest
+version. A read-only traversal of lockfile importers and snapshot dependency /
+optional-dependency edges found exactly these five paths to Tinypool or Braces
+(the coverage-to-Vitest edges are resolved peers):
+
+```text
+backend > vitest@3.2.7 > tinypool@1.1.1
+backend > @vitest/coverage-v8@3.2.7 > vitest@3.2.7 > tinypool@1.1.1
+frontend > vitest@3.2.7 > tinypool@1.1.1
+frontend > @vitest/coverage-v8@3.2.7 > vitest@3.2.7 > tinypool@1.1.1
+frontend > eslint-config-next@16.2.12 > @next/eslint-plugin-next@16.2.12 > fast-glob@3.3.1 > micromatch@4.0.8 > braces@3.0.3
+```
+
+| Finding                      | Locked affected version and paths              | Current official fix information                                                           |
+| ---------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Critical GHSA-5gmw-xhrv-c9v3 | Tinypool 1.1.1; all four Vitest paths above    | Advisory affects <=2.1.0; first fixed in 2.1.1.                                            |
+| Critical GHSA-85c8-ppgw-ccpr | Tinypool 1.1.1; the same four paths            | Advisory affects <2.1.2; first fixed in 2.1.2. **2.1.1 does not address both advisories.** |
+| High GHSA-vfj7-8cjw-p6xm     | Braces 3.0.3; the single Next lint chain above | Advisory affects <=3.0.3 and lists **no patched version**.                                 |
+
+These are development-tool paths, not evidence of exploitation in the running
+application. That distinction does not remove the CI audit failure or justify
+ignoring advisories. The seven Moderate findings are outside this named-blocker
+mapping; no claim is made that they are fixed or fully reviewed.
+
+Official advisories, checked during this review:
+
+- [Tinypool first advisory](https://github.com/advisories/GHSA-5gmw-xhrv-c9v3).
+- [Tinypool second advisory](https://github.com/advisories/GHSA-85c8-ppgw-ccpr).
+- [Braces stack-exhaustion advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm).
+
+### Fresh version verification and its limits
+
+The official [Vitest 4.1.11 release](https://github.com/vitest-dev/vitest/releases/tag/v4.1.11)
+and tagged manifests for
+[Vitest](https://github.com/vitest-dev/vitest/blob/v4.1.11/packages/vitest/package.json)
+and [coverage-v8](https://github.com/vitest-dev/vitest/blob/v4.1.11/packages/coverage-v8/package.json)
+were checked afresh. Both declare 4.1.11. Vitest's dependency list has no
+Tinypool; the official v4 migration guide confirms removal of Tinypool rather
+than a forced 2.x substitution. This is a bounded v4 candidate, **not a claim
+that 4.1.11 is the latest release or free of all vulnerabilities**.
+
+**npm publication verification is blocked.** Read-only registry queries failed
+with ENOTFOUND inside the sandbox and on one approved outside-sandbox retry.
+Web registry requests also failed, and npm package pages returned 403. No more
+retry was made. The source manifests contain workspace/catalog references, so
+they do not independently certify the expanded npm dependency/peer manifest,
+artifact integrity or registry availability. No package was installed. A fresh
+read-only audit was not run against the unavailable registry.
+
+Before implementing, require successful registry metadata for the exact versions
+below, including the coverage peer requiring the matching Vitest version,
+resolved internal packages, engines and integrity. Stop if metadata differs;
+do not substitute an unreviewed version or bypass pnpm policy.
+
+```powershell
+pnpm view vitest@4.1.11 version engines dependencies peerDependencies dist.integrity --json
+pnpm view @vitest/coverage-v8@4.1.11 version engines dependencies peerDependencies dist.integrity --json
+pnpm view vite@7.3.6 version engines peerDependencies dist.integrity --json
+pnpm view tinypool@2.1.2 version engines dist.integrity --json
+pnpm view braces versions dist-tags --json
+```
+
+Tinypool 2.1.2 is the advisory's minimum release addressing both issues, and its
+[official tagged manifest](https://github.com/tinylibs/tinypool/blob/v2.1.2/package.json)
+exists. It is **not** a proposed override: Vitest 3's Tinypool range is ^1.1.1.
+Moving the parent tool off Tinypool avoids assuming cross-major compatibility.
+
+For Braces, an audit remediation hint such as `>=3.0.4` is not evidence of a
+published, supported fix. The current advisory says None, and the
+[maintainer manifest](https://github.com/micromatch/braces/blob/master/package.json)
+still declares 3.0.3. Registry version enumeration was blocked, so this review
+cannot certify that 3.0.4 is absent from every publication source; it **cannot
+verify any supported patched release**. Do not confuse this advisory with an
+older Braces issue fixed in 3.0.3. No Braces override, invented version, parent
+upgrade or replacement glob engine is proposed. A verified upstream fix or
+supported parent release removing the affected chain requires a separate review.
+The High remains a security-scan blocker; no exception/suppression is proposed.
+
+### Concrete coordinated migration proposed for approval
+
+Subject to the registry preflight above, change only these implementation files:
+
+| File                        | Exact proposed change                                                                                                                                                                                             |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `frontend/package.json`     | Set devDependencies vitest and @vitest/coverage-v8 to exact **4.1.11**, together.                                                                                                                                 |
+| `backend/package.json`      | Set the same two devDependencies to exact **4.1.11**, together.                                                                                                                                                   |
+| `pnpm-workspace.yaml`       | Add compatible override `vite: '7.3.6'` to retain the existing Vite version across the test tool graph. Retain every existing override and allowBuilds entry. No Tinypool or Braces override.                     |
+| `pnpm-lock.yaml`            | Regenerate once after both manifests/configs are prepared; review all new/removed entries, integrity and peer contexts. Require no remaining reachable Tinypool. Do not hand-edit lockfile snapshots.             |
+| `backend/vitest.config.ts`  | Remove poolOptions.forks.singleFork; retain forks and explicitly set maxWorkers: 1, fileParallelism: false, isolate: true. Retain envDir: false, setup, aliases and coverage filters.                             |
+| `frontend/vitest.config.ts` | Retain envDir: false, jsdom, React plugin, aliases, setup and e2e exclusion; bound discovery with dir: './tests/unit'; add coverage.include: ['src/**/*.{ts,tsx}'] while retaining existing exclusions/reporters. |
+| `docs/SOC-WEEK8-TRIAGE.md`  | Replace pending implementation/check statements with actual results, preserving this proposal and earlier evidence.                                                                                               |
+
+No production dependency, Tide SDK, application authentication, realm/client
+setting, CI threshold or build approval changes are part of this proposal.
+Keep @vitejs/plugin-react at its existing locked **4.7.0**. Its peer range admits
+Vite 7 but not Vite 8; Vitest 4.1.11's tagged manifest admits Vite 6/7/8. The Vite
+pin avoids an unrelated Vite 8 / React-plugin major migration. The
+[Vite 7.3.6 tagged manifest](https://github.com/vitejs/vite/blob/v7.3.6/packages/vite/package.json)
+was checked; this is the version already present in both lockfile contexts.
+
+Migration basis: the [official v4 guide](https://v4.vitest.dev/guide/migration)
+removes poolOptions, changes worker controls, simplifies test exclusion defaults,
+and changes coverage collection/remapping and mock behaviour. Limit discovery
+explicitly and review V8 coverage results rather than accepting changed totals
+as equivalent. Retain existing --configLoader runner scripts, subject to the
+actual post-upgrade execution check.
+
+**Isolation choice:** the guide's singleFork shorthand includes isolate: false.
+That is not blindly appropriate here: the
+[v3.2.7 runtime](https://github.com/vitest-dev/vitest/blob/v3.2.7/packages/vitest/src/runtime/runBaseTests.ts)
+resets mocks/modules between files when the existing default isolation is true,
+including the single-fork batch. The proposal preserves isolation explicitly and
+serial execution, accepting possible extra worker startup cost. It does not
+add reset hooks or disable isolation merely to reproduce process reuse.
+
+**Node compatibility:** Vitest's tagged engine range is
+`^20.0.0 || ^22.0.0 || >=24.0.0`; retained Vite requires
+`^20.19.0 || >=22.12.0`. Within this project's Node >=22 policy, use **Node
+22.12+ on the 22 line, or Node 24+**; Node 23 is excluded by Vitest. Hosted CI
+selects Node 22 (current patch) and pnpm 10; local tooling recorded previously
+was Node 24.19.0 / pnpm 11.20.0. Root/backend `>=22` does not express the complete
+toolchain intersection, including an already-existing Vite minimum. No engine or
+workflow change is proposed here. Check the actual CI/local Node version before
+installation and verify on the CI pnpm 10 lane, rather than assuming local pnpm
+11 success proves frozen CI compatibility.
+
+### Risks, acceptance checks and stop conditions
+
+This is a major **test-tool** migration: worker lifecycle, mocks/cleanup, ESM
+configuration loading, test discovery and V8 reporting can change. Test failures
+must be investigated, not skipped or repaired by changing runtime authentication.
+New transitive advisories and lockfile churn are unknown until metadata,
+resolution and audit succeed. Retain all supply-chain protections; if resolution
+or a build approval fails, report it and stop without overriding policy.
+
+After approval and successful metadata preflight: prepare both manifests and
+configs together, run `pnpm install` once with existing policies, then review the
+explicit manifest/config/lockfile diff. Proposed verification (not run now):
+
+```powershell
+node --version
+pnpm --version
+pnpm -r why tinypool
+pnpm -r why braces
+pnpm --filter backend test
+pnpm --filter frontend test
+pnpm --filter backend test:coverage
+pnpm --filter frontend test:coverage
+pnpm run typecheck
+pnpm run lint
+pnpm exec prettier --check frontend/package.json backend/package.json frontend/vitest.config.ts backend/vitest.config.ts pnpm-workspace.yaml
+pnpm --filter backend build
+pnpm audit --json
+pnpm audit --audit-level=high
+git diff --check
+```
+
+Run frozen-lockfile installation plus the unchanged CI jobs in an isolated clean
+Node 22.12+/pnpm 10 checkout, preserving this worktree. Compare collected files
+against the pre-migration inventory (including the portable DPoP boundary suite),
+review coverage includes/excludes and cleanup/isolation behaviour, and require all
+existing cases to execute. Coverage runs additionally check the newly matched
+coverage package and instrumentation. No live login, browser secret entry or
+emulator/service startup is needed to validate the test-tool migration. A final
+frontend production build remains an owner/approved build-environment check;
+private application configuration must not be inspected to perform it.
+
+Accept the Tinypool part only if both packages use matching 4.1.11 tooling,
+Tinypool is absent from the resolved graph and both named advisories disappear
+from a fresh audit. Do not predict new aggregate totals: **Braces High is still
+unresolved**, and the seven Moderate findings remain separately reviewable.
+The existing security threshold should continue to fail while a High remains.
+
+**Actual agent checks in this proposal-only session:** read-only source/lockfile
+mapping and official advisory/tagged-source review completed; registry checks
+blocked as above. No application tests were repeated because no runtime/test
+code or dependencies changed. Targeted formatting of the new section and git diff --check passed (exit 0). No dependencies installed, services operated, private files
+read, Tide MCP calls, commits or pushes. F8 remains unresolved; DPoP remains
+deferred; evidence remains locked.
+
+### Owner registry preflight follow-up — 16 October 2026
+
+**Decision: the coordinated Vitest migration is ready for approval. It is not
+installed or verified after installation.** This follow-up supersedes the earlier
+publication-metadata blocker for the proposed Vitest/coverage/Vite versions;
+the earlier agent network failures remain historical evidence.
+
+The owner supplied successful `pnpm view` output for **vitest 4.1.11**,
+**@vitest/coverage-v8 4.1.11** and **vite 7.3.6**. These exact versions are
+published according to those owner-run registry results. Vitest's published
+manifest pins its internal @vitest packages to 4.1.11 and its coverage-v8 peer
+to 4.1.11; coverage-v8 reciprocally requires Vitest 4.1.11 and @vitest/utils
+4.1.11. Neither supplied dependency list contains Tinypool. This completes the
+requested version/publication and direct compatibility assessment; it does not
+establish a resolved transitive graph, artifact integrity or a clean audit.
+The earlier registry check for Tinypool 2.1.2 is not a prerequisite to this
+migration because no Tinypool override/install is proposed.
+
+The coverage manifest also lists @vitest/browser 4.1.11 as a peer. The
+[official 4.1.11 tagged manifest](https://github.com/vitest-dev/vitest/blob/v4.1.11/packages/coverage-v8/package.json)
+marks that peer optional. These Node/jsdom tests do not require adding browser
+mode, its provider or optional UI packages. Keep strict peer checks enabled;
+confirm published optional-peer metadata during normal approved resolution.
+The supplied owner command did not request peerDependenciesMeta or dist.integrity;
+those omissions do not invalidate the matching versions. Normal pnpm resolution,
+lockfile review and integrity-checked installation remain required acceptance
+checks, not a claim that installation already succeeded.
+
+**Vite override assessment:** the proposed `vite: '7.3.6'` satisfies every current
+locked Vite consumer and the identified proposed replacement consumers:
+
+| Consumer                                     | Declared Vite constraint             | Does 7.3.6 satisfy it?                                |
+| -------------------------------------------- | ------------------------------------ | ----------------------------------------------------- |
+| Existing Vitest 3.2.7                        | ^5.0.0 OR ^6.0.0 OR ^7.0.0-0         | Yes; recorded from installed public package manifest. |
+| Existing vite-node 3.2.4                     | ^5.0.0 OR ^6.0.0 OR ^7.0.0-0         | Yes; recorded from installed public package manifest. |
+| Existing @vitest/mocker 3.2.7                | ^5.0.0 OR ^6.0.0 OR ^7.0.0-0         | Yes; installed public manifest and lockfile agree.    |
+| Retained @vitejs/plugin-react 4.7.0          | ^4.2.0 OR ^5.0.0 OR ^6.0.0 OR ^7.0.0 | Yes; current lockfile peer declaration.               |
+| Proposed Vitest 4.1.11 dependency and peer   | ^6.0.0 OR ^7.0.0 OR ^8.0.0           | Yes; owner registry metadata.                         |
+| Proposed @vitest/mocker 4.1.11 optional peer | ^6.0.0 OR ^7.0.0 OR ^8.0.0           | Yes; official tagged manifest.                        |
+
+The [mocker source manifest](https://github.com/vitest-dev/vitest/blob/v4.1.11/packages/mocker/package.json)
+was checked in this follow-up. Both importers currently resolve Vite 7.3.6;
+there is no identified incompatible Vite constraint. Vite 7.3.6's Node type peer
+also accepts the current frontend @types/node 20.19.43 and backend 22.20.1.
+Vitest 4 accepts both Node type major versions and the existing jsdom version
+through its unrestricted jsdom peer. No type-package or React-plugin upgrade is
+required by these declared constraints. Recheck any new consumers introduced
+by the regenerated lockfile rather than assuming they are covered in advance.
+
+**Node assessment:** the agent rechecked local **Node 24.19.0 / pnpm 11.20.0**;
+Node 24.19.0 satisfies both supplied engine ranges. Hosted CI selects Node 22
+and pnpm 10. The supported intersection on that CI line is **22.12.0 or later
+within Node 22**. The setup-node major selector obtains the current Node 22
+release; the exact patch from the owner's latest hosted run was not supplied.
+Record the actual Node patch during the approved CI rerun. Node 22.0–22.11 do not
+meet Vite's minimum, and Node 23 does not meet Vitest's range. There is no
+identified engine blocker for the current local version or configured current
+Node 22 CI lane. This is declared compatibility, not execution proof.
+
+**Braces remains unresolved.** The owner's `braces@3.0.4` lookup returned
+ERR_PNPM_PACKAGE_NOT_FOUND / no matching version. This is owner evidence that
+that lookup did not find the proposed version, not proof of remediation or of
+future publication status. The subsequent Windows libuv assertion is a separate
+CLI failure of unknown cause; it is not an SDK or application failure and was
+not reproduced. The authoritative advisory still has no confirmed patched
+release in this review. Even a later successful version lookup would require
+advisory/maintainer evidence that the stack-exhaustion issue is actually fixed.
+No change to the Braces chain or audit threshold is approved or proposed here.
+
+**Remaining gates:** explicit approval; coordinated manifest/config migration;
+normal policy-preserving resolution/install and lockfile/integrity review;
+frontend/backend unit and coverage tests, typecheck, lint, formatting, builds,
+frozen Node 22/pnpm 10 CI and fresh audit as listed above. Those are implementation
+acceptance checks, not remaining evidence of a known incompatibility. The
+unresolved Braces High remains a blocker to a clean Security Scan, separately
+from approval of the Tinypool-removing migration; seven Moderates remain
+separately reviewable. No aggregate post-upgrade audit result is predicted.
+
+**Actual follow-up checks:** read-only Node/pnpm version and dependency-constraint
+inspection plus official tagged-manifest review. An attempted React-plugin
+package.json lookup was rejected by its exports map; its peer constraint was
+available in the lockfile, so no private/internal-path workaround was used.
+No tests were rerun for this documentation-only update. Targeted formatting and
+`git diff --check` were checked after editing. Only this triage is modified;
+existing changes are preserved. No install, dependency/configuration changes,
+service operations, private-file access, Tide MCP, commit or push. F8 remains
+unresolved, DPoP deferred and evidence locked.
+
+## Approved Vitest migration attempt — 16 October 2026
+
+**Current status: partially implemented; installation and verification blocked.
+Not ready to commit.** The owner approved the coordinated proposal. Its earlier
+unapproved/proposal-only statements describe their dated phases. Existing triage
+changes and all original evidence are preserved. Baseline remains c6abb57 on
+feature/soc-emergency-access-poc; no commit or push was made.
+
+### Approved edits completed
+
+- Both package manifests now pin vitest and @vitest/coverage-v8 to exact 4.1.11.
+- Workspace overrides now pin Vite to compatible 7.3.6. Existing overrides and
+  every allowBuilds entry remain intact; no Tinypool or Braces override was added.
+- Backend config replaces poolOptions.forks.singleFork with maxWorkers: 1,
+  fileParallelism: false and isolate: true; forks, setup and coverage filters stay.
+- Frontend config adds dir: './tests/unit' and coverage.include:
+  ['src/**/*.{ts,tsx}']; its existing exclusions, reporters, setup and jsdom remain.
+- Both configs retain envDir: false. No test, application or Tide SDK file changed.
+
+A builtin-Node comparison against HEAD confirmed that each manifest differs only
+in the two approved development pins. The intended unit inventory remains
+15 frontend files and nine backend files. These are static checks, not executed
+Vitest 4 tests or a coverage result.
+
+### Installation and tooling evidence: actual results
+
+| Check or operation                               | Result in this agent session                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Local tools                                      | Node 24.19.0 / pnpm 11.20.0; supported by the reviewed engine intersection.                                                                                                                                                                                                                                                                                                               |
+| Initial normal install, with bounded fetch flags | Exit 1: EPERM creating pnpm's store project symlink inside the sandbox, before resolution.                                                                                                                                                                                                                                                                                                |
+| Approved outside-sandbox install retry           | Exit 1: ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY. No completed install.                                                                                                                                                                                                                                                                                                                 |
+| Terminal-enabled normal install                  | Accepted pnpm's standard reinstall prompt under the owner's installation approval. It reported Recreating node_modules and removed old dependency links, but gave no further resolution/progress/completion output for roughly ten minutes. The agent interrupted only this installer session; exit -1073741510. The stall's cause is not established. No further install retry was made. |
+| Lockfile regeneration/review                     | **Not completed.** pnpm-lock.yaml has no diff. It still records Vitest/coverage 3.2.7 and Tinypool 1.1.1. Manifests and lockfile are temporarily inconsistent. No unexpected lockfile upgrade exists to review because no regenerated lockfile was produced.                                                                                                                              |
+| Targeted pnpm exec prettier attempt              | **Blocked before formatting:** pnpm's dependency-status check attempted an automatic install and hit the store-symlink EPERM. Do not report a formatting pass.                                                                                                                                                                                                                            |
+| Both unit suites and both coverage runs          | **Not run:** new dependencies are not installed. Running old or incomplete dependencies would not verify this migration.                                                                                                                                                                                                                                                                  |
+| Typecheck, lint and both production builds       | **Not run:** installation prerequisite is missing. Earlier owner/CI passes remain separately attributed, not post-migration passes.                                                                                                                                                                                                                                                       |
+| Frozen-lockfile install                          | **Not verified:** normal regeneration never completed; current manifest/lockfile mismatch must first be resolved normally. No frozen success is claimed.                                                                                                                                                                                                                                  |
+| Fresh audit                                      | Standard pnpm audit --json outside the sandbox returned exit 1, error message fetch failed, with no advisory data/counts. It targeted the unchanged lockfile, not a successfully migrated graph. An earlier bounded-option attempt failed before retrieval with ERR_INVALID_ARG_TYPE for a string timeout; that option was removed for the standard attempt.                              |
+| Hosted CI lookup                                 | gh run list failed to connect to api.github.com both in the sandbox and on one outside-sandbox retry. No run was triggered and no runner patch version obtained.                                                                                                                                                                                                                          |
+| git diff --check                                 | Passed, exit 0; line-ending notices only. Rechecked after these documentation edits.                                                                                                                                                                                                                                                                                                      |
+
+**Recovery needed:** pnpm had already begun rebuilding dependency directories.
+Do not assume the previous installed tree is usable. The lockfile was not
+rewritten; do not hand-edit it, use frozen installation first, delete directories,
+change build approvals or bypass supply-chain checks. Use the approved normal
+installation in a working normal Windows terminal, then review its diff before
+running the remaining checks. This is an execution-environment/install blocker;
+the audit fetch failure does not establish the cause of the installer stall.
+
+```powershell
+pnpm install
+# Stop on failure. Review all six implementation paths, including the new lockfile:
+git --no-pager diff -- frontend/package.json backend/package.json frontend/vitest.config.ts backend/vitest.config.ts pnpm-workspace.yaml pnpm-lock.yaml
+pnpm -r why tinypool
+pnpm -r why braces
+pnpm --filter backend test
+pnpm --filter frontend test
+pnpm --filter backend test:coverage
+pnpm --filter frontend test:coverage
+pnpm run typecheck
+pnpm run lint
+pnpm --filter backend build
+pnpm --filter frontend build
+pnpm exec prettier --check frontend/package.json backend/package.json frontend/vitest.config.ts backend/vitest.config.ts pnpm-workspace.yaml
+pnpm install --frozen-lockfile
+pnpm audit --json
+pnpm audit --audit-level=high
+git diff --check
+```
+
+These are recovery/remaining verification commands, not commands already passed.
+Stop after any failing command and record its result. Compare the lockfile against
+the reviewed versions and parent constraints before accepting new transitive
+upgrades. Verify no reachable Tinypool remains and both importers use matching
+4.1.11 tooling. After approved publication, verify the unchanged hosted workflow
+with Node 22/pnpm 10 and record the actual Node patch from that run. Node 22 must
+be >=22.12.0; Node 23 is unsupported by Vitest. No hosted check of these unpublished
+edits exists, and publishing was not authorized by this task.
+
+### Remaining security findings and scope assessment
+
+No fresh advisory IDs or paths were retrieved by the failed audit. The last
+owner-supplied hosted result remains **2 Critical, 1 High, 7 Moderate**, separately
+attributed. The unchanged lockfile still reaches both known Tinypool Criticals
+(GHSA-5gmw-xhrv-c9v3 and GHSA-85c8-ppgw-ccpr) through each package's Vitest and
+coverage peer paths, and Braces High GHSA-vfj7-8cjw-p6xm through frontend >
+eslint-config-next 16.2.12 > @next/eslint-plugin-next 16.2.12 > fast-glob 3.3.1 >
+micromatch 4.0.8 > braces 3.0.3. Full exact paths are recorded above. The seven
+Moderate IDs were not supplied or freshly retrieved; inventing them would be
+incorrect. None of these findings is confirmed remediated in this attempt.
+
+Braces remains unresolved without a supported authoritative fix. Keep the
+security threshold; no green Security Scan is promised. F8 peer fresh-client
+DPoP login stays unresolved, its migration deferred. Evidence stays locked.
+Existing F1/F3/F10 and owner/browser/emulator evidence is not invalidated or
+relabelled by these test-tool edits, but cannot substitute for migration checks.
+
+**Fix problems found during testing is not complete within this migration's
+agreed scope:** source edits are prepared, but the required install, generated
+lockfile and verification have not succeeded. Do not stage or commit this
+inconsistent intermediate state. No new Tide-specific evidence was found, so
+no learning-log entry was added or duplicated. No authentication, account,
+realm, private adapter/configuration or data change, Tide MCP, service startup,
+commit, push, merge or deployment occurred.

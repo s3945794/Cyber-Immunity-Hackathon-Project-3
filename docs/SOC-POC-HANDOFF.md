@@ -1,5 +1,61 @@
 # SOC PoC implementation handoff
 
+## Approved Vitest migration — blocked installation, 16 October 2026
+
+This is the current migration status; older readiness, baseline-SHA, build and
+approval statements below retain their dated historical attribution. Current
+branch is feature/soc-emergency-access-poc at c6abb57. Existing triage edits are
+preserved. The owner approved exact Vitest/coverage-v8 4.1.11 in both packages,
+compatible Vite 7.3.6, the reviewed config migrations and normal regeneration.
+
+The five manifest/config/workspace files are edited as approved. Both configs
+retain envDir: false, backend isolation stays enabled, and frontend source
+coverage is explicit. Only the two development pins changed in each manifest.
+No application/test/authentication/SDK file or supply-chain approval was changed.
+
+**Installation did not complete.** The initial install hit a sandbox store-symlink
+EPERM. One outside-sandbox attempt required a TTY. The terminal-enabled retry
+accepted pnpm's normal reinstall prompt and began recreating dependency
+directories, then produced no further result for roughly ten minutes; the agent
+interrupted only that installer. Cause of the stall is not established. Old
+dependency links were removed, so the installed tree must not be assumed usable.
+No additional install retry, manual lockfile edit or policy bypass was made.
+
+**pnpm-lock.yaml is unchanged** and still resolves Vitest/coverage 3.2.7 and
+Tinypool 1.1.1. The working manifests request 4.1.11: this is an inconsistent,
+uncommitted intermediate state, **not ready to stage or commit**. Run normal
+`pnpm install` in a working normal Windows terminal before frozen verification;
+review the complete lockfile diff before accepting unrelated upgrades.
+
+No new unit/coverage, typecheck, lint, production-build or frozen-install pass is
+claimed. Those checks are blocked by installation. A targeted formatter attempt
+was blocked by pnpm's automatic install preflight; formatting is not verified.
+Static manifest checks and unit-file inventory (15 frontend / nine backend)
+passed. `git diff --check` passed after editing. Prior hosted and owner passes
+are separate historical evidence, not verification of this migration.
+
+Fresh standard `pnpm audit --json` failed with fetch failed and returned no
+advisory data. The last owner-hosted result remains 2 Critical, 1 High, 7 Moderate.
+Both Tinypool Critical IDs and the Braces High remain reachable in the unchanged
+lockfile. No fresh Moderate IDs were obtained; none are invented or suppressed.
+Braces GHSA-vfj7-8cjw-p6xm still has no verified supported fix.
+
+Local Node 24.19.0 / pnpm 11.20.0 were rechecked. CI selects Node 22 / pnpm 10;
+Node must be >=22.12.0 within the 22 line. GitHub lookup failed in the sandbox and
+on one approved retry, so no actual hosted Node patch was obtained. No new CI
+was triggered and no unpublished edit is claimed CI-verified.
+
+The triage's **Approved Vitest migration attempt — 16 October 2026** records the
+full timeline, outstanding commands, advisory paths and commit gate. The task
+is **not complete within the approved migration scope** until normal install,
+lockfile review, both suites/coverage, typecheck/lint, both builds, frozen install
+and audit reconciliation succeed. Security Scan may still fail for unresolved
+Braces and other findings; no clean-audit promise is made.
+
+No Tide-specific learning entry was warranted. F8 remains unresolved, DPoP
+migration deferred, evidence locked. No private configuration/adapters, accounts,
+data, services, Tide MCP, commits, pushes, merges or deployment were touched.
+
 ## Current Week 8 review candidate — 16 October 2026
 
 **Scoped fixes ready for final commit review; recorded execution gate passed.**
