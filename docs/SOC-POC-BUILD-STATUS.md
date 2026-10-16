@@ -1,5 +1,30 @@
 # SOC PoC build status
 
+## Approved qs update — 17 October 2026; local verification complete
+
+Owner fresh audit: **0 Critical, 1 High, 1 Moderate**. Neither qs advisory appears;
+Braces GHSA-vfj7-8cjw-p6xm and uuid GHSA-w5hq-g745-h8pq remain. This is owner-run
+evidence, separate from agent checks, historical audit counts and hosted CI.
+
+Agent review confirms workspace/lockfile agreement and actual installed Express
+4.22.3, body-parser 1.20.8 and qs 6.16.0 on all five affected edges. Only approved
+package/edge changes appear; Firebase Functions, Tide and unrelated versions and
+supply-chain protections are preserved. Ten focused synthetic dependency parsing
+assertions passed, and git diff --check passed. No install or audit was repeated.
+
+The earlier installation blocker is superseded. Agent backend typecheck, lint,
+build and frozen-lockfile install all passed with exit 0; frozen install reported
+Already up to date using pnpm 11.20.0. Units and coverage each exited 1 before
+execution because sandbox EPERM denied a temporary-cache rename: zero tests ran.
+No retry or configuration bypass. Owner subsequently reports, on 17 October for
+the same dependency state: backend units 135 passed/nine files; coverage 135
+passed/report generated, **79.24% line coverage**. These owner results are
+separate from agent sandbox failures; raw owner exit codes were not supplied.
+**Local qs verification is COMPLETE**, together with the agent passes and owner
+audit. No tests or audit repeated. Exact state hash, paths and results are in the
+existing triage qs section. A future hosted result remains separate; Braces,
+uuid and F8 remain unresolved, DPoP deferred and evidence locked.
+
 ## Hosted CI confirms migration complete — f8a05a2, 16 October 2026
 
 **Approved Vitest migration: COMPLETE.** Owner-supplied hosted CI for f8a05a2

@@ -1,6 +1,7 @@
 # SOC PoC independent laptop runbook
 
-Updated 8 October 2026. **Draft: independent clean-clone startup is NOT VERIFIED.
+Updated 17 October 2026 (qs verification complete; historical evidence retained).
+**Draft: independent clean-clone startup is NOT VERIFIED.
 The complete Tide protection PoC is incomplete.** This runbook describes the
 current feature's native emulator demo. Older root/TideCloak documents contain
 historical "no emulator", "roles not created" and unfinished-auth statements;
@@ -15,15 +16,16 @@ current agent environment are recorded in section 10.
 ## 1. Published test version — required before cloning
 
 Repository: https://github.com/s3945794/Cyber-Immunity-Hackathon-Project-3.git.
-Branch: feature/soc-emergency-access-poc. Current owner HEAD:
-27b09cbc52b6fb6ed69803b38c55e7f29c6699ee.
+Branch: feature/soc-emergency-access-poc. Owner-reported hosted test SHA:
+**f8a05a2f1e556c7cb54f91f46f39578f9595bf93**. Current local source-review HEAD:
+**19399aeb77b81af1a6fd9bf9dee235778ebbb871**. The intervening commit changes
+only the three status documents. No new hosted run for 19399ae is asserted.
 
-**Required implementation is still uncommitted and is absent from that HEAD.**
-No feature remote-tracking ref was found locally; remote branch availability was
-not checked. The owner must review/publish the complete approved test version,
-grant repository access and provide its full commit SHA. A source-only clone of
-the current baseline is insufficient. Do not substitute an archive of the
-owner's working directory, private configuration or runtime data.
+The application and approved Vitest migration are committed; the older claim
+that required implementation is absent from the baseline is superseded. Choose
+and record the owner's exact published test SHA, not whichever branch HEAD a
+later clone happens to receive. Preserve existing checkouts and private data.
+This agent did not fetch, publish or verify remote availability during this pass.
 
 After publication, in a normal PowerShell terminal:
 
@@ -34,7 +36,13 @@ git branch --show-current
 git rev-parse HEAD
 git status --short
 $socExpectedSha = Read-Host 'Full published test SHA supplied by the owner'
-if ($socExpectedSha -notmatch '^[0-9a-fA-F]{40}
+if ($socExpectedSha -notmatch '^[0-9a-fA-F]{40}$') {
+  throw 'Supply the full published test SHA before continuing.'
+}
+$socActualSha = git rev-parse HEAD
+if ($LASTEXITCODE -ne 0 -or $socActualSha -ne $socExpectedSha) {
+  throw 'Checkout does not match the approved test SHA. Stop; do not reset it.'
+}
 ```
 
 Compare HEAD with the full SHA supplied by the owner. Stop if the branch is
@@ -47,13 +55,13 @@ someone else's work. A later patched version needs a new test record.
 | Tool/package              | Requirement and evidence                                                                                                                                                   |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Git                       | Git 2.x; repository access through the tester's own approved Git setup                                                                                                     |
-| Node                      | Repository/backend require >=22; use 24.19.0 to match the owner's inspected runtime                                                                                        |
-| pnpm                      | Use 11.19.0, matching the reviewed workspace policy schema and owner's runtime; root minimum >=10 alone is not a verified alternate toolchain                              |
+| Node                      | Use Node 22.12+ within Node 22, or Node 24+; owner-tested runtime 24.19.0. Node 23 is outside Vitest's supported range                                                     |
+| pnpm                      | Owner local pnpm 11.20.0; hosted workflow uses pnpm 10 and frozen installation. Preserve the existing workspace supply-chain policy                                        |
 | Java                      | 21 or newer for the emulator; owner runtime inspection found 23.0.2; Docker's Java 21 recipe has not been run here                                                         |
 | Docker Desktop            | Linux containers and Compose v2 for TideCloak; CLI 28.3.0 was detected, but daemon access was denied; no compatible Desktop/daemon version was independently tested        |
 | Firebase emulator tooling | scripts/demo.cjs/test-emulator.cjs use pnpm dlx firebase-tools@14.16.0; first use needs package/emulator download and cache permission                                     |
 | Browser                   | Current Edge or Chrome; four separate profiles; Edge is a reported workaround, not a proven Chrome fix                                                                     |
-| Application packages      | Existing pnpm-lock.yaml; Next 16.3.6, React 19.2.4, Tide nextjs/react/js 0.14.20; no Tide SDK upgrade                                                                      |
+| Application packages      | Existing pnpm-lock.yaml; Next 16.3.8, React 19.2.4, Vitest/coverage-v8 4.1.11, Vite 7.3.6, Tide nextjs/react/js 0.14.20; no Tide SDK upgrade                               |
 | TideCloak image           | Existing tideorg/tidecloak-dev:latest; mutable tag. Owner local image ID is recorded below; registry pull digest/software version and peer compatibility remain unverified |
 
 Install prerequisites from the official [Node](https://nodejs.org/en/download),
@@ -1473,6 +1481,22 @@ Docker networking, installation or persistence. No Docker setup was run here.
 
 ## 9. Dependencies and full-PoC limitations
 
+Current evidence (17 October): **local qs verification complete**. Owner audit
+reports 0 Critical, 1 High and 1 Moderate; both qs advisories are absent. Owner
+backend units passed 135 tests/nine files; coverage passed 135 tests with report
+generated and 79.24% lines. Agent resolved-path/parsing/typecheck/lint/build and
+frozen-install checks are separately recorded in the triage. No checks repeated
+for this documentation update; no new hosted result is inferred.
+
+Braces and uuid remain unresolved. Preserve historical Braces local >=3.0.4
+versus hosted patched_versions <0.0.0 disagreement; neither proves a fix. Vitest
+migration remains complete. The earlier compatible patch was already applied:
+**do not apply it again**. Historical counts/preparation below are retained as
+evidence, not current installation instructions. Exact qs evidence is maintained
+in the triage; F8, genuine authority and expiry remain unresolved.
+
+### Historical dependency preparation — 8 October 2026 (do not reapply)
+
 **Unresolved baseline: 3 Critical, 5 High, 10 Moderate audit findings.**
 All eight High/Critical advisories and exact paths were reconciled previously
 against locked/installed versions in the handoff. The prepared
@@ -1524,6 +1548,48 @@ TIDE-01/02/03 stay **Blocked**. Application failure to grant access is testable;
 it is not full-PoC completion. Expiry cannot erase plaintext already copied.
 
 ## 10. Actual verification and completion gate
+
+### Current completion checklist and controlled phases — updated 17 October 2026
+
+Review HEAD: 19399aeb77b81af1a6fd9bf9dee235778ebbb871. Existing learning-log
+edits are preserved. These status classes replace stale completion claims in
+the dated sections below; no tests or services were rerun for this update.
+
+| Requirement                                                                                                                  | Status class                                          | Evidence / next gate                                                                                                                                                        |
+| ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dashboard, one-field/read request, 15/30/60-minute choices, distinct non-requester SOC approvals, cancellation/history/audit | **Implemented and verified** at the application layer | Existing unit/owner/emulator evidence; no cryptographic endorsement or active grant inferred. Demo-only 60 seconds stays opt-in.                                            |
+| Evidence stays locked after quorum or tampered active flag                                                                   | **Implemented and verified**                          | Source/tests and owner observations; no Tide completion verifier exists.                                                                                                    |
+| F1 JavaScript launcher, F3 safe diagnostics, F10 feedback and normal owner login                                             | **Implemented and verified**, within recorded limits  | Existing focused/full tests, owner Edge InPrivate and one live diagnostic branch; do not merge mocks and live results.                                                      |
+| Other live diagnostic branches, actual native pnpm.exe path, real induced callback failure and full accessibility matrix     | **Implemented but unverified** for those paths        | Native executable unavailable; blocked-token alert remains inconclusive. No broad blocking/logpoints or passed-test repetition requested.                                   |
+| Genuine encryption, same-intent cryptographic endorsements, requester-scoped decryption and Fabric deadline enforcement      | **Blocked by missing external guidance**              | Six exact contract/API questions in SOC-TIDE-CAPABILITIES.md; TIDE-01/02/03 remain blocked.                                                                                 |
+| F8 DPoP migration                                                                                                            | **Deferred with a reason**                            | Requires separate coordinated approval; matching relay artifact, validator/token-profile/audience and shared replay/nonce semantics remain gates. Peer cause not confirmed. |
+| Approved Vitest migration                                                                                                    | **Implemented and verified**                          | Version/lock consistency, local unit/coverage/build/frozen evidence and hosted f8a05a2 tests/lint/typecheck; exact hosted Node patch was not supplied.                      |
+| Compatible qs remediation                                                                                                    | **Implemented and locally verified**                  | Owner 17 October units/coverage/audit and agent path/parsing/typecheck/lint/build/frozen-install results; no new hosted CI claim.                                           |
+| Braces/uuid remediation                                                                                                      | **Deferred with a reason**                            | No supported Braces patch or compatible uuid parent migration established. Security checks remain enabled.                                                                  |
+| Clean-clone four-identity setup and full live PoC acceptance                                                                 | **Deferred with a reason**                            | Private owner sign-in/onboarding and genuine Tide capabilities are not available to this agent; existing owner success does not prove peer portability.                     |
+
+Minimum future verification, only after a relevant approved implementation:
+
+1. For documentation now: parse the repaired PowerShell SHA block without
+   executing it, format changed sections and run git diff --check. No browser,
+   emulator, login or application-suite repeat.
+2. For genuine authority: real-library/contract fixtures and denial tests for
+   self/duplicate/unrecognised endorsers, differing intent/ciphertext/policy/
+   requester/field, replay and completion races. Then owner-only four-identity
+   live TIDE-01/02/03, each duration and direct cached-ciphertext/authority
+   attempts at/after trusted expiry, refresh and reconnect. Already copied
+   plaintext cannot be revoked. No live test is requested before implementation.
+3. For DPoP: the complete route matrix, real-validator synthetic negative
+   tests and multi-instance atomic replay/nonce tests; then one owner-private
+   login/refresh/reload/logout and one synthetic read/write/replay rejection
+   sequence. No endpoint/header payload capture or generic token-blocking test.
+4. For approved dependencies: targeted parser/consumer tests, affected suites,
+   typecheck/lint, builds, frozen install and fresh audit; no emulator/browser
+   repeat unless that change introduces a specific need.
+
+Keep owner observations, mocked unit checks, isolated emulator persistence and
+live Tide/Fabric checks in separate result fields. Hosted passing tests are
+not live Fabric verification. No manual action is requested by this review.
 
 ### Owner post-correction verification — 8 October 2026
 

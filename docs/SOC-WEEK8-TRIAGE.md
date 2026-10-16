@@ -2359,3 +2359,545 @@ check was repeated. Only the triage, handoff and build-status documents change;
 new-section formatting and git diff --check were checked after editing. No
 staging, dependency/code/configuration change, check disabling, Tide MCP,
 service operation, commit or push occurred.
+
+## Controlled continuation and remaining implementation gates — 16 October 2026
+
+Review baseline: **19399aeb77b81af1a6fd9bf9dee235778ebbb871**, branch
+feature/soc-emergency-access-poc. Only docs/tide-mcp-learning.txt was dirty on
+entry; its existing contents are preserved byte-for-byte. Since hosted f8a05a2,
+only the three status documents were committed; no newer runtime change or
+hosted result is inferred. Existing application, SDK, data and locked evidence
+remain working boundaries, not targets for speculative rewriting.
+
+### Gap assessment and work completed without a protected change
+
+Application request/review/history/audit and deny-only evidence operations are
+implemented, with existing owner/unit/emulator evidence. No completion verifier,
+genuine ciphertext pipeline or Fabric-enforced expiry is implemented. SDK DPoP
+support exists, but its complete browser/API/server integration does not. The
+capability assessment now consolidates the six exact external contract questions;
+completed broad Tide guidance lookups were reused, not repeated.
+
+The runbook had a confirmed documentation defect: its first PowerShell SHA
+validation line was unterminated and did not implement the stated SHA guard.
+It now rejects malformed/mismatching SHA input without resetting a checkout.
+Its baseline/uncommitted-implementation, old Node/pnpm/Next and unapplied-patch
+instructions were also stale. Current and historical evidence are now separated;
+the applied dependency patch must not be reapplied. Section 10 contains the four
+requested completion classes and minimum future checks. These are safe runbook
+corrections; no unrelated runtime defect was manufactured to justify code edits.
+
+### Coordinated DPoP proposal — exact change map; implementation NOT approved
+
+F8's original peer cause is not confirmed. Reuse the previous strict-opt-in/
+ES256 proposal; no browser flag, realm setting or SDK is changed in this pass.
+The proposal is reviewable but **not yet implementation-ready** at the artifact,
+server-token-profile and validator gates below. Do not invent their answers.
+
+| Boundary / files                                                                                                                                                    | Proposed coordinated change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| frontend/src/lib/tidecloak/config.ts                                                                                                                                | Explicit SDK useDPoP with the reviewed strict mode and ES256, only once advertised server support is established. Preserve PKCE S256 and setupRequestEnclave: false; DPoP is not E2EE. Do not assume the React wrapper forwards strictStorage.                                                                                                                                                                                                                                                                                          |
+| frontend/src/providers/AuthProvider.tsx, frontend/src/types/auth.ts; inspect hooks/useAuth.ts facade                                                                | Expose a guarded SDK secureFetch transport; fail unsigned/uninitialized operation rather than falling back to plain fetch. Preserve existing login, refresh, logout, callback, state/nonce and safe error feedback. The SDK can fall back without a provider, so backend enforcement is essential.                                                                                                                                                                                                                                      |
+| frontend/src/lib/api/incidents.ts and access.ts                                                                                                                     | Use the guarded SDK transport instead of handwritten Bearer fetch. Let SDK obtain the current token/proof and handle supported nonce challenge semantics; no stale caller-supplied token or manual proof fabrication. Retain no-store, credentials omit, abort handling, JSON and Idempotency-Key. Restrict destination to the reviewed API origin.                                                                                                                                                                                     |
+| Five callers: dashboard/page.tsx, incidents/[id]/page.tsx, features/access-requests/components/AccessRequestView.tsx, RequestHistory.tsx and hooks/useAccessData.ts | Pass the guarded transport instead of the getToken-only dependency. Preserve current loading/errors and request idempotency. Paths under frontend/src/app/(dashboard) apply to the two pages.                                                                                                                                                                                                                                                                                                                                           |
+| Reviewed version-matched verification HTML; frontend route and next.config.ts                                                                                       | Obtain the exact relay artifact/provenance/hash; serve only the issuer/client-bound reviewed route and reject unexpected encodings/issuers/clients. Exact SDK derivation must be verified rather than guessed. Pin content, restrict message origin/source/target and narrowly scope CSP/framing exceptions; no dynamic credentials, arbitrary parent messages or unpinned latest HTML.                                                                                                                                                 |
+| backend/src/middleware/auth.ts, lib/tideJWT.ts, new reviewed proof verifier/replay-state module                                                                     | Retain offline issuer/client/signature/time and role checks; require Authorization: DPoP plus a proof on every protected route. Use a maintained reviewed validator, not invented signature verification. Check asymmetric proof JWS algorithm/type/signature/JWK, key thumbprint vs token cnf.jkt, access-token hash ath, method htm and normalized external URL htu, iat age/future skew, jti atomic replay and required resource nonce. Reject malformed, unbound, mismatched, stale and reused proofs before database/side effects. |
+| backend/src/app.ts and shared security-state store                                                                                                                  | Allow DPoP request header and expose DPoP-Nonce/WWW-Authenticate only to the approved frontend origin. Define trusted external API URL/proxy handling; never trust arbitrary forwarded host headers. Shared atomic replay/nonce state must survive multiple instances/restarts and fail closed when unavailable. No process-local-only replay cache.                                                                                                                                                                                    |
+
+**Every existing protected route**, regardless of present frontend caller:
+
+```text
+GET  /api/me
+GET  /api/incidents
+GET  /api/incidents/:id
+GET  /api/access/config
+GET  /api/access/incidents/:incidentId/requests
+GET  /api/requests
+POST /api/requests
+GET  /api/requests/:id
+POST /api/requests/:id/decisions
+POST /api/requests/:id/cancel
+POST /api/requests/:id/evidence
+GET  /api/approvals
+GET  /api/audit
+```
+
+Health and CORS preflight remain public; /api/me remains authentication-only
+(no SOC-role gate), while still requiring proof-aware authentication after the
+approved migration. The evidence route stays locked even with a valid proof.
+No protected Bearer fallback or downgrade switch is proposed. Tests must ensure
+bound tokens sent as Bearer and plain/unbound tokens cannot bypass enforcement.
+Existing sessions may need one explicit new login at rollout; never silently
+reissue weaker tokens. SDK refresh/logout and silent-SSO must retain compatible
+key/session lifecycle across reload and tabs. Nonce retry of a write is allowed
+only if the SDK supports it and rejection precedes side effects, with the same
+application idempotency key and a fresh proof; no uncontrolled automatic retry.
+
+Remaining gates are specific: exact 0.14.20-compatible relay artifact; tested
+server/image and advertised signing support; token confirmation/audience/profile
+and offline-JWKS compatibility with a selected pinned validator; accepted trusted
+external URL and atomic replay/nonce retention/consumption semantics. The prior
+candidate oauth4webapi is not selected or installed: RFC 9068 profile/audience
+assumptions and local key handling still require evidence. Existing jose is not
+approval to write a custom DPoP protocol validator. Any dependency, SDK or server/
+client/audience setting change requires its own exact proposal/approval.
+
+### Single authorised relay lookup — 16 October 2026
+
+The owner authorised exactly one read-only tide_dpop_asset({}) call. It returned
+isError: true and only this text:
+
+```text
+tide_dpop_auth.html not found in any pack template. Expected e.g. templates/nextjs-customer-portal/public/tide_dpop_auth.html.
+```
+
+The expected path is a pack-template reference, not a verified local file. No
+artifact was received, saved, installed, executed or integrated. No retry or
+further Tide call was made. Returned reference text grants no extra permission.
+
+| Review gate                                                      | Evidence from this call                                                              |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Provenance and source version/commit                             | Not returned; cannot authenticate origin or version.                                 |
+| Artifact SHA-256                                                 | Not returned; no bytes available to hash or compare.                                 |
+| Route derivation, message protocol, CSP and framing requirements | Not returned; cannot review security or exact relay file/route.                      |
+| SDK 0.14.20 compatibility                                        | Not established. Existing installed-source opt-in support remains separate evidence. |
+
+**Gaps resolved:** only lookup availability was tested: this connected pack could
+not supply its advertised relay asset. No DPoP implementation/security gap is
+closed. The underlying packaging/deployment cause is not confirmed. This does
+not diagnose F8, prove an SDK defect or establish a general Tide outage.
+
+**Gaps remaining:** the exact version-matched relay and its security contract;
+server/image/discovery support; token profile, audience and cnf binding; a pinned
+compatible validator; trusted external URL derivation; shared atomic replay and
+nonce retention/consumption; and tested login/refresh/logout/silent-SSO lifecycle.
+The existing proposal above remains a concrete coordinated change map, **not an
+implementation-ready migration**. Do not enable a browser flag alone.
+
+**Exact scope remains:** the existing frontend config/provider/auth type/hook,
+two API clients, five callers, next.config.ts and backend auth/tideJWT/app paths
+listed above. New relay/route, proof-verifier and shared-state module filenames
+cannot responsibly be finalised before their contracts are known. Existing jose
+6.2.12 remains; no new dependency/version is selected. oauth4webapi is a candidate
+requiring token-profile/offline-key review, not an approved install. SDK or
+TideCloak changes are not established requirements; any such change needs a
+separate proposal. No dependency or configuration change follows from this error.
+
+Required relay tests must cover allowed and rejected origin/source/parent/opener,
+message schema, exact issuer/client route binding, content hash and narrow CSP/
+framing. Combine these with the real-validator and lifecycle matrix below. Never
+accept unsigned/plain-fetch or protected Bearer fallback; keep PKCE, state, nonce,
+offline JWT verification, idempotency and locked evidence. Mocked tests cannot
+establish live interoperability. No tests were repeated for this documentation.
+
+Smallest next proposal: obtain the versioned asset, independently verifiable hash,
+provenance and explicit 0.14.20 integration contract through an approved delivery
+channel, then review without executing it. No further lookup is authorised here.
+The separate unsent six-contract authority question is in SOC-TIDE-CAPABILITIES.md;
+this relay lookup answered none of those contracts.
+
+Future tests after approval: real-validator synthetic positives and negative
+signature/alg/JWK/binding/ath/method/URL/iat/jti/nonce cases on all 13 routes;
+missing/bound-Bearer/unbound-token rejection; shared-state concurrency/restart
+replays, state-store failure and nonce challenge/retry idempotency; SDK-success,
+callback/refresh/logout/silent-SSO and multi-tab/reload key lifecycle. Minimum live
+owner-private sequence follows only after these pass; no auth artifacts captured.
+
+### Remaining dependency review — new parent constraints, no dependency edits
+
+Latest recorded owner local/hosted totals stay **0 Critical, 1 High, 3 Moderate**.
+No fresh audit was run. Official advisory entries were checked narrowly and
+continue to list Braces without a patch, qs 6.16.0 for both qs advisories, and
+uuid 11.1.1 (also 12.0.1/13.0.1) as patched lines. Tagged qs/uuid manifests exist;
+that is not proof of current npm publication or full parent compatibility.
+
+Read-only registry metadata attempts for qs 6.16.0, uuid 11.1.1 and Braces failed
+with fetch errors. One outside-sandbox bounded metadata retry also failed; web
+registry access was unavailable. No version availability/integrity was invented
+or install attempted. Installed standard package manifests were located by
+normal parent-relative resolution, not hardcoded pnpm directories. One initial
+transitive-root lookup failed under isolation and was corrected to resolve via
+its actual parent; this is tooling context, not an SDK/dependency defect.
+
+| Current consumer                                | Actual declared range | Candidate / conclusion                                                |
+| ----------------------------------------------- | --------------------- | --------------------------------------------------------------------- |
+| Express 5.2.1 -> qs                             | ^6.14.0               | 6.16.0 fits.                                                          |
+| body-parser 2.3.0 -> qs                         | ^6.15.2               | 6.16.0 fits.                                                          |
+| Superagent 10.3.0 -> qs (Supertest 7.2.2)       | ^6.14.1               | 6.16.0 fits.                                                          |
+| Express 4.22.2 -> qs (Firebase Functions 6.6.0) | ~6.15.1               | **6.16.0 does not fit.**                                              |
+| body-parser 1.20.6 -> qs (Express 4)            | ~6.15.1               | **6.16.0 does not fit.**                                              |
+| google-gax 4.6.1 -> uuid                        | ^9.0.1                | 11.1.1 does not fit.                                                  |
+| gaxios 6.7.1 -> uuid                            | ^9.0.1                | 11.1.1 does not fit.                                                  |
+| teeny-request 9.0.0 -> uuid                     | ^9.0.0                | 11.1.1 does not fit.                                                  |
+| @next/eslint-plugin-next 16.2.12 -> fast-glob   | exact 3.3.1           | Current chain still reaches Braces; no verified replacement selected. |
+| fast-glob 3.3.1 -> micromatch -> braces         | ^4.0.4 then ^3.0.3    | Locked 4.0.8 / 3.0.3; no verified supported patched Braces release.   |
+
+Those are all direct qs/uuid parents in the locked graph; Firebase Admin/Functions,
+Firestore/Storage/google-auth and peer edges repeat them, not extra compatible
+ranges. The earlier global-qs candidate must **not** be interpreted as compatible
+with every parent merely because Express 5 admits it. Preserve the local Braces
+
+> =3.0.4 versus hosted patched_versions <0.0.0 discrepancy; neither is a fix.
+
+Exact next-change choices for separate review (not implementation approval):
+
+1. **Partial qs exposure reduction only**, after publication metadata succeeds:
+   proposed workspace overrides express@5>qs: 6.16.0,
+   body-parser@2>qs: 6.16.0 and superagent@10>qs: 6.16.0, followed by normal
+   lockfile update. These edges fit current ranges, but Express 4/body-parser 1
+   retain 6.15.3, so both Moderate advisories remain reachable. Do not claim
+   their removal or a reduced advisory count from this partial option.
+2. **Full qs remediation:** first identify exact supported Firebase Functions/
+   Express 4/body-parser 1 parent releases admitting 6.16.0, with published
+   metadata/API compatibility. No such versions are established here; no
+   speculative parent version, ~6.15 bypass or global override is proposed.
+3. **uuid:** review supported Firebase/Google parent release lines admitting
+   11.1.1 or a supported uuid 9 backport. No such parent/backport is established.
+   Tagged uuid 11.1.1 has CommonJS and ESM exports, but this alone does not make
+   it compatible with ^9 or authorize a major migration. No exact install selected.
+4. **Braces:** wait for an authoritative patched release or supported chain
+   removal; no lint-rule removal, advisory suppression or assumed 3.0.4.
+
+Only pnpm-workspace.yaml and pnpm-lock.yaml would change for option 1; normal
+supply-chain policy stays intact. Actual approval must explicitly accept its
+partial scope and unchanged remaining findings. Otherwise prefer the full parent
+review. Later acceptance: parser-limit/stringify negative tests, affected backend
+suite/typecheck/lint/build, frozen install and fresh audit; do not repeat unrelated
+browser/emulator checks. No dependency change is justified for this review itself.
+
+Sources reused/checked: official GitHub advisories GHSA-vfj7-8cjw-p6xm,
+GHSA-w5hq-g745-h8pq, GHSA-x5fp-wj9c-mxmx, GHSA-4mjr-xmp4-gh2g; tagged manifests
+https://github.com/ljharb/qs/blob/v6.16.0/package.json and
+https://github.com/uuidjs/uuid/blob/v11.1.1/package.json. Existing full dependency
+families/advisory evidence above retain their original attribution.
+
+### Acceptance, actual work and safe limits
+
+The runbook's section 10 is now the current completion checklist, with implemented/
+verified, implemented/unverified, externally blocked and deferred classes.
+SOC-TIDE-CAPABILITIES.md is the sole consolidated missing-authority-contract list;
+do not duplicate or re-request broad guidance. The handoff links both and records
+this review's exact source identity. Genuine Tide enforcement and F8 are not
+marked complete. Native process/browser limits are not erased by hosted units.
+
+This pass changes documentation and a runbook code example only. Static parser
+validation of the repaired PowerShell block, changed-section formatting and
+Git whitespace checks are the appropriate new checks; no passed runtime suite,
+services, manual browser/emulator flow or authentication test is repeated. No
+manual action is requested now. Existing learning-log update is preserved.
+
+Actual new checks for this controlled review: PowerShell parser accepted the
+repaired SHA block without executing it; targeted edited-section formatting
+passed; git diff --check passed. All four edited paths are documentation only.
+The pre-existing learning-log update has the same SHA-256 as at task start.
+No application, dependency, browser/emulator or Tide test was rerun.
+
+### Focused dependency follow-up — 16 October 2026; proposal only
+
+Supersedes the earlier lack of a specific compatible Express 4/body-parser 1
+candidate. The concise Tide blocker handoff is maintained only in the handoff.
+No installation, audit, runtime test, Tide call or dependency edit occurred.
+Recorded owner/hosted totals remain 0 Critical, 1 High, 3 Moderate.
+
+Official advisories rechecked: Braces GHSA-vfj7-8cjw-p6xm lists no patched version;
+both qs advisories list 6.16.0; uuid GHSA-w5hq-g745-h8pq lists 11.1.1, 12.0.1 and
+13.0.1. Preserve the local/hosted Braces discrepancy; no 3.0.4 fix established.
+
+**New range-compatible qs proposal, conditional on metadata preflight:** the
+upstream Express 4.x manifest identifies 4.22.3, qs ~6.16.0 and body-parser
+~1.20.5; its history records the qs change and QUERY conditional revalidation.
+The official body-parser 1.20.7 release/tag declares qs ~6.16.0. Installed
+Firebase Functions 6.6.0 and its tag declare express ^4.21.0, admitting 4.22.3;
+body-parser 1.20.7 fits ~1.20.5. The existing Express 5.2.1, body-parser 2.3.0
+and Superagent 10.3.0 ranges admit qs 6.16.0 (parent table above).
+
+Exact proposed workspace overrides, only after successful publication/integrity/
+engines/released-manifest checks and separate approval:
+
+```yaml
+'firebase-functions@6>express': '4.22.3'
+'express@4>body-parser': '1.20.8'
+'express@4>qs': '6.16.0'
+'body-parser@1>qs': '6.16.0'
+'express@5>qs': '6.16.0'
+'body-parser@2>qs': '6.16.0'
+'superagent@10>qs': '6.16.0'
+```
+
+Only pnpm-workspace.yaml and pnpm-lock.yaml would change, with normal lockfile
+regeneration. Upgrade the narrow parent lines before their qs edges; never force
+6.16.0 into the current incompatible 4.22.2/1.20.6 manifests. Retain current
+Firebase, Express 5 and Google versions and all supply-chain protections.
+Review every generated parent/qs edge. Intended scope is both qs advisories on
+all recorded paths, not a promise of fresh audit totals.
+
+**Not ready to install:** Express 4.22.3 is confirmed on a mutable official
+branch/history, not a retrieved immutable release or npm record. Body-parser
+1.20.7 has a release/tag, but npm publication/integrity remains unverified.
+Registry shell reads failed with HttpRequestException; most web registry reads
+were unavailable. One readable Express latest record names 5.3.0, which does not
+prove publication of these exact artifacts or justify that upgrade. No install
+or escalation attempted. Smallest next step: obtain public registry version,
+engines, dependencies and dist metadata for express@4.22.3, body-parser@1.20.7
+and qs@6.16.0; if unavailable or different, stop rather than use a branch build.
+Body-parser source requires Node >=0.8; the local read-only inspection used Node
+24.19.0. Exact Express/qs engines and CI Node support still need preflight.
+
+**uuid:** locked google-gax 4.6.1, gaxios 6.7.1 and teeny-request 9.0.0 do not
+admit patched 11.1.1. Official main manifests for google-gax 5.0.4, gaxios 7.1.2
+and teeny-request 10.1.0 omit direct runtime uuid; these are leads for a separate
+parent migration, not proof of publication, compatible full graph or approval
+for major overrides. No supported uuid 9 backport/full parent chain established.
+Braces has no verified fix or compatible chain removal. Both remain unresolved.
+
+Acceptance after an approved qs update: focused array-limit and constructor/
+isBuffer round-trip regressions with small synthetic inputs, Express query/form
+behavior including QUERY revalidation, backend units/typecheck/lint/build,
+frozen-lockfile install and fresh audit. Confirm Firebase Functions still uses
+Express 4 and the application Express 5; review unexpected lockfile changes.
+No frontend/browser/emulator repetition unless resulting changes affect them.
+
+Official sources checked (16 October 2026):
+
+- https://github.com/advisories/GHSA-vfj7-8cjw-p6xm
+- https://github.com/advisories/GHSA-w5hq-g745-h8pq
+- https://github.com/advisories/GHSA-x5fp-wj9c-mxmx
+- https://github.com/advisories/GHSA-4mjr-xmp4-gh2g
+- https://github.com/expressjs/express/blob/4.x/package.json
+- https://github.com/expressjs/express/blob/4.x/History.md
+- https://github.com/expressjs/body-parser/releases/tag/1.20.7
+- https://github.com/expressjs/body-parser/blob/1.20.7/package.json
+- https://github.com/firebase/firebase-functions/blob/v6.6.0/package.json
+- https://github.com/googleapis/gax-nodejs/blob/main/gax/package.json
+- https://github.com/googleapis/gaxios/blob/main/package.json
+- https://github.com/googleapis/teeny-request/blob/main/package.json
+
+### Owner npm preflight — 17 October 2026; full qs proposal blocked
+
+Owner supplied normal-terminal results using the explicit public npm registry.
+These are owner-run registry observations, separate from earlier agent network
+failures and earlier upstream branch/tag evidence. No command was repeated here.
+
+| Exact release      | Owner result                                                                   | Node compatibility                           |
+| ------------------ | ------------------------------------------------------------------------------ | -------------------------------------------- |
+| Express 4.22.3     | Published metadata returned; qs ~6.16.0 and body-parser ~1.20.5                | >=0.10.0 admits local 24.19.0 and CI Node 22 |
+| body-parser 1.20.7 | ERR_PNPM_PACKAGE_NOT_FOUND: No matching version found                          | No published engine metadata obtained        |
+| qs 6.16.0          | Published metadata returned; side-channel ^1.1.1 and es-define-property ^1.0.1 | >=0.6 admits local 24.19.0 and CI Node 22    |
+
+Registry-declared integrity, exactly as supplied (not independently downloaded
+or hashed; signatures/provenance were not cryptographically verified):
+
+```text
+express@4.22.3
+sha512-Bdcs4+3qlpVlx2NRn6fgX2Ue2/gGRaPeawebgclM0ERSCqDpA+owF1fdPwjJUTAJWMTuAaxjDf+hzb0/4eKvvw==
+qs@6.16.0
+sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA==
+```
+
+The body-parser lookup then printed a Windows libuv assertion. Its cause is not
+established. It does not establish availability of 1.20.7 or negate the successful
+metadata outputs for the other two commands. No exit codes were supplied.
+
+**Decision:** the earlier seven-override full proposal is blocked and must not be
+applied as written. A source tag/release is not proof of npm publication; the
+owner lookup found no matching body-parser 1.20.7. Keep its proposed override and
+the body-parser@1>qs override unapplied. Existing 1.20.6 requires ~6.15.1, so
+forcing qs 6.16.0 there remains incompatible. Express 4.22.3 still admits 1.20.6;
+upgrading Express alone therefore does not eliminate all vulnerable qs paths.
+
+Smallest full-remediation next step: establish a published supported body-parser
+1.x release admitting fixed qs, or a compatible supported parent path that removes
+that edge. Do not guess another version, use a branch tarball or weaken checks.
+A separate partial proposal could update Express 4 and the four compatible qs
+consumer edges (Express 4/5, body-parser 2, Superagent), retaining body-parser 1's
+vulnerable qs. That is exposure reduction only; both qs advisory IDs remain
+reachable and no reduced advisory count is promised. No partial implementation
+has been approved. Braces, uuid and F8 remain unresolved; evidence stays locked.
+
+**One focused follow-up pass (17 October): BLOCKED on publication evidence.**
+No unavailable-version lookup for 1.20.7 was repeated. Official body-parser
+1.x now identifies 1.20.8, qs ~6.16.0 and Node >=0.8. The official 1.20.8 release
+states it has the same code as 1.20.7 and was created to test the new release
+process. This is a supported upstream candidate, not npm publication evidence.
+The registry package/version reads failed through the available shell/web paths;
+the npm package page returned 403. No registry integrity or released-package
+manifest was obtained for 1.20.8. Investigation stops here; no install is ready.
+
+Exact remaining locked blocker:
+backend -> firebase-functions 6.6.0 -> express 4.22.2 -> body-parser 1.20.6
+-> qs 6.15.3 (~6.15.1). Updating Express alone leaves this body-parser edge.
+
+Exact candidate chain requiring publication confirmation:
+Firebase Functions 6.6.0 (^4.21.0) -> Express 4.22.3 (~1.20.5)
+-> body-parser 1.20.8 (~6.16.0) -> qs 6.16.0.
+The direct Express 4 qs edge must also resolve 6.16.0. The existing Express 5,
+body-parser 2 and Superagent edges admit fixed qs as recorded above. Body-parser
+1.20.8 fits the parent range and its source engine admits local Node 24/CI 22;
+its registry manifest and integrity still require confirmation. Do not force
+qs into body-parser 1.20.6 or assume 1.20.8 is published. If confirmed, the earlier
+seven-override proposal would substitute only 1.20.8 for 1.20.7, subject to
+separate approval and the existing verification plan. No override is changed.
+
+The minimum outstanding public metadata command, if the owner chooses to close
+this gate in a normal terminal (read-only; no repeat of 1.20.7):
+
+```powershell
+pnpm view body-parser@1.20.8 version engines dependencies dist --json --registry=https://registry.npmjs.org/
+```
+
+Official new evidence:
+https://github.com/expressjs/body-parser/releases/tag/1.20.8 and
+https://github.com/expressjs/body-parser/blob/1.x/package.json.
+No claim that all published alternatives were excluded: registry visibility was
+insufficient. No new major parent migration is proposed. Existing owner metadata
+for Express 4.22.3 and qs 6.16.0 remains valid separate evidence.
+
+Documentation-only evidence update: no install, audit, application test, service,
+Tide lookup, configuration change, commit or push. Existing historical findings
+are retained. No additional owner metadata repetition is needed for the two
+successfully queried versions.
+
+### Approved qs implementation — 17 October 2026; local verification complete
+
+**Current state after owner installation/audit (17 October):** supersedes the
+historical agent installation blocker below. Owner supplies fresh pnpm audit:
+**0 Critical, 1 High, 1 Moderate**; Braces GHSA-vfj7-8cjw-p6xm and uuid
+GHSA-w5hq-g745-h8pq remain. Neither qs GHSA-x5fp-wj9c-mxmx nor
+GHSA-4mjr-xmp4-gh2g appears. This is owner audit evidence, not an agent audit or
+hosted CI result. Audit exit code was not supplied; no zero-exit claim is made.
+
+Agent independently inspected current workspace overrides, complete lockfile
+diff and actual parent-relative installed manifests, using real package paths
+rather than hardcoded pnpm directories. All five qs edges now resolve 6.16.0:
+
+| Installed parent/path                            | Result |
+| ------------------------------------------------ | ------ |
+| Firebase Functions 6.6.0 -> Express 4.22.3 -> qs | 6.16.0 |
+| same Express 4 -> body-parser 1.20.8 -> qs       | 6.16.0 |
+| application Express 5.2.1 -> qs                  | 6.16.0 |
+| same Express 5 -> body-parser 2.3.0 -> qs        | 6.16.0 |
+| Supertest 7.2.2 -> Superagent 10.3.0 -> qs       | 6.16.0 |
+
+Every installed parent range admits its intended child. The workspace and
+lockfile contain the same seven approved overrides. The lockfile contains one
+runtime qs version, 6.16.0; @types/qs 6.15.1 is a separate unchanged types package.
+Only three package resolutions/integrities change (Express 4, body-parser 1, qs),
+plus their dependency references and seven overrides. No unrelated upgrade,
+Firebase/Tide/version/CI/policy change was found. Existing build approvals remain.
+
+Dependency state identifier: pnpm-lock.yaml SHA-256
+6012C5343022F37CB60129F65D4BDB2F26DD164D71D5726091CC79EC6E219438.
+Local inspection uses Node 24.19.0; hosted workflow declares Node 22. No new
+hosted run or exact hosted Node patch is inferred.
+
+**New agent checks:** ten direct installed-dependency regression assertions
+passed (exit 0): each of the five parent-resolved qs copies rejects the small
+bracket/comma array-limit bypass with RangeError and safely stringifies a parsed
+constructor/isBuffer payload. Synthetic inputs only; no listeners, credentials
+or private files. These are focused dependency checks, not full backend units,
+coverage, Express HTTP integration, browser login or live Tide verification.
+Git diff --check also passed. No dependencies/files were installed or changed
+by these checks; the lockfile hash stayed identical.
+
+**Actual missing-check execution after owner clarification (17 October):** owner
+confirmed only the audit had supplied evidence and asked the agent to run the
+remaining commands. No audit repetition or previous same-state pass was repeated.
+
+| Agent command                       | Actual result                                                                                                     |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| pnpm --filter backend typecheck     | PASS, exit 0                                                                                                      |
+| pnpm --filter backend lint          | PASS, exit 0                                                                                                      |
+| pnpm --filter backend build         | PASS, exit 0                                                                                                      |
+| pnpm install --frozen-lockfile      | PASS, exit 0; Already up to date, pnpm 11.20.0                                                                    |
+| pnpm --filter backend test          | BLOCKED, exit 1; all nine suites stopped before execution on sandbox EPERM temp-cache rename; zero tests executed |
+| pnpm --filter backend test:coverage | BLOCKED, exit 1; same temp-cache rename restriction, zero tests executed; no successful coverage result           |
+
+Both Vitest commands used installed 4.1.11 and the unchanged envDir: false
+configuration. These are environment-blocked attempts, not assertion failures or
+passing tests. No bypass, configuration change or retry. Those sandbox attempts
+remain separate from the subsequently supplied owner successes below.
+
+**Owner completion evidence — 17 October 2026, same qs dependency state:** backend
+units passed 135 tests across nine files. Backend coverage passed 135 tests and
+generated its report; line coverage is **79.24%**. Raw exit codes were not supplied
+and are not invented. This is owner-run evidence, not an agent execution or new
+hosted CI result. Together with the fresh owner audit (no qs advisories), actual
+path/diff inspection, ten focused parsing assertions and agent typecheck/lint/
+build/frozen-install passes, **local qs verification is complete**. No tests or
+audit were repeated for this evidence update. No remaining local qs command is
+requested; a future hosted CI result for the published version remains separate.
+The current passing checks need not be repeated unless relevant inputs change.
+No new backend/frontend/runtime code, permanent tests or dependency changes were made.
+Historical blocked installation attempts below remain history, superseded by
+current installed-path inspection and the passing frozen installation.
+The untracked root files 0.8, t and tall --frozen-lockfile were left unread and
+untouched; no staging occurred. Braces, uuid, F8 and locked-evidence limits remain.
+
+Owner confirms normal-terminal npm metadata for body-parser 1.20.8: published,
+Node >=0.8, qs ~6.16.0, tarball/integrity metadata returned. Exact integrity bytes
+were not supplied and are not invented. This supersedes the earlier publication
+blocker for 1.20.8; the historical unavailable 1.20.7 result remains retained.
+The owner approved the reviewed seven scoped overrides, not a Firebase upgrade.
+The earlier proposed YAML now uses 1.20.8 in place of the obsolete 1.20.7.
+
+Before editing, actual package manifests confirmed Functions 6.6.0 -> Express
+^4.21.0; Express 4.22.2 -> body-parser ~1.20.5; old Express/body-parser 1 -> qs
+~6.15.1; Express 5.2.1 -> qs ^6.14.0; body-parser 2.3.0 -> qs ^6.15.2; and
+Superagent 10.3.0 -> qs ^6.14.1. Owner metadata establishes the new Express
+4.22.3/body-parser 1.20.8 qs ranges ~6.16.0. The approved parent upgrades fit;
+no fixed qs is forced into an old ~6.15.1 parent.
+
+**Historical implementation stage (before owner install):** pnpm-workspace.yaml adds the seven reviewed
+parent-scoped overrides. Retains Firebase Functions, Firebase Admin, Express 5,
+Tide packages, all previous overrides and allowBuilds policy. No application,
+authentication, configuration or data changes. Expected affected paths:
+
+- backend -> firebase-functions 6.6.0 -> express 4.22.3 -> qs 6.16.0
+- same Express 4 -> body-parser 1.20.8 -> qs 6.16.0
+- backend -> express 5.2.1 -> qs 6.16.0
+- same Express 5 -> body-parser 2.3.0 -> qs 6.16.0
+- backend -> supertest 7.2.2 -> superagent 10.3.0 -> qs 6.16.0
+
+**Actual agent results (not owner/hosted evidence):**
+
+- Sandbox pnpm install failed EPERM while creating the package-store project
+  symlink. No dependency resolution success claimed.
+- Normal-access install aborted without a TTY because the store context differs.
+  An interactive invocation requested replacing modules; replacement was declined
+  and that invocation cancelled, preserving the existing installation.
+- Normal-access pnpm install --lockfile-only --fetch-retries=0 --fetch-timeout=15000
+  reached the existing 869-entry supply-chain check, then exited 1:
+  ERR_PNPM_META_FETCH_FAIL fetching https://registry.npmjs.org/@adobe%2Fcss-tools.
+  The policy check was not disabled or bypassed; no manual lockfile edit.
+- pnpm-lock.yaml remains unchanged. No unexpected locked version upgrades.
+  Installed manifests still identify Express 4.22.2/body-parser 1.20.6 and
+  qs 6.15.3: migration path resolution is **not verified**.
+- Backend units, coverage, typecheck, lint, build, frozen install and fresh audit
+  are pending the approved install. Old-tree checks would not verify this
+  migration, so none is presented as migrated verification. No new test file
+  added against unavailable packages; parsing acceptance remains in the existing
+  plan. No frontend, browser or emulator check repeated.
+
+**Historical pre-owner-install status: partial.** Manifest and lockfile were
+intentionally recorded as not yet synchronized. Do not use frozen install as
+proof until normal regeneration succeeds. Registry access is the next blocker;
+no further same-environment retry is planned. Remaining owner-terminal commands:
+
+```powershell
+pnpm install
+pnpm --filter backend test
+pnpm --filter backend test:coverage
+pnpm --filter backend typecheck
+pnpm --filter backend lint
+pnpm --filter backend build
+pnpm install --frozen-lockfile
+pnpm audit
+```
+
+After install, inspect every actual parent-relative qs resolution and lockfile
+change before interpreting these checks; stop on unrelated upgrades or changed
+supply-chain requirements. Normal install must use existing protections and
+integrity verification. No fresh audit totals exist from this attempt. Historical
+0 Critical/1 High/3 Moderate remains dated owner/hosted evidence; Braces, uuid
+and F8 remain unresolved. Evidence stays locked. No Tide calls or commits.
+A pre-existing untracked root file named 0.8 was observed and left untouched.

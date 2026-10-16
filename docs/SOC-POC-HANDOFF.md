@@ -1,5 +1,144 @@
 # SOC PoC implementation handoff
 
+## Approved qs update — 17 October 2026; local verification complete
+
+Owner fresh audit: **0 Critical, 1 High, 1 Moderate**. Neither qs advisory appears;
+Braces GHSA-vfj7-8cjw-p6xm and uuid GHSA-w5hq-g745-h8pq remain. This is owner-run
+evidence, separate from agent checks, historical audit counts and hosted CI.
+
+Agent review confirms workspace/lockfile agreement and actual installed Express
+4.22.3, body-parser 1.20.8 and qs 6.16.0 on all five affected edges. Only approved
+package/edge changes appear; Firebase Functions, Tide and unrelated versions and
+supply-chain protections are preserved. Ten focused synthetic dependency parsing
+assertions passed, and git diff --check passed. No install or audit was repeated.
+
+The earlier installation blocker is superseded. Agent backend typecheck, lint,
+build and frozen-lockfile install all passed with exit 0; frozen install reported
+Already up to date using pnpm 11.20.0. Units and coverage each exited 1 before
+execution because sandbox EPERM denied a temporary-cache rename: zero tests ran.
+No retry or configuration bypass. Owner subsequently reports, on 17 October for
+the same dependency state: backend units 135 passed/nine files; coverage 135
+passed/report generated, **79.24% line coverage**. These owner results are
+separate from agent sandbox failures; raw owner exit codes were not supplied.
+**Local qs verification is COMPLETE**, together with the agent passes and owner
+audit. No tests or audit repeated. Exact state hash, paths and results are in the
+existing triage qs section. A future hosted result remains separate; Braces,
+uuid and F8 remain unresolved, DPoP deferred and evidence locked.
+
+## Blocker handoff — 16 October 2026
+
+**Expected:** the authorised tide_dpop_asset({}) read-only lookup supplies a
+versioned verification relay, provenance/hash and integration requirements for
+review against SDK 0.14.20. **Observed:** isError: true, with exactly:
+
+```text
+tide_dpop_auth.html not found in any pack template. Expected e.g. templates/nextjs-customer-portal/public/tide_dpop_auth.html.
+```
+
+No artifact or hash was returned. Delivery root cause and the original peer F8
+cause are unconfirmed. No lookup was repeated or relay/authority invented.
+Two requests are prepared for Tide, **not sent**:
+
+1. **Supported DPoP integration:** versioned relay bytes, source commit,
+   verifiable SHA-256 and declared SDK 0.14.20/server-image compatibility;
+   exact route/CSP/framing/message-origin requirements; supported token profile,
+   proof-aware requests, refresh/logout/silent-SSO and backend nonce semantics.
+   Identify any required version changes. The file/13-route/validator/replay
+   change map and remaining gates are in [the triage](SOC-WEEK8-TRIAGE.md).
+2. **SOC authority and expiry:** one versioned worked example answering the six
+   contracts and unsent question in [the capability assessment](SOC-TIDE-CAPABILITIES.md):
+   intent/ciphertext/policy binding, identity eligibility, distinct non-requester
+   endorsements, verified completion, trusted expiry and compatible versions.
+
+**Independent work:** public dependency metadata/parent review and separately
+approved compatible fixes; documentation and publication review of completed
+Week 8 work. The new qs proposal is maintained only in the triage. Keep the
+existing workflow and evidence locked. No extra browser/emulator or service run
+is needed for this handoff; ordinary dependency findings are not Tide defects.
+
+Historical npm preflight on 17 October (superseded by the completed 1.20.8 migration above) confirms Express 4.22.3 and qs 6.16.0 metadata,
+but finds no matching body-parser 1.20.7. The full qs proposal is blocked; see
+the triage owner-preflight section. Do not apply the seven overrides as written.
+
+**Acceptance after Tide responds:** review provenance, independently hash bytes
+and confirm exact compatible contracts before separately approving runtime,
+dependency or configuration work. DPoP requires relay origin/source/route/CSP
+negative tests, real-validator signature/binding/hash/method/URL/freshness tests,
+shared replay/nonce race and idempotent retry checks, all 13 protected routes,
+Bearer downgrade rejection and login/callback/refresh/logout/silent-SSO checks.
+Authority requires supported endorsement/receipt fixtures rejecting self,
+duplicate/unknown signers, changed intent/ciphertext/policy/scope and replay;
+verify requester-only read access and Fabric denial of new decryption at the
+15/30/60-minute deadline even with cached ciphertext, old authority or direct SDK.
+Then run only the minimum owner-private login and TIDE-01/02/03 sequence already
+in the runbook. Keep mocks, owner browser observations and live Fabric results
+separate. One owner's login cannot resolve peer F8. No request was sent or test
+repeated for this handoff.
+
+## Controlled continuation — 16 October 2026
+
+Historical controlled-review evidence below predates the single authorised relay lookup; the DPoP paragraph records that subsequent result. Learning-log preservation claims describe that earlier pass; ISSUE 010 now also records the lookup failure.
+
+Reviewed HEAD **19399aeb77b81af1a6fd9bf9dee235778ebbb871** on the requested feature
+branch. Only docs/tide-mcp-learning.txt was dirty at entry; its uncommitted update
+is preserved byte-for-byte. Since hosted f8a05a2 only the three status documents
+changed; runtime tests were not repeated. No new remote/hosted result is claimed.
+
+The application dashboard/request/review/history/audit and locked-evidence flow
+remain intact. Quorum and time checks are application controls; no verified Tide
+completion receipt, cryptographic intent endorsements or Fabric expiry exists.
+Do not add a mock provider or unlock from database approval counts/deadlines.
+
+**Current completion checklist:** runbook section 10 now classifies implemented
+and verified, implemented but unverified, missing-external-guidance blocks and
+reasoned deferrals. Historical passing unit/owner/isolated-emulator/hosted results
+remain separate from live Tide evidence. Approved Vitest migration stays complete;
+overall PoC acceptance, Braces and F8 stay unresolved.
+
+Useful work completed in this pass: repaired the runbook's unterminated SHA
+validation and added a fail-closed exact-SHA comparison; corrected stale baseline,
+Node/pnpm/Next and already-applied dependency-patch instructions. The SHA snippet
+is parsed, not executed. No new UI or runtime behavior is introduced.
+
+Protected phase proposals, with dependent work stopped:
+
+1. **Authority:** SOC-TIDE-CAPABILITIES.md consolidates six missing versioned
+   contracts: intent/ciphertext/policy binding; identity/eligibility; exact
+   endorsement APIs; completion/activation verification; trusted Fabric expiry;
+   tested compatible versions/failures. Obtain one worked SOC fixture answering
+   them, not another generic overview. Existing completed Tide lookups are reused.
+2. **DPoP:** the new controlled-phase triage section maps browser/config/relay,
+   all 13 protected routes, server token/proof binding and shared replay/nonce
+   controls. Runtime migration is NOT approved. The subsequently authorised
+   single read-only tide_dpop_asset({}) call returned isError: true: the HTML
+   was not found in any pack template. No artifact, provenance, hash, wiring or
+   0.14.20 compatibility was supplied; no implementation gate closed. No retry
+   or further Tide call is authorised. Root cause of delivery failure and F8
+   remain unknown. See the triage's single-lookup section for the unchanged
+   file/dependency/security/test gates. Obtain versioned bytes and independent
+   hash/provenance through an approved channel before proposing integration.
+3. **Dependencies:** Braces has no verified fix. qs 6.16.0 fits Express 5,
+   body-parser 2 and Superagent but NOT Express 4.22.2/body-parser 1.20.6
+   ~6.15.1. uuid 11.1.1 is outside all three uuid 9 parent ranges. No global
+   incompatible overrides or guessed parent upgrades. Registry metadata failed
+   in sandbox and one bounded outside-sandbox retry; exact publication/integrity
+   remains unverified. The triage separates an optional three-edge partial qs
+   candidate from full remediation, which needs supported parent versions.
+
+Minimum next verification is conditional on actual approved changes: contract
+negative fixtures then owner-private TIDE-01/02/03; DPoP real-validator/all-route
+and multi-instance replay tests then minimal owner sign-in; affected dependency
+checks and fresh audit after approved changes. No new manual check is requested
+for this documentation work. See runbook section 10 for the exact scope.
+
+Checks passed: SHA-block static parsing (not execution), targeted document
+formatting and git diff --check. Learning-log content is byte-identical to the
+initial uncommitted update.
+
+No dependencies, authentication, SDK, account/realm, configuration, service,
+cryptographic authority or data changes; no Tide MCP, commit, push or deployment.
+Evidence stays locked; the original F8 cause remains unconfirmed.
+
 ## Hosted CI confirms migration complete — f8a05a2, 16 October 2026
 
 **Approved Vitest migration: COMPLETE.** Owner-supplied hosted CI for f8a05a2
