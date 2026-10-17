@@ -1,0 +1,108 @@
+# SOC peer test plan: actual results
+
+Case results for [the test plan](SOC-PEER-TEST-PLAN.md), run 13 October 2026. Run record, automated checks and findings (F1 to F12) are in [SOC-PEER-TEST-RESULTS-2026-10-13.md](SOC-PEER-TEST-RESULTS-2026-10-13.md).
+
+Tested full SHA: `bc2f22bae66b6283c0acef0841cecfea28157a3c`. Evidence category for every row: tester-executed, UI observation or command output. No mocked unit, live JWT or live Tide/Fabric result is claimed except where stated.
+
+**Reason for most Blocked results:** sign-in fails at token exchange with `invalid_dpop_proof` (F8), so no signed-in screen could be reached.
+
+## Status summary
+
+| Case | Title | Status |
+| --- | --- | --- |
+| PEER-01 | Clean clone and readiness | Blocked |
+| PEER-02 | Four accounts and role equality | Blocked |
+| PEER-03 | Login, logout and signed-out protection | Blocked (one sub-check passed) |
+| PEER-04 | Dashboard and incident details | Blocked |
+| PEER-05 | Evidence stays locked | Blocked |
+| PEER-06 | Request validation | Blocked |
+| PEER-07 | Duration choices and units | Blocked |
+| PEER-08 | Ownership and safe request details | Blocked |
+| PEER-09 | Duplicate pending requests | Blocked |
+| PEER-10 | Cancellation and re-request | Blocked |
+| PEER-11 | No requester self-approval | Blocked |
+| PEER-12 | First other reviewer | Blocked |
+| PEER-13 | No duplicate reviewer approval | Blocked |
+| PEER-14 | Rejection reason and re-request | Blocked |
+| PEER-15 | Two distinct reviewers; unavailable authority | Blocked |
+| PEER-16 | My Requests, Approvals, history and Audit | Blocked |
+| PEER-17 | Invalid incident and resource | Blocked |
+| PEER-18 | Refresh and changed context | Blocked |
+| PEER-19 | Session expiry | Blocked |
+| PEER-20 | Backend failure and safe retry | Not run |
+| PEER-21 | Interactive persistence and shutdown | Not run |
+| PEER-22 | Real emulator integration and concurrency | Not run |
+| PEER-23 | Build, units and dependency audit | Partly run |
+| PEER-24 | Browser workaround and developer experience | Observation recorded |
+| TIDE-01 | Genuine evidence encryption | Blocked |
+| TIDE-02 | Cryptographic quorum and immutable scope | Blocked |
+| TIDE-03 | 15/30/60-minute expiry | Blocked |
+
+## Case records
+
+### PEER-01: Clean clone and readiness
+
+- **Status:** Blocked
+- **Prerequisites met:** Clone with own `.env`, own realm and adapter. **Not met:** project TideCloak reachable on host port 8080 (F6, F7). Used a pre-existing container instead
+- **Actual result:** Emulator, backend (`SOC local backend ready; Tide evidence authority unavailable`) and frontend all started, but only after workarounds: pnpm PATH reorder (F1), blanking `CLIENT_ADAPTER` (F2), matching realm/client names (F4), Git `safe.directory` (F11). Health 200, sign-in page 200, unsigned incidents 401. No cloud fallback and no private data copied. No connection to another laptop
+- **Severity:** High. **Classification:** Application defect (F1, F2) and environment or setup issue
+- **Reproducibility:** Always (F1 occurred in four attempts across three pnpm setups)
+- **Workaround:** npm-installed pnpm first in PATH. Own `CLIENT_ADAPTER` left empty
+- **Next action:** Owner fixes F1, F2. Confirm project TideCloak port publishing (F7)
+
+### PEER-02 to PEER-19: Blocked (sign-in)
+
+- **Status:** Blocked for all of PEER-02, PEER-04 to PEER-19
+- **Prerequisites met:** No. No Tide-linked test account reached the signed-in state. Four accounts, QEA role assignment and separate profiles were not set up
+- **Actual result:** Not executed. Sign-in redirects to the Tide login page, accepts credentials, then the token request returns HTTP 400 (`invalid_dpop_proof`, "DPoP proof is missing") and the app returns to the sign-in page
+- **Severity:** Critical. **Classification:** Tide integration difficulty (F8)
+- **Reproducibility:** Always. Repeated across at least ten attempts, Chrome and Edge InPrivate
+- **Redacted evidence:** TideCloak container log, about 09:05 to 09:07 on 13 October 2026, endpoint `localhost:8080/realms/devtest1/protocol/openid-connect/token`
+- **Workaround:** None applied. DPoP was not changed, per the runbook
+- **Next action:** Owner decision on DPoP for fresh clients (turn it off through a governed change as in the owner's instance, or supply a supported flow with DPoP on)
+
+### PEER-03: Login, logout and signed-out protection
+
+- **Status:** Blocked
+- **Passed sub-check:** Unauthenticated `GET /api/incidents` without a token returned 401. This covers the signed-out API check only
+- **Not executed:** Sign-in, Dashboard, logout, signed-out page checks
+- **Classification:** Tide integration difficulty (F8)
+
+### PEER-20 to PEER-22: Not run
+
+- **PEER-20:** Needs a signed-in session to attempt submission. The backend was started and stopped during setup, but no read or submission was tested
+- **PEER-21:** Emulator export on exit was not verified. Restart persistence not tested
+- **PEER-22:** `pnpm run test:emulator` works. Ports 8086, 4406 and 4506 were not checked
+
+### PEER-23: Build, units and dependency audit
+
+- **Status:** Partly run
+- **Actual result:**
+
+| Check | Result |
+| --- | --- |
+| Typecheck | Pass (backend and frontend) |
+| Lint | Pass (backend and frontend) |
+| Backend units | 114 passed in 8 files |
+| Frontend units | 98 passed in 11 files |
+| Frontend and backend builds | Not run |
+| Audit | 24 findings: 3 Critical, 6 High, 14 Moderate, 1 Low |
+
+- **Notes:** Owner baseline is 3 / 5 / 10. The extra High is the Next.js image-optimization SSRF advisory (patched in 16.3.8), so the tested tree may differ from the owner's. Findings are potential dependency risk, not shown exploitable here. Nothing was remediated or upgraded
+- **Evidence category:** mocked units. Not live JWT or Tide/Fabric
+
+### PEER-24: Browser workaround and developer experience
+
+- **Status:** Observation recorded
+- **Actual result:** Chrome and Edge InPrivate both reached the Tide login page and accepted credentials. Both then failed with HTTP 400 at the `token` request. Edge did not resolve this. The earlier `redirect_uri` rejection (F5) was resolved by correcting client settings, not by changing browser. No HAR, headers, payloads or URL queries attached
+- **Developer-experience gaps:** see F1 to F3, F10 and the feedback table in the results document
+
+## Blocked full-PoC acceptance cases
+
+| Case | Status | Reason |
+| --- | --- | --- |
+| TIDE-01 | **Blocked** | Encryption and unlocking incomplete in the application |
+| TIDE-02 | **Blocked** | Genuine scoped authority incomplete and unverified |
+| TIDE-03 | **Blocked** | Genuine expiry and cached-ciphertext denial incomplete |
+
+These remain Blocked as the plan requires. Nothing here changes them.
