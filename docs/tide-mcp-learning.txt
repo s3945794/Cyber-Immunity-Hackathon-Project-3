@@ -1870,6 +1870,44 @@ https://docs.tide.org/Admin/e2ee
     requester exclusion, immutable read scope/duration and enforceable expiry;
     demonstrate what Fabric enforces independently of application decisions.
 
+7. Focused read-only authority review - 22 October 2026
+  Evidence:
+  * Pack 1.9.23 relationship-attestation names built-in
+    RelationshipAttestation:1 (ORK main c69fc4f6) for user-key/record-tag and
+    read-only binding, but issuance requires a realm admin. This is not the
+    application's two-other-staff approval rule. Our ORK support is unverified.
+  * Installed @tideorg/js 0.14.25 serializes Policy v3 without a grant expiry.
+    BaseTideRequest.setCustomExpiry expires the signing request, not the
+    resulting policy. Do not treat it as 15/30/60-minute decrypt authority.
+  * Official 0.14.28 notes introduce signed Policy v4 expiry and delegated JIT
+    signing; that release is not a verified complete SOC version solution.
+  MCP freshness follow-up (same day):
+  * Tide team says the latest MCP resolves the blocker, but this session still
+    advertises pack 1.9.23. Live canon/playbook/scenario discovery and focused
+    built-in-contract/JIT reads did not establish changed SOC guidance.
+  * Server tide does not support resources/list or resources/templates/list
+    (-32601 Method not found); that is not evidence of a network outage.
+  * Reconnect/restart the existing MCP connection before concluding the newer
+    guidance is unavailable. A content-index query does not renegotiate tools;
+    no unverified package or connection-setting change was made. Root cause
+    of update non-delivery is not confirmed. Time spent: Not recorded.
+  Impact / next action:
+  * Named-user encryption building blocks are more specific now; quorum,
+    verified completion and trusted deadline remain blockers. Custom-contract
+    deployment is Tide-team-operated/test-network-only per current guidance.
+    Do not upload a contract or substitute application counts/deadlines.
+  * No evidence makes the missing DPoP relay a prerequisite for the policy
+    APIs. Keep F8 and the failed relay lookup separately unresolved.
+  Verification / useful Tide guidance improvement:
+  * Guidance and installed source only; no crypto, approval, policy, grant,
+    account or realm operation. Existing owner Docker/browser evidence is
+    separate. Time spent: Not recorded. Root cause not confirmed for F8.
+  * Provide a compatible SOC JIT signing example with two non-requester
+    endorsers, signed grant deadline, completion verification and cached-policy
+    expiry refusal; distinguish request expiry from policy expiry explicitly.
+  * Detailed requirement/API/version mapping is maintained once in
+    docs/SOC-TIDE-CAPABILITIES.md. Evidence remains locked.
+
 ============================================================
 END OF LOG
 ==========

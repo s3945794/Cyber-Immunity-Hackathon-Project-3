@@ -1,5 +1,20 @@
 # SOC PoC implementation handoff
 
+## Braces/uuid review — 22 October 2026; no dependency change
+
+HEAD 505e081bd972baa0540d38f7a9f04f76367cb1ab. Fresh agent audit failed (exit 1,
+fetch failed); no new totals. Last owner LOCAL audit remains historical 17 October:
+0 Critical, 1 High Braces GHSA-vfj7-8cjw-p6xm, 1 Moderate uuid GHSA-w5hq-g745-h8pq.
+Official Braces advisory still lists no patched version; current uuid-9 parents
+exclude patched uuid 11.1.1+. Registry DNS failed in sandbox and one normal-access
+attempt; no compatible published parent fix could be verified or implemented.
+All 23 affected lockfile paths and installed parents were inspected; 55 manifest
+specifiers/overrides match, no duplicate vulnerable versions to dedupe away.
+See the [single detailed review](SOC-WEEK8-TRIAGE.md#bracesuuid-remediation-review--22-october-2026-registryaudit-blocked)
+for constraints, evidence and remaining metadata action. No install or application
+checks repeated; supply-chain protections and existing work preserved. Major or
+incompatible fixes require review; F8/authority remain unresolved, evidence locked.
+
 ## Week 9 local Docker handoff — 22 October 2026
 
 Owner local Docker verification passed: build/start exit 0, Healthy services,

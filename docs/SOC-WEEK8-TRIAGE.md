@@ -1,5 +1,120 @@
 # Week 8 testing-findings triage
 
+## Braces/uuid remediation review — 22 October 2026; registry/audit blocked
+
+Base/current HEAD: 505e081bd972baa0540d38f7a9f04f76367cb1ab on
+feature/soc-emergency-access-poc. Existing capability/learning-log changes and
+five untracked Cloud Run files were preserved. **No dependency change or install
+was made:** published compatible candidates cannot be verified with registry
+access unavailable. This is not completion of the dependency remediation.
+
+### Audit evidence and advisory reconciliation
+
+| Evidence                                      | Result                                                                                                                                               |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Last successful owner LOCAL audit, 17 October | Historical 0 Critical / 1 High / 1 Moderate: Braces GHSA-vfj7-8cjw-p6xm and uuid GHSA-w5hq-g745-h8pq; qs absent. Not a fresh result.                 |
+| Fresh agent pnpm audit --json, 22 October     | Exit 1, JSON error code pnpm / message fetch failed; no advisory data or totals. This is not a completed audit with findings.                        |
+| After-change audit                            | Not applicable: no dependency changes; fresh registry/audit access remains blocked. No identical failing audit was repeated or green result claimed. |
+
+[Official Braces advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)
+still affects <=3.0.3 and lists patched versions **None**. The earlier local
+
+> =3.0.4 hint does not establish a release or remediation; hosted <0.0.0 likewise
+> represents no available patch, not a version to install. Existing owner lookup
+> found no 3.0.4. Current upstream master manifest remains 3.0.3, but source is not
+> npm publication metadata. Do not manufacture 3.0.4 or substitute the older issue
+> fixed by 3.0.3. Preserve attribution and the historical metadata difference.
+
+[Official uuid advisory](https://github.com/advisories/GHSA-w5hq-g745-h8pq)
+still lists 11.1.1, 12.0.1 and 13.0.1 as patched lines, with <11.1.1 affected.
+It concerns buffer bounds in v3/v5/v6 methods, not all uuid operations. This does
+not establish application exploitability or permit dismissing the finding.
+All current uuid-9 parents exclude 11.1.1. No incompatible override is proposed.
+
+### All current locked paths and parent constraints
+
+Fresh traversal of all importer dependency/dev/optional edges found **23 paths**:
+one frontend Braces path and 22 backend uuid paths. Firebase Functions' resolved
+Firebase Admin peer repeats the same 11 routes as the direct Admin dependency.
+This counts graph paths, not 23 independent advisories or distinct installations.
+
+Braces path: frontend -> eslint-config-next 16.2.12 ->
+@next/eslint-plugin-next 16.2.12 (fast-glob exact 3.3.1) -> fast-glob 3.3.1
+(micromatch ^4.0.4) -> micromatch 4.0.8 (braces ^3.0.3) -> braces 3.0.3.
+It is a lint/dev-tool dependency; audit is not suppressed for it.
+
+Every uuid route below has prefix backend -> firebase-admin 13.10.0, and also
+backend -> firebase-functions 6.6.0 -> firebase-admin 13.10.0. Each ends uuid 9.0.1.
+
+| Route suffix after Admin                                                       | Final uuid consumer/range |
+| ------------------------------------------------------------------------------ | ------------------------- |
+| @google-cloud/firestore 7.11.6 -> google-gax 4.6.1                             | google-gax ^9.0.1         |
+| Firestore -> google-gax -> google-auth-library 9.15.1 -> gaxios 6.7.1          | gaxios ^9.0.1             |
+| Firestore -> google-gax -> google-auth-library -> gcp-metadata 6.1.1 -> gaxios | gaxios ^9.0.1             |
+| Firestore -> google-gax -> google-auth-library -> gtoken 7.1.0 -> gaxios       | gaxios ^9.0.1             |
+| Firestore -> google-gax -> retry-request 7.0.2 -> teeny-request 9.0.0          | teeny-request ^9.0.0      |
+| @google-cloud/storage 7.21.0 -> gaxios 6.7.1                                   | gaxios ^9.0.1             |
+| Storage -> google-auth-library 9.15.1 -> gaxios                                | gaxios ^9.0.1             |
+| Storage -> google-auth-library -> gcp-metadata 6.1.1 -> gaxios                 | gaxios ^9.0.1             |
+| Storage -> google-auth-library -> gtoken 7.1.0 -> gaxios                       | gaxios ^9.0.1             |
+| Storage -> retry-request 7.0.2 -> teeny-request 9.0.0                          | teeny-request ^9.0.0      |
+| Storage -> teeny-request 9.0.0                                                 | teeny-request ^9.0.0      |
+
+Parent-relative resolution of installed public manifests confirmed these versions
+and constraints. Admin requests Firestore ^7.11.0 and Storage ^7.19.0;
+Firestore requests google-gax ^4.3.3; google-gax requests google-auth-library
+^9.3.0 and retry-request ^7.0.0; Storage requests gaxios ^6.0.2,
+google-auth-library ^9.6.3, retry-request ^7.0.0 and teeny-request ^9.0.0.
+Auth 9.15.1 requires gaxios ^6.1.1, gcp-metadata ^6.1.0 and gtoken ^7.0.0;
+retry-request 7.0.2 requires teeny-request ^9.0.0. Snapshot deduplication already
+has one version of each vulnerable package; dedup alone cannot supply a patch.
+
+### Supported next step and approval boundaries
+
+Registry metadata reads failed ENOTFOUND in the sandbox and in one outside-
+sandbox read-only attempt; no repeated identical network attempt. Web registry
+endpoints were inaccessible too. pnpm recursive why failed ERR_SQLITE_ERROR /
+unable to open database file; lockfile traversal and installed-manifest reads
+provided the graph instead. No permissions/configuration were changed.
+
+Official upstream source snapshots show google-gax main at 5.0.4 without direct
+uuid, Firestore main at 8.3.0 requiring gax ^5.0.1, and Admin master at 14.5.0
+requiring Firestore ^9.1.0 / Storage ^8.1.0. These are **not a compatible proposal**:
+source versions are not publication/integrity evidence; gax 5 is outside
+Firestore 7's range, Firestore 8 is outside Admin 13's range, and Admin 14 is
+outside Functions 6.6.0's Admin ^11/^12/^13 peer range. Storage routes must be
+resolved too. No major upgrade or parent override was implemented. Next's canary
+plugin still names fast-glob 3.3.1; a canary is not an approved replacement.
+
+Smallest remaining action: obtain owner-terminal registry metadata for the
+newest stable releases within the current major parent lines. Prefer a published
+compatible parent change that removes/upgrades the offending child; then check
+all selected parent ranges, engines, integrity and release-age policy before
+normal lockfile regeneration. If only a major/coordinated Functions/Admin/Google
+migration works, return an exact versioned proposal for approval instead.
+Braces needs an authoritative fixed release or a supported parent release that
+actually removes the chain; its official no-patch status remains unresolved.
+
+### Actual checks and deferred verification
+
+PASS: 55 manifest specifiers and all workspace overrides match the lockfile;
+all 23 affected paths enumerated; installed parents checked; one snapshot each
+for Braces/uuid; five incompatible version/range assertions; documentation
+formatting and git diff --check. Tool versions: Node 24.19.0, pnpm 11.20.0.
+No manifest, lockfile, overrides, allowBuilds or integrity entry changed. No test,
+coverage, typecheck, lint, build or frozen install was repeated for docs-only work.
+After an actual compatible dependency change, run affected backend tests/coverage,
+typecheck/lint/build and frozen install; include frontend lint/tests/build/coverage
+only if its tooling graph changes; then fresh full audit. Do not run unrelated
+browser/emulator checks or claim a new advisory total before audit succeeds.
+
+Sources additionally inspected (source snapshots, not release metadata):
+[Braces master](https://github.com/micromatch/braces/blob/master/package.json),
+[Next plugin canary](https://github.com/vercel/next.js/blob/canary/packages/eslint-plugin-next/package.json),
+[gax main](https://github.com/googleapis/gax-nodejs/blob/main/gax/package.json),
+[Firestore main](https://github.com/googleapis/nodejs-firestore/blob/main/package.json),
+[Admin master](https://github.com/firebase/firebase-admin-node/blob/master/package.json).
+
 ## Current documentation reconciliation — 22 October 2026
 
 Current HEAD: `44ea6254a95e72b761929809a95e894146700244`; local Docker changes are in
