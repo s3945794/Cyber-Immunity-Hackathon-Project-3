@@ -7,8 +7,10 @@ RUN corepack enable && corepack prepare pnpm@11.19.0 --activate
 # Pinned development CLI, outside the application's production dependencies.
 RUN pnpm add --global --global-bin-dir /usr/local/bin --global-dir /opt/firebase firebase-tools@14.16.0
 WORKDIR /app
-COPY firebase/firestore.rules firebase/firestore.indexes.json ./firebase/
+COPY firebase/firestore.rules firebase/firestore.indexes.json ./docker/firebase/
 COPY docker/firebase.container.json docker/emulator-entrypoint.sh ./docker/
+# Resolve paths exactly relative to the container Firebase configuration directory.
+RUN node -e "const fs=require('node:fs'),path=require('node:path');const configPath='/app/docker/firebase.container.json';const config=JSON.parse(fs.readFileSync(configPath,'utf8'));for(const key of ['rules','indexes']){const file=path.resolve(path.dirname(configPath),config.firestore[key]);if(!fs.statSync(file).isFile())throw new Error('Missing Firestore '+key+' file')}console.log('Configured Firestore rules and indexes files exist')"
 RUN firebase setup:emulators:firestore && chmod +x docker/emulator-entrypoint.sh
 EXPOSE 8085
 ENTRYPOINT ["/app/docker/emulator-entrypoint.sh"]

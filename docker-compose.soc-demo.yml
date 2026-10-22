@@ -7,8 +7,7 @@ services:
       dockerfile: docker/firestore.Dockerfile
     volumes:
       - ./demo-data:/demo-data
-    ports:
-      - '127.0.0.1:8085:8085'
+    # Internal database only; no host port is published.
     networks: [storage]
     stop_grace_period: 60s
     healthcheck:
