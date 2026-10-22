@@ -1,5 +1,16 @@
 # SOC PoC independent laptop runbook
 
+## Week 9 preparation — 20 October 2026
+
+Current source HEAD: 8d55ac385da4041224a24080e069a3d8271477ad; local tracking ref
+matches without a remote fetch. New deployment files are uncommitted, absent
+from that SHA. Exact-candidate peer retest is not recorded. **Not deployed; no
+live URL or verification.** The single [Week 9 proposal](SOC-WEEK9-DEPLOYMENT.md)
+contains readiness classes, environment/secret names, protected persistence,
+Tide gates, costs, commands and peer/Planner checklists. No cloud account/funding
+or access was verified. Older SHA/audit/owner results below retain their dates.
+Braces, uuid, F8 and genuine authority/expiry remain unresolved; evidence locked.
+
 Updated 17 October 2026 (qs verification complete; historical evidence retained).
 **Draft: independent clean-clone startup is NOT VERIFIED.
 The complete Tide protection PoC is incomplete.** This runbook describes the
@@ -1454,30 +1465,35 @@ Do not attach raw tidecloak:logs output or HAR files. Reports may include saniti
 timestamps, safe exception messages/nested causes, HTTP statuses and destination
 hostnames only; remove identity/session data and all URL queries.
 
-## 8. Optional application Docker path — NOT VERIFIED
+## 8. Approved local Docker — owner verification passed, 22 October 2026
 
-Native launch is the peer's first path. docker-compose.soc-demo.yml manages only
-frontend/backend/Firestore, uses the tester's own adapter file read-only and
-demo-data export, and does not create TideCloak, realm/accounts or governance.
-The adapter file must exist even if CLIENT_ADAPTER is configured because the
-bind mount refuses to create a missing source. Public URLs are baked at build.
+Owner builds and Compose startup passed (exit 0); all three app services Healthy.
+Frontend http://localhost:3000/auth/signin returned 200; backend health
+http://localhost:5001/api/health returned 200; unsigned incidents returned 401.
+Existing TideCloak at local port 8080 was started without recreation; private
+login and application functions passed. This is local only, not public hosting.
 
-With native app processes gracefully stopped, the tester may separately test:
+Owner graceful export completed at 2026-10-21T04:42:23Z; all three app containers
+Exited (0). A stopped-export backup was copied outside the repo before restart.
+After the final rules-file correction and restart, owner confirmed the same
+synthetic request, both decisions, history and audit remain. Internal unsigned
+Firestore GET returned 403. Host 8085 was not reachable; use the internal check.
+Final release review removed the Firestore Compose host mapping explicitly;
+no service restarted. This static correction is separate from earlier owner passes.
+Deny-client rules and backend Admin SDK behaviour remain unchanged. Evidence
+stays locked; approvals/audit are not a genuine Tide grant.
 
-```powershell
-docker compose -f docker-compose.soc-demo.yml config --quiet
-docker compose -f docker-compose.soc-demo.yml build
-docker compose -f docker-compose.soc-demo.yml up -d
-docker compose -f docker-compose.soc-demo.yml ps
-docker compose -f docker-compose.soc-demo.yml stop -t 60
-docker compose -f docker-compose.soc-demo.yml up -d
-```
+Tested source base: `8d55ac385da4041224a24080e069a3d8271477ad` plus uncommitted
+Dockerfile/docs; not an exact immutable release. Agent Docker access remained
+denied. Do not mix owner checks with agent static checks or peer retesting.
 
-Do not print resolved Compose configuration, delete volumes, run down -v or
-copy another developer's data. Record build/readiness and retained history after
-restart separately. The recipe specifies Node 24.21.0, pnpm 11.19.0, Temurin
-21.0.12.1_1 and Firebase CLI 14.16.0; source review does not verify these images,
-Docker networking, installation or persistence. No Docker setup was run here.
+Use the [existing deployment guide](SOC-WEEK9-DEPLOYMENT.md) for startup, stop,
+export gate, backup and internal-client verification commands. It retains both
+failed rules-path attempts and the final COPY correction under `/app/docker`.
+No repeat checks are needed for this documentation update. Independent peer
+retest and final release/handoff approval remain pending. F8, genuine Tide
+authority/expiry, Braces and uuid remain unresolved. Cloud Run remains unapproved.
+Never run `down -v`, delete data, recreate TideCloak or publish the emulator.
 
 ## 9. Dependencies and full-PoC limitations
 

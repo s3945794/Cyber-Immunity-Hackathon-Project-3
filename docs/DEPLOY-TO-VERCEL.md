@@ -1,5 +1,10 @@
 # Deploying to Vercel — Step by Step
 
+> Historical frontend-only guide: insufficient for the current SOC workflow,
+> which requires the backend and protected persistence. Do not follow its
+> automatic-publish instructions for Week 9. Use the
+> [Week 9 proposal](SOC-WEEK9-DEPLOYMENT.md); public hosting remains unapproved; owner local Docker verification is recorded there.
+
 This guide takes your local app live on the internet. It assumes `pnpm run dev` already works on your machine — if it doesn't, fix that first (see `docs/GUIDE.md`).
 
 **What you're deploying:** the `frontend/` app only. It's a full Next.js server (pages + Server Actions) that talks to TideCloak for frontend authentication — TideCloak is the only authentication provider, and the frontend has no Firebase SDK at all. The old Firebase session-cookie route (`/api/auth/session`) has been removed. The separate `backend/` Express app (Cloud Functions) still exists as optional scaffolding for future features (including any Firestore-backed data, which is server-only); skip it unless your feature specifically calls it (see the box at the end).

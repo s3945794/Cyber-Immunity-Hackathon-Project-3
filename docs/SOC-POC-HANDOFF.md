@@ -1,5 +1,32 @@
 # SOC PoC implementation handoff
 
+## Week 9 local Docker handoff — 22 October 2026
+
+Owner local Docker verification passed: build/start exit 0, Healthy services,
+frontend/health 200, unsigned API 401, private login/application workflow,
+completed graceful export/shutdown, internal unauthenticated Firestore 403 and
+retained synthetic request/both decisions/history/audit after restart. Evidence
+remains locked; application approvals do not establish Tide authority.
+
+Tested base HEAD is `8d55ac385da4041224a24080e069a3d8271477ad` plus uncommitted
+Dockerfile/docs. No exact immutable release contains the complete candidate yet.
+Local application: http://localhost:3000; API: http://localhost:5001; existing
+TideCloak local entry: http://localhost:8080. Not publicly reachable hosting.
+Agent Docker access remained denied; these are owner results, not agent runtime
+or independent peer checks. See the [single deployment record](SOC-WEEK9-DEPLOYMENT.md)
+for historical failures, backup location, internal-network test and remaining
+release/handoff steps. No passed tests were repeated.
+
+Removed the tracked Firestore host mapping to express the verified internal-only
+topology. Historical runtime discrepancy is not proven; optional safe metadata
+inspection is documented. No restart was performed for this correction.
+Remaining: review the exact release file set (exclude parked
+Cloud Run files), obtain publication approval, record resulting release SHA and
+image identities, arrange same-machine/independent peer verification within the
+local-only scope, and record PM/Planner acceptance. No commit/push is authorised.
+Cloud Run remains paused; Braces, uuid, F8 and genuine Tide authority/expiry remain
+unresolved. No full PoC acceptance or successful secure evidence access is claimed.
+
 ## Approved qs update — 17 October 2026; local verification complete
 
 Owner fresh audit: **0 Critical, 1 High, 1 Moderate**. Neither qs advisory appears;
