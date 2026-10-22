@@ -1,5 +1,14 @@
 # Tide capability assessment
 
+## Owner Docker evidence — 22 October 2026
+
+Owner private login and persisted application workflow/restart passed, including
+two other staff decisions and retained audit. Requester evidence remained locked.
+This corroborates the existing authority blocker, not a genuine Tide grant,
+cryptographic completion or Fabric expiry test. F8/DPoP remains unresolved;
+ordinary successful local login does not resolve the peer's original failure.
+See [deployment evidence](SOC-WEEK9-DEPLOYMENT.md). No new Tide lookup performed.
+
 ## Current authority gate — controlled review, 16 October 2026
 
 **No supported evidence-unlocking implementation can yet be selected.** Reused

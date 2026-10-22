@@ -1483,9 +1483,11 @@ no service restarted. This static correction is separate from earlier owner pass
 Deny-client rules and backend Admin SDK behaviour remain unchanged. Evidence
 stays locked; approvals/audit are not a genuine Tide grant.
 
-Tested source base: `8d55ac385da4041224a24080e069a3d8271477ad` plus uncommitted
-Dockerfile/docs; not an exact immutable release. Agent Docker access remained
-denied. Do not mix owner checks with agent static checks or peer retesting.
+Current HEAD: `44ea6254a95e72b761929809a95e894146700244`, containing local deployment commits
+4143ad8 and 44ea625. Original owner tests covered the prior 8d55ac3-based working
+tree, not a separately rerun immutable release. Current docs-only reconciliation
+is uncommitted. No remote publication/image identity/independent peer result is
+inferred. Agent Docker execution remains denied.
 
 Use the [existing deployment guide](SOC-WEEK9-DEPLOYMENT.md) for startup, stop,
 export gate, backup and internal-client verification commands. It retains both

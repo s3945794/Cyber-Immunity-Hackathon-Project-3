@@ -8,24 +8,20 @@ completed graceful export/shutdown, internal unauthenticated Firestore 403 and
 retained synthetic request/both decisions/history/audit after restart. Evidence
 remains locked; application approvals do not establish Tide authority.
 
-Tested base HEAD is `8d55ac385da4041224a24080e069a3d8271477ad` plus uncommitted
-Dockerfile/docs. No exact immutable release contains the complete candidate yet.
-Local application: http://localhost:3000; API: http://localhost:5001; existing
-TideCloak local entry: http://localhost:8080. Not publicly reachable hosting.
-Agent Docker access remained denied; these are owner results, not agent runtime
-or independent peer checks. See the [single deployment record](SOC-WEEK9-DEPLOYMENT.md)
-for historical failures, backup location, internal-network test and remaining
-release/handoff steps. No passed tests were repeated.
+Current HEAD: `44ea6254a95e72b761929809a95e894146700244`; local runtime fix and deployment
+record are committed in 4143ad8/44ea625. Owner evidence originally tested the
+8d55ac3-based working tree with those fixes; no independent exact-HEAD rerun or
+remote publication/image identity is claimed. Current reconciliation is docs-only
+and uncommitted. Local app http://localhost:3000; API http://localhost:5001;
+existing Tide entry http://localhost:8080. No public URL. Agent Docker remains
+denied. See [deployment record](SOC-WEEK9-DEPLOYMENT.md) for exact commands,
+export/backup/restart evidence and historical errors; do not repeat passed checks.
 
-Removed the tracked Firestore host mapping to express the verified internal-only
-topology. Historical runtime discrepancy is not proven; optional safe metadata
-inspection is documented. No restart was performed for this correction.
-Remaining: review the exact release file set (exclude parked
-Cloud Run files), obtain publication approval, record resulting release SHA and
-image identities, arrange same-machine/independent peer verification within the
-local-only scope, and record PM/Planner acceptance. No commit/push is authorised.
-Cloud Run remains paused; Braces, uuid, F8 and genuine Tide authority/expiry remain
-unresolved. No full PoC acceptance or successful secure evidence access is claimed.
+Remaining: record release/image identity and publication only if approved, retain
+a durable export backup, independent local peer retest and PM/Planner final
+acceptance. PM accepted local Docker as a delivery approach, not full PoC security.
+Five parked Cloud Run files remain excluded/untracked. Braces, uuid, F8/DPoP and
+genuine encryption/authority/expiry remain unresolved; evidence stays locked.
 
 ## Approved qs update — 17 October 2026; local verification complete
 

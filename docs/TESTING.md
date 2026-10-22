@@ -10,7 +10,7 @@
 | Frontend E2E (local TideCloak) | `pnpm run test:e2e:local-tidecloak` | Playwright               | N/A      | Route protection, login, logout against a real local TideCloak |
 | All                            | `pnpm run test:all`                 | —                        | —        | Runs the unit layers (not E2E)                                 |
 
-There's no local emulator, so there's no integration-test layer against a real Firestore — all tests mock Firebase and never make real network calls.
+Unit tests use mocks/test keys; the isolated test:emulator probe separately uses real local Firestore transactions/export/import. Owner Docker HTTP, private browser and restart checks are a third evidence category. None establishes genuine Tide authority or Fabric expiry.
 
 ## Running Tests
 
@@ -129,8 +129,9 @@ pnpm run validate, git diff --check and pnpm audit --audit-level=high.
 
 Vitest uses its supported runner configuration loader and envDir:false. Unit tests
 never load private application environment files; no test is skipped and no auth
-bypass is introduced. Frontend framework-resolution failures in the restricted
-checkout are recorded as blocked suites, not passing tests.
+bypass is introduced. Historical frontend framework-resolution failures in restricted checkouts were
+recorded as blocked suites, not passing tests; later attributed passes in the
+triage/build status supersede those specific attempts.
 
 New backend unit tests cover validation boundaries, ownership/membership,
 concurrent duplicate scopes/decisions, self/duplicate approvals, retry idempotency,
@@ -151,8 +152,7 @@ and ports, then performs actual transaction/query checks and graceful export/imp
 retention. It does not reset existing demo data. On 8 October the owner reported
 successful isolated seed/export/reload; persistence is VERIFIED owner evidence.
 The current agent rerun stopped at Firebase CLI startup with EPERM before emulator
-execution. Interactive demo restart, independent laptop startup and live JWT/
-Fabric verification remain separate and unverified. Current exit codes are in
+execution. Later owner Docker graceful export/restart, workflow retention and internal Firestore GET 403 passed (21–22 October); see SOC-WEEK9-DEPLOYMENT.md. Independent setup/peer portability and live Fabric authority remain unverified. Current exit codes are in
 SOC-POC-HANDOFF.md; earlier blocked agent results do not override the owner's run.
 
 Real Fabric tests require manual user sign-in with distinct authorised accounts,

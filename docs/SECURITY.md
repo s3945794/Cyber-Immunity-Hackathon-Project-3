@@ -66,15 +66,12 @@ emulator exports, database volumes and build output. Dockerfiles copy explicit
 source/manifests and install frozen lockfile dependencies. Frontend receives only
 required public configuration; backend adapter data is a runtime secret/read-only
 mount. Existing Tide image and volume are external to demo Compose and unchanged.
-All published demo ports bind loopback; emulator management/UI is not public.
+Application Compose publishes only frontend/backend loopback ports. Firestore is internal with no host publication; owner internal unauthenticated GET returned 403. Existing TideCloak lifecycle/network policy remains separate and unchanged. Emulator management/UI is not public.
 
 Existing frontend header rules for silent SSO and enclave framing are retained.
 No security settings or repository guardrails were weakened to resolve blocked
 checks. Existing dependency security pins/lockfile are preserved. The latest
-owner normal-terminal audit completed and confirms 3 Critical, 5 High and
-10 Moderate unresolved findings. The earlier agent audit fetch failed with exit 1
-and remains historical evidence. A completed audit with findings is not clean.
-No finding is assumed exploitable or dismissed; no dependency patch was applied.
+owner-supplied local audit is dated 17 October: 0 Critical, 1 High (Braces GHSA-vfj7-8cjw-p6xm), 1 Moderate (uuid GHSA-w5hq-g745-h8pq); qs advisories absent. Earlier counts/fetch failures remain historical in the triage. Approved Vitest and qs remediations are complete. This is not a fresh audit or proof all vulnerabilities are fixed.
 
 ## Verification
 

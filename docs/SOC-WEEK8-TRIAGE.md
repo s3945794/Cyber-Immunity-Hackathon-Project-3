@@ -1,5 +1,22 @@
 # Week 8 testing-findings triage
 
+## Current documentation reconciliation — 22 October 2026
+
+Current HEAD: `44ea6254a95e72b761929809a95e894146700244`; local Docker changes are in
+4143ad8/44ea625. Owner reports image builds and Healthy startup, HTTP 200/200/401,
+internal unauthenticated Firestore GET 403, private application workflow, completed
+graceful export/shutdown and retained request/two decisions/history/audit after
+restart. These are owner results, separate from agent static checks and earlier
+native emulator tests; no independent exact-HEAD peer pass or new CI/audit inferred.
+Detailed procedure, historical failed starts and backup are maintained once in
+[SOC-WEEK9-DEPLOYMENT.md](SOC-WEEK9-DEPLOYMENT.md). No application tests repeated.
+
+Earlier dated statuses below remain historical, including failed/blocked attempts
+later superseded. Last supplied local audit: owner 17 October, 0 Critical, 1 High
+Braces and 1 Moderate uuid; qs absent. F8/DPoP, genuine Tide encryption/scoped
+authority/expiry remain incomplete. Two approvals/audit records do not grant Tide
+access; evidence remains locked. No new F8 or authority finding is created.
+
 Current completion: **Hosted CI completion — f8a05a2, 16 October 2026** marks
 the approved Vitest migration complete, records hosted passes and preserves the
 local/CI advisory discrepancy. Braces and F8 remain unresolved; evidence locked.

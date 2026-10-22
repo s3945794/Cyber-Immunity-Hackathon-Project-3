@@ -14,8 +14,11 @@ here; Week 8 findings retain their original attribution.
 PM/owner accepts local Docker for Week 9. Cloud Run remains unapproved. Reuse
 `docker-compose.soc-demo.yml` and the existing Dockerfiles (with the rules-path correction below). Do not run
 the separate TideCloak Compose lifecycle or recreate its container/accounts/data.
-Candidate: `8d55ac385da4041224a24080e069a3d8271477ad`, plus uncommitted preparation.
-No Docker image digest, tested release or public URL is claimed.
+Current HEAD: `44ea6254a95e72b761929809a95e894146700244`. Runtime fix 4143ad8 and deployment
+documentation 44ea625 are now local commits. No remote publication is verified.
+Owner tests originally covered base 8d55ac3 plus working-tree fixes before those
+commits; do not relabel them as a new exact-HEAD peer run. Current reconciliation
+is documentation-only and uncommitted. No image digest or public URL is claimed.
 
 ### Current local result and remaining release/handoff — 22 October 2026
 
@@ -37,14 +40,11 @@ http://localhost:5001/api/incidents. Existing TideCloak local entry is port 8080
 Firestore is `http://firestore:8085`, reachable from backend on the storage
 network, not an owner-verified host endpoint. No public or remote peer URL.
 
-Confirmed HEAD: `8d55ac385da4041224a24080e069a3d8271477ad` on
-`feature/soc-emergency-access-poc`. Tested candidate = this base plus uncommitted
-`docker/firestore.Dockerfile` correction/build guard and current documentation;
-that HEAD alone does not reproduce the corrected tested image. Configuration
-JSON ended identical to HEAD; entrypoint/rules/indexes are unchanged. No image
-digests or immutable candidate-release SHA were supplied. Agent performed static
-review/checks only because Docker access was denied. No passed application,
-browser, emulator, audit or Docker checks repeated for this documentation update.
+Confirmed current HEAD: `44ea6254a95e72b761929809a95e894146700244` on
+`feature/soc-emergency-access-poc`. Owner-tested earlier working-tree runtime
+fixes are now committed; only the subsequent documentation reconciliation is
+uncommitted. No image identities, remote publication, independent peer test or
+final PM acceptance is inferred. No passed tests/builds/audits were repeated.
 
 Final diff review: only runtime file changed is the Firestore Dockerfile COPY
 location and configured-file build guard. Five Cloud Run files remain parked,
@@ -98,7 +98,7 @@ Minimum remaining steps (do not repeat completed checks):
   limitations; record Planner acceptance when PM accepts local-only delivery.
   F8, genuine authority/expiry and Braces/uuid remain separate unresolved work.
 
-### Local release file set and proposed commits (not staged)
+### Historical reviewed local release set — now committed
 
 Runtime/config group (only changed existing files):
 
@@ -114,7 +114,7 @@ Documentation group:
 - `docs/SOC-POC-RUNBOOK.md`
 - `docs/SOC-WEEK9-DEPLOYMENT.md` (new)
 
-Seven changed/new local release files total. Reused unchanged dependencies of
+These seven reviewed files were committed in 4143ad8 and 44ea625. This list is historical, not the current docs-only change set. Reused unchanged dependencies of
 this setup include backend/frontend Dockerfiles, container Firebase config,
 entrypoint, deny-client rules and indexes; already tracked, so do not stage them.
 Exclude all five parked files: `deploy/cloudrun/api.service.yaml`,
@@ -125,9 +125,21 @@ and generated files. No ignore-rule or private configuration change is needed.
 
 Proposed messages: `fix(docker): keep Firestore internal and load deny-client rules`
 and `docs(soc): record verified local Docker deployment and handoff limits`.
-No commands were staged or committed. Run hooks normally when separately
-approved; stop if hooks fail or modify files. Peer retesting, exact release SHA,
-PM/Planner acceptance, F8 and genuine Tide authority/expiry remain pending.
+Those two commits now exist locally. No staging or commit was performed by this
+documentation reconciliation. Peer retesting, image identities, remote publication
+and final PM/Planner acceptance remain pending; F8 and Tide authority are unresolved.
+
+### Documentation reconciliation checks — 22 October 2026
+
+Current reconciliation changes documentation only. Relevant tracked source,
+Compose, Dockerfiles, entrypoint, schemas, routes, manifests and launch scripts
+were inspected without loading private configuration. Local relative Markdown
+file links and deployment PowerShell command-block syntax were checked (commands
+not executed). Documentation formatting and git diff --check are recorded in the
+final report. No application/browser/emulator tests, builds, audit, service
+operation, Tide lookup, commit or push was performed. CLAUDE.md maintenance
+instructions were left unchanged; older stage-specific descriptions there are
+not a replacement for this current record.
 
 ### Prerequisites and networking
 
@@ -162,7 +174,9 @@ docker ps -a --format '{{.Names}}|{{.Status}}|{{.Ports}}'
 Get-NetTCPConnection -State Listen | Where-Object { $_.LocalPort -in 3000,5001,8080 } | Select-Object LocalAddress,LocalPort,OwningProcess
 docker compose -f docker-compose.soc-demo.yml config --quiet
 docker compose -f docker-compose.soc-demo.yml build
-docker compose -f docker-compose.soc-demo.yml up -d --wait --wait-timeout 180
+# Only if the existing TideCloak container is stopped; never recreate it:
+docker start soc-incident-report-protection-tidecloak-1
+docker compose -f docker-compose.soc-demo.yml up -d --no-build --wait --wait-timeout 180
 docker compose -f docker-compose.soc-demo.yml ps
 (Invoke-WebRequest -UseBasicParsing http://localhost:3000/auth/signin).StatusCode
 (Invoke-WebRequest -UseBasicParsing http://localhost:5001/api/health).StatusCode
@@ -175,8 +189,13 @@ Owner then signs in privately and creates one clearly labelled synthetic request
 through the normal UI. Record its reference and nonsecret displayed details.
 
 ```powershell
+$socStopSince = (Get-Date).ToUniversalTime().ToString('o')
 docker compose -f docker-compose.soc-demo.yml stop -t 60
+$LASTEXITCODE
 docker compose -f docker-compose.soc-demo.yml ps -a
+docker compose -f docker-compose.soc-demo.yml logs --no-color --since $socStopSince firestore 2>&1 |
+    Select-String -Pattern 'Export complete' |
+    ForEach-Object { 'Export complete confirmed for this shutdown.' }
 Test-Path -LiteralPath './demo-data/firestore/firebase-export-metadata.json'
 ```
 
@@ -187,9 +206,34 @@ successful persistence. Keep a backup of the completed export outside the repo,
 without overwriting another backup, before restarting. Never use `down -v`,
 volume pruning, force kills or data resets. Do not stop TideCloak.
 
+After the stop/export gates pass, preserve an outside-repository backup before
+restart. This copies the stopped export without opening its contents and creates
+a unique destination; it does not delete or overwrite existing data:
+
 ```powershell
-docker compose -f docker-compose.soc-demo.yml up -d --wait --wait-timeout 180
+$socExport = (Resolve-Path -LiteralPath './demo-data/firestore' -ErrorAction Stop).Path
+$socBackup = Join-Path ([IO.Path]::GetTempPath()) ('SOC-firestore-backup-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $socBackup -ErrorAction Stop | Out-Null
+Copy-Item -LiteralPath $socExport -Destination $socBackup -Recurse -ErrorAction Stop
+Test-Path -LiteralPath (Join-Path $socBackup 'firestore/firebase-export-metadata.json')
+$socBackup
+```
+
+Require backup success before proceeding.
+
+```powershell
+docker compose -f docker-compose.soc-demo.yml up -d --no-build --wait --wait-timeout 180
 docker compose -f docker-compose.soc-demo.yml ps
+```
+
+Temp backup is not archival: retain a separate
+owner-selected durable backup before cleaning temporary storage. The completed
+backup from the actual owner restart is recorded below. After restart, the direct
+unauthenticated read check uses available Node inside the backend container;
+it prints only status (403 required, 000 means transport failure):
+
+```powershell
+docker compose -f docker-compose.soc-demo.yml exec -T backend node -e "fetch('http://firestore:8085/v1/projects/demo-soc-incident-protection/databases/(default)/documents/socRulesProbe/nonexistent',{signal:AbortSignal.timeout(10000)}).then(r=>{console.log(r.status);process.exitCode=r.status===403?0:1}).catch(()=>{console.log('000');process.exitCode=1})"
 ```
 
 Repeat the three HTTP checks. Owner confirms private login, retained synthetic
@@ -383,11 +427,11 @@ below remain historical and do not establish free-host interoperability.
 
 | Field                        | Current record                                                                                                                                      |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Source candidate             | 8d55ac385da4041224a24080e069a3d8271477ad                                                                                                            |
+| Historical source candidate  | 8d55ac385da4041224a24080e069a3d8271477ad                                                                                                            |
 | Branch                       | feature/soc-emergency-access-poc                                                                                                                    |
 | Repository                   | origin: github.com/s3945794/Cyber-Immunity-Hackathon-Project-3                                                                                      |
 | Remote evidence              | Local origin tracking ref matches; no fetch or live remote check                                                                                    |
-| Entry worktree               | No tracked modifications; six accidental untracked files preserved unread                                                                           |
+| Historical entry worktree    | No tracked modifications; six accidental untracked files preserved unread                                                                           |
 | Deployment preparation       | Uncommitted, NOT contained in the candidate above                                                                                                   |
 | Approved deploy SHA          | PENDING review/publication and exact-SHA peer retest                                                                                                |
 | Peer retest of candidate     | PENDING: no passing result found for this exact release                                                                                             |
@@ -397,7 +441,8 @@ below remain historical and do not establish free-host interoperability.
 | Local qs evidence            | Owner 135 backend units/nine files; coverage 135/report, 79.24% lines; agent typecheck/lint/build/frozen and ten parsing checks passed              |
 | Tide/browser limit           | Owner Edge InPrivate success is not peer portability; blocked-token alert inconclusive; F8 unresolved                                               |
 
-No service started, private environment/adapter inspected, or AWS coursework
+Historical preparation-only observation (20 October; later owner local startup
+is recorded above): no service started, private environment/adapter inspected, or AWS coursework
 account/budget assumed. Provider config filenames and a disabled deployment
 workflow do not establish funding, access or a usable hosted environment.
 

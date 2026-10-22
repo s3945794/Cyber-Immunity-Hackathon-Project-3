@@ -80,6 +80,5 @@ independently of every status/count/metadata flag.
 ## Retention
 
 Native and Docker demos export/import a dedicated ignored demo-data/ directory.
-Graceful export/import retention is implemented in scripts but not verified in
-this restricted environment. Crashes can lose changes since the last completed
+Owner local Docker graceful export/shutdown and restart retention of request, both decisions, history and audit passed on 21–22 October. Agent Docker execution remained denied; these are owner observations, not independent peer results. Crashes can lose changes since the last completed
 export. Isolated tests use a different project, ports and .emulator-tests/ directory.

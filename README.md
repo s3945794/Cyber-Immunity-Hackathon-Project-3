@@ -16,12 +16,12 @@ or remote peer-accessible URL. Cloud Run remains unapproved.
 - Firestore: internal `firestore:8085`; owner unauthenticated internal GET 403.
   Host localhost:8085 was not reachable in the owner run; do not publish it.
 
-Tested source base: `8d55ac385da4041224a24080e069a3d8271477ad` on
-`feature/soc-emergency-access-poc`, **plus uncommitted Dockerfile and documentation
-changes**. This is not an immutable release SHA for the whole tested candidate.
-Owner builds/startup, application functions, graceful export and restart retention
-of request/decisions/history/audit passed. Evidence remains locked. Agent Docker
-access was denied; owner observations are not independent peer verification.
+Current HEAD: `44ea6254a95e72b761929809a95e894146700244` on
+`feature/soc-emergency-access-poc`. Local deployment changes are committed in
+4143ad8 and 44ea625. Owner runtime evidence was collected against the earlier
+8d55ac3-based working-tree candidate; it was not rerun as an exact-HEAD peer test.
+This documentation reconciliation is uncommitted. Remote publication and image
+identities are not verified. Detailed owner/static/peer attribution is in the guide.
 
 See the [Week 9 deployment record](docs/SOC-WEEK9-DEPLOYMENT.md) for exact
 procedure, historical failures, backup, scope limitations and remaining handoff.

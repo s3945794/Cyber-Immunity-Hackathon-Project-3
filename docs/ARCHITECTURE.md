@@ -8,7 +8,12 @@ then recognises four equal SOC membership labels. /api/me stays authentication-o
 Firestore is server-only through backend/src/lib/firebase.ts. Direct-client
 rules deny all access; there is no Firebase SDK in the frontend. The local demo
 uses an explicit demo project/emulator without service accounts or cloud fallback.
-The Cloud Function api export is preserved; server.ts is the native listener.
+The Cloud Function api export is preserved; server.ts is the native/Docker listener.
+Approved Docker publishes only frontend/backend on localhost 3000/5001. Backend
+uses internal firestore:8085; browser Tide entry remains localhost:8080. The
+existing Tide container/data are external to SOC Compose. Owner Docker restart
+retention and internal client GET 403 passed; see [deployment](SOC-WEEK9-DEPLOYMENT.md)
+for separate owner/static evidence and current release identity.
 
 ## Current flow
 

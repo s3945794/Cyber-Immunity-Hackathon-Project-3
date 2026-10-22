@@ -8,6 +8,9 @@
 > runtime test; they are **not** yet reproducible by a script on another
 > machine.
 
+The phase table is a historical initial-setup snapshot; current roles/backend and
+owner runtime evidence are described under Current runtime below.
+
 | Phase  | Scope                                                                                                                                                                            | Status                                                                                                                                                            |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **1A** | Local TideCloak **container foundation** + **interactive** realm / client provisioning via the built-in wizard                                                                   | **Done and verified by manual runtime test**                                                                                                                      |
@@ -17,35 +20,23 @@
 
 ---
 
-## Why Docker — and why only for TideCloak
+## Current runtime versus historical provisioning
 
-This boilerplate is deliberately Docker-free: `pnpm install` plus a free
-Firebase project is the whole setup, and the app always talks to real Firebase
-(no emulators, no containers).
+Updated 22 October 2026. The owner’s existing TideCloak container/accounts were
+reused for the approved local Docker stack. Frontend/backend/Firestore now run
+in the separate SOC Compose file; see [deployment](SOC-WEEK9-DEPLOYMENT.md).
+No Tide container recreation, realm or policy change was needed. Private owner
+login/workflow passed; this does not resolve F8 or prove independent setup.
 
-TideCloak is different. It is a stateful identity server (Keycloak + the Tide
-threshold-cryptography protocol) with **no free hosted tier suitable for local
-development**. The Tide playbooks run it as a local container. So this repo adds
-**exactly one** container, for TideCloak alone:
+The phase table above and wizard instructions below describe historical initial
+provisioning, not a current instruction to recreate the owner realm. Roles and
+backend verification are implemented; scripted fresh-realm/client setup remains
+unverified. A fresh client requires supported compatibility/settings guidance,
+not copying private adapters or repeating historical DPoP disabling. Preserve
+current security policy and existing realm data. For the existing stopped
+container use the deployment guide's docker start command, never Compose recreation.
 
-| Component                   | How it runs                                           | Containerised?         |
-| --------------------------- | ----------------------------------------------------- | ---------------------- |
-| Frontend (Next.js)          | `pnpm run dev` — host process                         | No                     |
-| Backend (Express/Functions) | host process                                          | No                     |
-| Firestore                   | real Firebase project                                 | No                     |
-| **TideCloak**               | **Docker container (`docker-compose.tidecloak.yml`)** | **Yes — the only one** |
-
-The frontend, backend and Firestore are **not** containerised. This is a scoped
-exception to the no-Docker rule in `CLAUDE.md`, not a migration to Docker
-Compose for the stack.
-
-The image is `tideorg/tidecloak-dev:latest` — despite the `-dev` suffix this is
-the production image and the only one the Tide pack supports. Do not substitute
-`tideorg/tidecloak-stg-dev` or any `-stg` build.
-
----
-
-## Phase 1A — start / stop the TideCloak container
+## Historical Phase 1A — initial provisioning reference, not current restart instructions
 
 ### Prerequisites
 
@@ -233,7 +224,7 @@ admin panel / approval UI, which is **out of scope** for this PoC (see
 
 ---
 
-## Phase 2A — frontend migration (done) / Phase 2B — backend (code done, not runtime-verified)
+## Historical Phase 2A/2B implementation record (later owner runtime evidence above)
 
 **Frontend** (`feature/tidecloak-auth`, done): TideCloak provider, redirect handler
 (`/auth/redirect`), silent SSO (`/silent-check-sso.html`), `useAuth()` state, and removal of the
@@ -246,7 +237,7 @@ verifies **TideCloak access tokens** by default (`src/middleware/auth.ts`,
 `src/lib/tideJWT.ts`, `src/lib/tidecloakConfig.ts`) — see `docs/BACKEND.md` for the exact checks.
 Firebase Authentication is not used anywhere in this backend; there is no legacy Firebase auth
 module. Firebase Admin remains in place for Firestore only (`src/lib/firebase.ts`, `adminDb`),
-reserved for future features — no current route uses it.
+now used by the persisted access workflow through AccessService/FirestoreStore.
 
 `GET /api/me` (`src/routes/me.ts`) is a minimal protected endpoint that returns the authenticated
 user's `uid`, `email` and recognised SOC `roles` — it exists to demonstrate the auth middleware

@@ -45,13 +45,12 @@ The frontend has no Firebase SDK and never queries Firestore directly. All data 
 backend's protected Express API — see `frontend/src/lib/api/incidents.ts` for the reference
 pattern (typed fetch helper, TideCloak access token in the `Authorization` header).
 
-| Context          | Method                                                    | When               |
-| ---------------- | --------------------------------------------------------- | ------------------ |
-| Client Component | `@/lib/api/*` fetch helper + TideCloak access token       | Load data on mount |
-| Server Action    | `requireAuth()` + call to the backend API (not Firestore) | Mutations          |
+| Context          | Method                                                    | When                          |
+| ---------------- | --------------------------------------------------------- | ----------------------------- |
+| Client Component | `@/lib/api/*` fetch helper + TideCloak access token       | Load data on mount            |
+| Server Action    | `requireAuth()` + call to the backend API (not Firestore) | Future only; fail-closed stub |
 
-Server-side Firestore access (via the backend's `adminDb`) is reserved for future features and
-is never called from the frontend.
+Server-side Firestore access now persists requests, decisions, cancellation and audit through the backend; it is never called directly from the frontend. Workflow mutations use authenticated API helpers, not the fail-closed Server Action session stubs.
 
 ### Styling
 

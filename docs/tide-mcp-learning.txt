@@ -1023,7 +1023,7 @@ ISSUE 010 - TideCloak client required DPoP, but the frontend token
 ============================================================================
 
 Date: 2026-09-10
-Updated: 2026-10-16 (Week 8 F8 evidence; September local history retained)
+Updated: 2026-10-22 (owner local Docker login evidence; F8 still unresolved)
 Historical verification update: 2026-09-15 (server-side setting confirmation
          and local end-to-end login; see section 7)
 Project feature: End-to-end frontend TideCloak login callback on
@@ -1243,6 +1243,15 @@ DPoP proof the server required.
     live exchange. Existing owner login and hosted CI remain separate.
     No DPoP implementation gap or evidence-authority contract was resolved.
     F8 stays unresolved; runtime migration remains deferred for approval.
+
+12. Owner local Docker observation - 21-22 October 2026
+  * Owner reports private login and application functions worked using the
+    existing TideCloak container/accounts, with no auth or client-policy change.
+    This is owner browser evidence, not automated/hosted CI or fresh-peer DPoP.
+  * SDK 0.14.20 explicit DPoP opt-in still requires complete proof-aware
+    browser/API/backend integration. F8 remains unresolved; Root cause not
+    confirmed. The failed relay lookup in section 11 remains unresolved.
+  * Time spent: Not recorded. No new Tide call or diagnosis was performed.
 
 ============================================================
 ISSUE 011 - Global X-Frame-Options DENY blocked TideCloak silent SSO
@@ -1584,7 +1593,7 @@ ISSUE 013 - TideCloak login rejected with "Requested session has not been
 ============================================================
 
 Date: 2026-09-23
-Updated: 2026-10-16 (owner Week 8 browser pass; voucher/ORK history retained)
+Updated: 2026-10-22 (owner Docker browser pass; voucher/ORK history retained)
 Project feature: SOC Incident Report Protection - live browser verification
                  of feature/incident-dashboard
 Tide component: TideCloak container (local dev realm
@@ -1733,6 +1742,13 @@ Root cause not confirmed.
     document supported browser/session recovery without exposing session data.
 
 8. Week 8 owner browser verification (16 October 2026)
+  Later owner observation (21-22 October, local Docker): private login,
+  dashboard, incidents and application functions passed using existing identity
+  data. This is not a new browser-specific causal diagnosis or independent peer
+  result; Root cause not confirmed for historical login failures. Earlier
+  preview/keyboard pass, inconclusive blocked-token test, automated regressions
+  and hosted CI evidence remain separate in ISSUE 011. Time spent: Not recorded.
+
   Owner observations:
   * After the latest application feedback correction, fresh Edge InPrivate
     login with blocking rules removed passed. The dashboard loaded without
@@ -1766,7 +1782,7 @@ ISSUE 014 - Installed React wrapper does not forward signed E2EE policy
 ============================================================
 
 Date: 7 October 2026
-Updated: 8 October 2026 (completed guidance report and peer-handoff limits)
+Updated: 22 October 2026 (owner application quorum evidence; authority still blocked)
 Status: Open integration blocker; no live Fabric verification
 
 1. Evidence
@@ -1815,6 +1831,14 @@ https://docs.tide.org/Core-Concepts/forseti-engine
 https://docs.tide.org/Admin/e2ee
 
 6. Application quorum reaches unavailable authority - 8 October 2026
+  Later owner evidence (21-22 October, local Docker): the synthetic request
+  received two other staff approvals; evidence remained locked. Request, both
+  decisions, history and audit retained after completed export/restart. These
+  are application persistence/owner observations, not Tide-signed endorsements,
+  cryptographic completion, encryption or expiry verification. The same blocker
+  remains open; guidance should distinguish application approval/audit from a
+  genuine grant. Time spent: Not recorded. No new Tide call or setting change.
+
   Evidence:
   * User-reported: four separate identities were used successfully in application
     tests; two distinct other approvals were followed by authority.failed and

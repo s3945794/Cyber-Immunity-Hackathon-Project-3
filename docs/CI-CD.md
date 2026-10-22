@@ -1,6 +1,16 @@
 # CI/CD
 
-## Pipeline Overview
+## Current scope — 22 October 2026
+
+Only local Docker is approved; [Week 9](SOC-WEEK9-DEPLOYMENT.md) is the current
+procedure. Active .github/workflows/ci.yml runs tests/lint/typecheck/security
+scan. The deployment example is deploy.yml_notinuse, not an active deploy.yml.
+No Vercel integration, cloud resources, remote publication or public URL is
+verified. Backend is required for the persisted workflow, not optional scaffolding.
+The sections below retain historical cloud examples; do not execute them for
+local Week 9 delivery. Cloud Run remains paused; no paid hosting approved.
+
+## Historical pipeline/deployment examples
 
 The frontend and the Firebase-owned pieces deploy through two independent paths:
 
