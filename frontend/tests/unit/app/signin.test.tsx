@@ -5,7 +5,10 @@ import type { AuthContextValue } from '@/types/auth'
 
 vi.mock('@/hooks/useAuth', () => ({ useAuth: vi.fn() }))
 vi.mock('@/lib/tidecloak/config', () => ({ isTideCloakConfigured: vi.fn(() => true) }))
-vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }) }))
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}))
 
 import { useAuth } from '@/hooks/useAuth'
 import { isTideCloakConfigured } from '@/lib/tidecloak/config'

@@ -37,7 +37,11 @@ export class HttpError extends Error {
   }
 
   static notFound(resource: string, id?: string): HttpError {
-    return new HttpError(404, 'Not Found', id ? `${resource} '${id}' not found` : `${resource} not found`)
+    return new HttpError(
+      404,
+      'Not Found',
+      id ? `${resource} '${id}' not found` : `${resource} not found`
+    )
   }
 
   static conflict(detail: string): HttpError {
@@ -46,5 +50,9 @@ export class HttpError extends Error {
 
   static internal(detail = 'An unexpected error occurred'): HttpError {
     return new HttpError(500, 'Internal Server Error', detail)
+  }
+
+  static unavailable(detail = 'Service unavailable. Please try again later.'): HttpError {
+    return new HttpError(503, 'Service Unavailable', detail)
   }
 }

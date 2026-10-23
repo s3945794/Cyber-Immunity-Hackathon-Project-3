@@ -1,8 +1,18 @@
 # CI/CD
 
-## Pipeline Overview
+## Current scope — 22 October 2026
 
-The frontend and the Firebase-owned pieces deploy through two independent paths:
+Only local Docker is approved; [Week 9](SOC-WEEK9-DEPLOYMENT.md) is the current
+procedure. Active .github/workflows/ci.yml runs tests/lint/typecheck/security
+scan. The deployment example is deploy.yml_notinuse, not an active deploy.yml.
+No Vercel integration, cloud resources, remote publication or public URL is
+verified. Backend is required for the persisted workflow, not optional scaffolding.
+The sections below retain historical cloud examples; do not execute them for
+local Week 9 delivery. Cloud Run remains paused; no paid hosting approved.
+
+## Historical pipeline/deployment examples
+
+The following diagram is an inactive historical hosting example, not the current pipeline or a verified automatic deployment:
 
 ```
 PR opened/updated
@@ -47,7 +57,7 @@ Merge to main
    deployment.
 
 4. Deploy. Every push to `main` auto-deploys to production from then on — there's no approval gate on Vercel's side, so treat merging to `main` as shipping.
-5. If you later add the `backend/` Express API and need the frontend to call it cross-origin, set `CORS_ORIGIN` in the backend's env to your Vercel production URL.
+5. If an approved future cloud deployment uses cross-origin frontend/API calls, set `CORS_ORIGIN` in the backend's env to your Vercel production URL.
 
 ## GitHub Actions Secrets Required (for `deploy.yml`)
 
@@ -75,7 +85,7 @@ base64 -w 0 service-account.json
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("service-account.json"))
 ```
 
-4. Add the output as `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` in both GitHub secrets and Vercel's environment variables.
+4. Historical credential guidance corrected: never put service-account material in frontend/Vercel settings. Any future backend credential setup requires separate approval; the current explicit local demo does not use a cloud service account.
 
 > **Note:** `firebase login:ci` tokens are deprecated. This project uses `GOOGLE_APPLICATION_CREDENTIALS` via the service account key, which is the current recommended approach.
 

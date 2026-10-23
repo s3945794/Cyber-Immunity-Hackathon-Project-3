@@ -1,10 +1,15 @@
-# Deploying to Vercel — Step by Step
+# Historical frontend-only Vercel example
 
-This guide takes your local app live on the internet. It assumes `pnpm run dev` already works on your machine — if it doesn't, fix that first (see `docs/GUIDE.md`).
+> Historical frontend-only guide: insufficient for the current SOC workflow,
+> which requires the backend and protected persistence. Do not follow its
+> automatic-publish instructions for Week 9. Use the
+> [Week 9 proposal](SOC-WEEK9-DEPLOYMENT.md); public hosting remains unapproved; owner local Docker verification is recorded there.
 
-**What you're deploying:** the `frontend/` app only. It's a full Next.js server (pages + Server Actions) that talks to TideCloak for frontend authentication — TideCloak is the only authentication provider, and the frontend has no Firebase SDK at all. The old Firebase session-cookie route (`/api/auth/session`) has been removed. The separate `backend/` Express app (Cloud Functions) still exists as optional scaffolding for future features (including any Firestore-backed data, which is server-only); skip it unless your feature specifically calls it (see the box at the end).
+This historical example does not deploy the current SOC workflow. It assumes `pnpm run dev` already works on your machine — if it doesn't, fix that first (see `docs/GUIDE.md`).
 
-The app has no required Firebase configuration to deploy today — Firestore is reserved for future backend features and is never accessed from the browser or from Vercel's deployment.
+**What you're deploying:** the `frontend/` app only. It's a full Next.js server (pages + Server Actions) that talks to TideCloak for frontend authentication — TideCloak is the only authentication provider, and the frontend has no Firebase SDK at all. The old Firebase session-cookie route (`/api/auth/session`) has been removed. The current Express backend is required for persisted requests, review, history and audit. A frontend-only host cannot provide this workflow.
+
+Firestore is required for workflow persistence and is accessed only by the backend. The approved deployment is local Docker; no Vercel or Cloud Functions deployment is verified.
 
 ---
 

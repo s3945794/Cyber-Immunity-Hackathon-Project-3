@@ -1,10 +1,13 @@
 import { defineConfig, configDefaults } from 'vitest/config'
 import react from '@vitejs/plugin-react'
-import { resolve } from 'path'
+import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
+  // Unit tests never consume private application configuration.
+  envDir: false,
   plugins: [react()],
   test: {
+    dir: './tests/unit',
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./tests/setup.ts'],
@@ -15,6 +18,7 @@ export default defineConfig({
     exclude: [...configDefaults.exclude, 'tests/e2e/**'],
     coverage: {
       provider: 'v8',
+      include: ['src/**/*.{ts,tsx}'],
       reporter: ['text', 'json', 'html'],
       exclude: [
         'src/components/ui/**', // shadcn components — not hand-authored
@@ -25,6 +29,6 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: { '@': resolve(__dirname, './src') },
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
 })

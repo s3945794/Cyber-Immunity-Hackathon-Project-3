@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ShieldCheck } from 'lucide-react'
@@ -21,6 +21,10 @@ import {
   type AccessRequestFormValues,
 } from '@/features/access-requests/validation'
 import type { IncidentDetail } from '@/types/incident'
+import type { AccessRequest, AccessConfig } from '@/types/access'
+import { submitAccessRequest, AccessApiError } from '@/lib/api/access'
+import { useAccessData, useOperation } from '@/features/access-requests/hooks/useAccessData'
+import { duration as durationLabel } from '@/features/access-requests/format'
 
 interface AccessRequestViewProps {
   incidentId: string
@@ -30,17 +34,17 @@ interface AccessRequestViewProps {
 interface AccessRequestFormProps {
   incident: IncidentDetail
   resource: LockedResourceKey
-  onPrepared: (request: AccessRequestFormValues) => void
+  onPrepared: (request: AccessRequest) => void
 }
 
-interface PreparedRequestSummaryProps {
+interface SubmittedRequestSummaryProps {
   incidentId: string
   resource: LockedResourceKey
-  request: AccessRequestFormValues
+  request: AccessRequest
 }
 
 const ACKNOWLEDGMENT =
-  'I understand that access requires approval from two other SOC staff members and that this demonstration does not submit a real request or grant access.'
+  'I understand that access requires approval from two other SOC staff members, verified Tide authorisation and an unexpired access period.'
 
 function incidentHref(incidentId: string): string {
   return `/incidents/${encodeURIComponent(incidentId)}`
@@ -71,15 +75,57 @@ function AccessRequestForm({ incident, resource, onPrepared }: AccessRequestForm
     },
   })
 
+  const { getToken } = useAuth()
+  const operation = useOperation()
+  const { data: configuration } = useAccessData<AccessConfig>('/access/config')
+  const [submitting, setSubmitting] = useState(false)
+  const [submissionError, setSubmissionError] = useState<string | null>(null)
+  const inFlight = useRef(false)
+  const alive = useRef(true)
+  useEffect(() => {
+    alive.current = true
+    return () => {
+      alive.current = false
+    }
+  }, [])
+  async function submit(values: AccessRequestFormValues) {
+    if (inFlight.current) return
+    inFlight.current = true
+    setSubmitting(true)
+    setSubmissionError(null)
+    const body = {
+      incidentId: incident.id,
+      resource,
+      permission: 'read',
+      reason: values.reason,
+      durationSeconds: values.duration === 'demo60' ? 60 : Number(values.duration) * 60,
+      acknowledged: values.acknowledged,
+    }
+    try {
+      const request = await submitAccessRequest({ getToken }, body, operation('create', body))
+      if (alive.current) onPrepared(request)
+    } catch (err) {
+      if (alive.current)
+        setSubmissionError(
+          err instanceof AccessApiError
+            ? err.message
+            : 'Could not submit. Your reason is retained; please retry.'
+        )
+    } finally {
+      inFlight.current = false
+      if (alive.current) setSubmitting(false)
+    }
+  }
+
   const reasonLength = useWatch({ control, name: 'reason' })?.length ?? 0
   const reasonDescriptionId = errors.reason ? 'reason-help reason-error' : 'reason-help'
 
   return (
     <form
       noValidate
-      onSubmit={handleSubmit(onPrepared)}
+      onSubmit={(event) => void handleSubmit(submit)(event)}
       className="space-y-6"
-      aria-label="Prepare emergency access request"
+      aria-label="Submit emergency access request"
     >
       <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="text-lg font-semibold">Request details</h2>
@@ -153,7 +199,10 @@ function AccessRequestForm({ incident, resource, onPrepared }: AccessRequestForm
             Requested duration
           </legend>
           <div className="mt-2 grid gap-2 sm:grid-cols-3">
-            {REQUEST_DURATIONS.map((duration) => (
+            {(configuration?.durationSeconds.includes(60)
+              ? [...REQUEST_DURATIONS, 'demo60']
+              : REQUEST_DURATIONS
+            ).map((duration) => (
               <label
                 key={duration}
                 className="flex cursor-pointer items-center gap-2 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-700 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-blue-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
@@ -164,7 +213,7 @@ function AccessRequestForm({ incident, resource, onPrepared }: AccessRequestForm
                   className="size-4 accent-blue-600"
                   {...register('duration')}
                 />
-                {duration} minutes
+                {duration === 'demo60' ? '60 seconds (local demo)' : duration + ' minutes'}
               </label>
             ))}
           </div>
@@ -193,13 +242,19 @@ function AccessRequestForm({ incident, resource, onPrepared }: AccessRequestForm
           )}
         </div>
 
+        {submissionError && (
+          <p role="alert" className="text-sm text-red-700 dark:text-red-300">
+            {submissionError}
+          </p>
+        )}
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <ReturnToIncidentLink incidentId={incident.id} label="Cancel" />
           <button
             type="submit"
+            disabled={submitting}
             className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
           >
-            Prepare request
+            {submitting ? 'Submitting…' : 'Submit request'}
           </button>
         </div>
       </section>
@@ -207,7 +262,7 @@ function AccessRequestForm({ incident, resource, onPrepared }: AccessRequestForm
   )
 }
 
-function PreparedRequestSummary({ incidentId, resource, request }: PreparedRequestSummaryProps) {
+function SubmittedRequestSummary({ incidentId, resource, request }: SubmittedRequestSummaryProps) {
   return (
     <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex items-start gap-3">
@@ -215,9 +270,9 @@ function PreparedRequestSummary({ incidentId, resource, request }: PreparedReque
           <ShieldCheck className="size-5" aria-hidden="true" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold">Request prepared</h2>
+          <h2 className="text-xl font-semibold">Request submitted</h2>
           <p className="mt-1 text-sm font-medium text-blue-800 dark:text-blue-200">
-            Demo only — this request was not submitted, saved or approved.
+            Pending — your request is saved. Evidence remains locked.
           </p>
         </div>
       </div>
@@ -240,7 +295,7 @@ function PreparedRequestSummary({ incidentId, resource, request }: PreparedReque
         <div className="grid gap-1 py-3 sm:grid-cols-3 sm:gap-4">
           <dt className="text-sm font-medium text-zinc-500">Requested duration</dt>
           <dd className="text-sm text-zinc-900 sm:col-span-2 dark:text-zinc-100">
-            {request.duration} minutes
+            {durationLabel(request.durationSeconds)}
           </dd>
         </div>
         <div className="grid gap-1 py-3 sm:grid-cols-3 sm:gap-4">
@@ -279,7 +334,13 @@ function requestContextKey({ incidentId, resourceQuery }: AccessRequestViewProps
 }
 
 export function AccessRequestView(props: AccessRequestViewProps) {
-  return <AccessRequestViewContent key={requestContextKey(props)} {...props} />
+  const { user, authenticated } = useAuth()
+  return (
+    <AccessRequestViewContent
+      key={requestContextKey(props) + user?.uid + authenticated}
+      {...props}
+    />
+  )
 }
 
 function AccessRequestViewContent({ incidentId, resourceQuery }: AccessRequestViewProps) {
@@ -288,7 +349,7 @@ function AccessRequestViewContent({ incidentId, resourceQuery }: AccessRequestVi
     resourceQuery !== null && isLockedResourceKey(resourceQuery) ? resourceQuery : null
   const resourceError =
     resourceQuery === null
-      ? 'Choose a protected resource from the incident page before preparing a request.'
+      ? 'Choose a protected resource from the incident page before submitting a request.'
       : resource === null
         ? 'The requested protected resource is not recognised.'
         : null
@@ -300,7 +361,7 @@ function AccessRequestViewContent({ incidentId, resourceQuery }: AccessRequestVi
   const [loading, setLoading] = useState(true)
   const [loadedForKey, setLoadedForKey] = useState(requestKey)
   const [reloadToken, setReloadToken] = useState(0)
-  const [preparedRequest, setPreparedRequest] = useState<AccessRequestFormValues | null>(null)
+  const [submittedRequest, setSubmittedRequest] = useState<AccessRequest | null>(null)
 
   const retry = useCallback(() => {
     setLoading(true)
@@ -398,31 +459,32 @@ function AccessRequestViewContent({ incidentId, resourceQuery }: AccessRequestVi
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Emergency access request</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Prepare a demonstration request for one protected incident resource.
+          Request temporary read-only access to one protected incident resource.
         </p>
       </div>
 
       <div className="flex gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
         <ShieldCheck className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
         <div>
-          <p className="text-sm font-medium">Demonstration only</p>
+          <p className="text-sm font-medium">Two-person approval required</p>
           <p className="mt-1 text-sm text-blue-800 dark:text-blue-200">
-            Preparing this form does not submit a request, contact approvers or grant access.
+            Submitting records a pending request. Two distinct other SOC staff members must approve;
+            evidence also requires verified Tide authority.
           </p>
         </div>
       </div>
 
-      {preparedRequest ? (
-        <PreparedRequestSummary
+      {submittedRequest ? (
+        <SubmittedRequestSummary
           incidentId={incident.id}
           resource={resource}
-          request={preparedRequest}
+          request={submittedRequest}
         />
       ) : (
         <AccessRequestForm
           incident={incident}
           resource={resource}
-          onPrepared={setPreparedRequest}
+          onPrepared={setSubmittedRequest}
         />
       )}
     </div>

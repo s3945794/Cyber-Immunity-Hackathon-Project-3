@@ -1,5 +1,13 @@
 # Testing
 
+## Result attribution
+
+Commands below describe available checks, not fresh passing results. Use the dated
+[SOC build record](SOC-POC-BUILD-STATUS.md) for owner, agent and hosted evidence.
+The owner Docker persistence pass is separate from independent peer testing.
+Live login portability, genuine Tide authority and trusted expiry remain unverified;
+evidence remains locked. No checks were rerun for this documentation review.
+
 ## Test Layers
 
 | Layer                          | Command                             | Tool                     | Firebase | Description                                                    |
@@ -10,7 +18,7 @@
 | Frontend E2E (local TideCloak) | `pnpm run test:e2e:local-tidecloak` | Playwright               | N/A      | Route protection, login, logout against a real local TideCloak |
 | All                            | `pnpm run test:all`                 | —                        | —        | Runs the unit layers (not E2E)                                 |
 
-There's no local emulator, so there's no integration-test layer against a real Firestore — all tests mock Firebase and never make real network calls.
+Unit tests use mocks/test keys; the isolated test:emulator probe separately uses real local Firestore transactions/export/import. Owner Docker HTTP, private browser and restart checks are a third evidence category. None establishes genuine Tide authority or Fabric expiry.
 
 ## Running Tests
 
@@ -121,3 +129,41 @@ vi.mocked(mockVerifyToken).mockResolvedValue(mockUser)
 // Unauthenticated request:
 vi.mocked(mockVerifyToken).mockRejectedValue(new Error('invalid'))
 ```
+
+## SOC emergency-access stage
+
+Run pnpm run test:all, pnpm run typecheck, pnpm run lint, pnpm run build,
+pnpm run validate, git diff --check and pnpm audit --audit-level=high.
+
+Vitest uses its supported runner configuration loader and envDir:false. Unit tests
+never load private application environment files; no test is skipped and no auth
+bypass is introduced. Historical frontend framework-resolution failures in restricted checkouts were
+recorded as blocked suites, not passing tests; later attributed passes in the
+triage/build status supersede those specific attempts.
+
+New backend unit tests cover validation boundaries, ownership/membership,
+concurrent duplicate scopes/decisions, self/duplicate approvals, retry idempotency,
+rejection/cancellation terminal states, wrong evidence scope, active-flag tampering,
+server-time expiry, audit consistency, CORS and no-store. These use an explicitly
+test-only memory store and verified-identity fixtures. They do not test live Tide
+or a live database. Expiry tests use tampered/reserved active metadata solely to
+exercise the fail-closed boundary; production has no authority activation path.
+
+Frontend API/state tests cover session loss, stale asynchronous metadata after
+context changes, no-store/header-only token use, reconnection/visibility rechecks
+and safe errors. Form tests are updated for real API submission, retained reason
+and double-submit prevention. No plaintext decryption is implemented or claimed
+tested while the Tide integration is blocked.
+
+pnpm run test:emulator builds the real backend and uses a new isolated demo project
+and ports, then performs actual transaction/query checks and graceful export/import
+retention. It does not reset existing demo data. On 8 October the owner reported
+successful isolated seed/export/reload; persistence is VERIFIED owner evidence.
+The current agent rerun stopped at Firebase CLI startup with EPERM before emulator
+execution. Later owner Docker graceful export/restart, workflow retention and internal Firestore GET 403 passed (21–22 October); see SOC-WEEK9-DEPLOYMENT.md. Independent setup/peer portability and live Fabric authority remain unverified. Current exit codes are in
+SOC-POC-HANDOFF.md; earlier blocked agent results do not override the owner's run.
+
+Real Fabric tests require manual user sign-in with distinct authorised accounts,
+approved policies and a compatible enclave/SDK. Direct decryption after expiry and
+database-edit resistance must be exercised live, not inferred from mock assertions.
+Use the detailed group checklist in SOC-POC-RUNBOOK.md.

@@ -1,0 +1,30 @@
+diff --git a/package.json b/package.json
+index 2ec7d50..5abdf8e 100644
+--- a/package.json
++++ b/package.json
+@@ -36 +36 @@
+-    "next": "16.3.6",
++    "next": "16.3.8",
+diff --git a/frontend/package.json b/frontend/package.json
+index f99cff8..f2c242a 100644
+--- a/frontend/package.json
++++ b/frontend/package.json
+@@ -27 +27 @@
+-    "next": "16.3.6",
++    "next": "16.3.8",
+diff --git a/pnpm-workspace.yaml b/pnpm-workspace.yaml
+index 9058d13..f28f284 100644
+--- a/pnpm-workspace.yaml
++++ b/pnpm-workspace.yaml
+@@ -16 +16 @@ overrides:
+-  sharp: '^0.35.0'
++  sharp: '0.35.5'
+@@ -27,0 +28,8 @@ overrides:
++  # Compatible security fixes; keep existing parent release lines.
++  'firebase-admin@13>@fastify/busboy': '3.2.2'
++  'postcss@8>source-map-js': '1.2.2'
++  'magicast@0.3.5>source-map-js': '1.2.2'
++  '@tailwindcss/node@4>source-map-js': '1.2.2'
++  'express@4>proxy-addr': '2.0.8'
++  'express@5>proxy-addr': '2.0.8'
++  'express-rate-limit@8>ip-address': '10.7.1'

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The backend is a **Firebase Cloud Functions v2** app using the **Express fat-lambda** pattern — a single Cloud Function (`api`) that delegates all routing to an Express app. One function to deploy, one app to test, and local development behaves exactly like production.
+The backend is an **Express API**. The approved runtime is the local Docker/native listener. A Firebase Cloud Functions v2 `api` export is retained as a hosting entry point; it is not evidence of a deployed Cloud Function. The local entry point is server.ts. Local emulation is not production storage.
 
 ## Structure
 
@@ -36,7 +36,7 @@ backend/
 | GET    | `/api/health` | No   | Health check                                                                                                                                                                 |
 | GET    | `/api/me`     | Yes  | Returns the authenticated user's `uid`, `email` and SOC `roles` from the verified TideCloak token. Demonstrates the auth middleware end to end — not an application feature. |
 
-Add new routes with the `/add-route` Claude Code skill.
+Incidents and persisted workflow routes are also current; see the complete workflow table below. /api/me is authentication-only; incidents and workflow routes additionally require recognised SOC membership.
 
 ## Authentication
 
@@ -96,8 +96,7 @@ invalid signature, expired, future-issued beyond tolerance, wrong issuer, wrong 
 ### Firebase Admin — Firestore only, no authentication use
 
 Firebase Admin (`src/lib/firebase.ts`, `adminDb`) exists solely for **Firestore** access,
-reserved for future features (emergency-access request, approval, expiry, audit history) — no
-current route uses it. Firebase Authentication is not used anywhere in this backend; there is no
+used now by AccessService/FirestoreStore for requests, decisions, cancellation, history and audit. Firebase Authentication is not used anywhere in this backend; there is no
 legacy Firebase auth module. `src/middleware/auth.ts` — the module the TideCloak auth path
 imports — does not import `lib/firebase.ts` at all, so the auth path never touches Firebase
 Admin. `lib/firebase.ts` initializes lazily: deployed Cloud Functions use Application Default
@@ -107,12 +106,11 @@ Credentials automatically; local development can optionally set
 ### Roles
 
 The four recognised SOC roles are declared in [`../tidecloak/roles.json`](../tidecloak/roles.json).
-Creating these roles in a running TideCloak realm is a separate, not-yet-done step (Phase 1B) —
-this backend code recognises them wherever they appear in a token but does not provision them.
+The owner’s existing realm has recognised staff accounts used in local workflow checks. This code recognises role claims but does not provision roles/accounts; independent fresh-realm setup remains unverified. All four roles are equal membership labels.
 
 ## Error Handling
 
-One error type — `HttpError` from `src/lib/errors.ts`. Always pass errors to `next()`; the global `errorHandler` turns them into RFC 9457 Problem Details responses and never leaks internals. The example below is illustrative of the intended pattern once a route needs Firestore — no current route uses `adminDb` yet; see `src/routes/incidents.ts` for today's actual pattern (synthetic data + role gating + explicit field allow-list):
+One error type — `HttpError` from `src/lib/errors.ts`. Always pass errors to `next()`; the global `errorHandler` turns them into RFC 9457 Problem Details responses and never leaks internals. The example below illustrates generic storage error handling; actual workflow reads/writes use access/store.ts transactions and access/service.ts invariants. Incident summaries separately remain synthetic and explicitly allow-listed:
 
 ```typescript
 router.get('/:id', async (req, res, next) => {
@@ -145,16 +143,54 @@ Available helpers: `HttpError.badRequest()`, `.unauthorized()`, `.forbidden()`, 
 pnpm --filter backend run dev
 ```
 
-There's no local emulator. Deployed Cloud Functions use Application Default Credentials for
-Firestore access automatically; if a Firestore-backed feature is being developed locally, set
-`FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` in the root `.env` to use a real Firebase project — this is
-optional and not required to run the backend otherwise (see `docs/ENV-VARS.md`).
+The watch command only recompiles; it does not start the listener or database. Use the runbook's demo:emulator and demo:backend scripts, or the approved local Docker procedure. Explicit demo mode never falls back to cloud/ADC when emulation is unavailable. Real cloud storage is a separate unapproved environment, not a setup prerequisite.
 
 ## Deployment
 
 ```bash
 pnpm --filter backend build
-npx firebase-tools deploy --only functions
+# Cloud deployment is not approved for the current local scope.
 ```
 
 The function is deployed to `australia-southeast1`. Change the region in `src/index.ts`.
+
+## Persisted emergency access workflow (implemented; Tide authority incomplete)
+
+This stage adds server-only Firestore requests and a native listener. See
+SOC-POC-RUNBOOK.md for authorised local emulator startup; the Cloud Function export
+remains intact. Owner local Docker workflow and persistence passed; no cloud deployment is claimed.
+
+| Method / path                                  | Behaviour                                                                                       |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| GET /api/access/config                         | Recognised member receives allowed durations in seconds and authorityAvailable=false            |
+| POST /api/requests                             | Strict create input; UUID Idempotency-Key required                                              |
+| GET /api/requests                              | Signed-in request history, bounded pages with optional before cursor                            |
+| GET /api/requests/:id                          | Safe request details available to recognised SOC users for review/audit                         |
+| GET /api/approvals                             | Pending requests eligible for this other, not-yet-approved user                                 |
+| POST /api/requests/:id/decisions               | Strict approve or reject-with-reason; UUID operation ID                                         |
+| POST /api/requests/:id/cancel                  | Empty body; requester-only pending cancellation; UUID operation ID                              |
+| GET /api/access/incidents/:incidentId/requests | This user's latest safe scope state for each incident resource                                  |
+| GET /api/audit                                 | Read-only application audit, bounded cursor pages                                               |
+| POST /api/requests/:id/evidence                | Strict incident/resource/read correlation; always denies until verified Tide integration exists |
+
+Create JSON fields are incidentId, resource, permission, reason, durationSeconds
+and acknowledged. Unknown requester IDs, roles, status, timestamps, approvals and
+grant fields are rejected. Resources are victimHost/exposureEvidence/suspiciousProcess;
+permission is read; reason is trimmed and has 20–500 characters; acknowledgement
+is true. Normal durations are 900/1800/3600 seconds. Optional 60 is enabled only by
+trusted demo configuration.
+
+All four recognised SOC roles are equal membership labels. The requester cannot
+review themselves; two different other users approve. Each reviewer decides once.
+Decisions and cancellation are transactional and idempotent. A single valid
+rejection closes pending state. Two approvals produce authorising with a blocked
+authority job, never active. No Tide call occurs in a retrying transaction.
+
+Responses use no-store. CORS permits configured-origin preflight before auth and
+the required Idempotency-Key header; protected operations still verify tokens.
+Malformed JSON is 400; oversized bodies are 413; conflicts are 409; unavailable
+storage/authority is 503. Provider error bodies/stacks are not logged or returned.
+
+Production FirestoreStore is injected through createApp composition. MemoryStore
+and identity mocks exist only under tests/support and unit tests. They are not
+runtime alternatives. See FIRESTORE-SCHEMA.md and SOC-TIDE-CAPABILITIES.md.
