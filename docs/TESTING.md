@@ -1,5 +1,13 @@
 # Testing
 
+## Result attribution
+
+Commands below describe available checks, not fresh passing results. Use the dated
+[SOC build record](SOC-POC-BUILD-STATUS.md) for owner, agent and hosted evidence.
+The owner Docker persistence pass is separate from independent peer testing.
+Live login portability, genuine Tide authority and trusted expiry remain unverified;
+evidence remains locked. No checks were rerun for this documentation review.
+
 ## Test Layers
 
 | Layer                          | Command                             | Tool                     | Firebase | Description                                                    |

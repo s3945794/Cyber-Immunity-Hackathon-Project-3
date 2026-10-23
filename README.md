@@ -118,3 +118,9 @@ remain pending; the deployment proposal owns the exact checklist.
 Existing Firebase files and disabled deployment workflow do not prove authorised
 hosting. The old Vercel guide is frontend-only and insufficient for this workflow.
 No automatic deployment, dependency, realm or account change is authorised here.
+
+## Presentation documentation review 23 October 2026
+
+See [the consistency review](docs/DOCUMENTATION-CONSISTENCY-REVIEW.md) for current
+publication state, implemented boundaries and historical verification attribution.
+Main still contains older setup/architecture text; use this feature-branch documentation.

@@ -54,3 +54,44 @@ No new production dependencies, authentication provider or role hierarchy was ad
 The mandatory Tide integration is incomplete. See SOC-TIDE-CAPABILITIES.md for
 verified sources, exact unknowns and the manual setup boundary. Group startup and
 testing are in SOC-POC-RUNBOOK.md. Repository guardrail files remain unchanged.
+
+## Editable presentation diagrams
+
+These describe the current local runtime, not public hosting. Application approval
+never substitutes for a Tide grant. Re-render older exported diagrams from this
+source; do not use the main-branch Vercel/optional-backend diagram.
+
+```mermaid
+flowchart TB
+  U[Browser Next.js UI] <-->|Sign in and logout| T[Existing TideCloak]
+  subgraph LOCAL[Local Docker application]
+    W[Next.js frontend localhost 3000]
+    A[Express API localhost 5001]
+    F[(Internal Firestore workflow records)]
+    W -->|Authenticated API calls| A
+    A -->|Verify Tide token and SOC membership| V[Request and review rules]
+    V -->|Backend Admin SDK only| F
+  end
+  U --> W
+  V --> B[Two distinct non-requester approvals]
+  B --> X[Authorising and authority unavailable]
+  X --> L[Protected evidence remains locked]
+```
+
+```mermaid
+sequenceDiagram
+  participant A as Requester
+  participant API as Verified Express API
+  participant DB as Server-only Firestore
+  participant B as Reviewer B
+  participant C as Reviewer C
+  A->>API: Request one field and duration
+  API->>DB: Persist validated request and audit
+  Note over A,API: Requester self-review is denied
+  B->>API: First application approval
+  API->>DB: Persist decision pending
+  C->>API: Second distinct application approval
+  API->>DB: Persist authorising state and blocked authority job
+  Note over API,DB: No verified Tide grant or trusted grant expiry
+  API-->>A: Evidence remains locked
+```

@@ -1,5 +1,14 @@
 # SOC PoC implementation handoff
 
+## Documentation consistency review 23 October 2026
+
+Current fetched feature HEAD is `40644beb72e07b67e37925680435999ce5185ad2`; feature matches its remote and is
+21 commits ahead of fetched main. Existing uncommitted capability/learning edits
+and parked cloud files are separate from published work. See
+[the review](DOCUMENTATION-CONSISTENCY-REVIEW.md). This is source/documentation
+review only; no new runtime, audit or exact-HEAD peer pass is claimed. Earlier
+dated HEADs and results below retain their original attribution.
+
 ## Braces/uuid review — 22 October 2026; no dependency change
 
 HEAD 505e081bd972baa0540d38f7a9f04f76367cb1ab. Fresh agent audit failed (exit 1,

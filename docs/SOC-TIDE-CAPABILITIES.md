@@ -1,5 +1,52 @@
 # Tide capability assessment
 
+## Implementation cross-check 23 October 2026
+
+Source review confirms the second application approval creates a blocked authority
+job, while the evidence handler always denies access. The guidance below is not
+an implemented encryption, unlocking or trusted-expiry result. No Tide research
+or runtime operation was repeated for this documentation review.
+
+## Updated live guidance review — 23 October 2026
+
+Branch feature/soc-emergency-access-poc; HEAD
+40644beb72e07b67e37925680435999ce5185ad2. Exposed tools now advertise
+Agent Pack 1.9.33. The delivery check below is historical; reconnection is no
+longer the next action. Existing connection and deployment remain unchanged.
+
+Focused live sources: tide_scenario and tide_scenario_bootstrap for
+relationship-attestation; tide_canon version-policy; custom-contracts sections
+Three Validation Methods and Example: Multi-Approver with Time Restriction.
+An expiry section query returned headings only. No broad catalogue was loaded.
+
+| Requirement                                             | Documented capability / upstream example                                                                                                                                                                                                                                                                                                       | Exact gap and smallest next evidence                                                                                                                                                                                                                                                                                                |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| One field; verified requester                           | RelationshipAttestation:1, PolicyEnabledEncryption:1 / PolicyEnabledDecryption:1, IMPLICIT PRIVATE. User subjectId is the grantee tideuserkey; assignmentId is the sole tag; roles is a JSON-array string, _tide_decryptor only for read access. Helpers: buildRelationshipPolicy, signRelationshipPolicy, encryptForRecord, decryptForRecord. | Record binding is supported, not exact field/ciphertext-version binding. A field-version record identifier is a possible design, not a verified substitution defence. Need a binding fixture; upstream reports same-record ciphertext decrypting under another policy.                                                              |
+| Two distinct eligible other SOC users                   | Built-in issuance requires tide-realm-admin approval. Generic EXPLICIT custom example uses ValidateApprovers / RequireMinWithRole.                                                                                                                                                                                                             | This does not establish distinct VUIDs, requester exclusion or four-user SOC eligibility. Need an existing supported signing rule and refusal fixtures, or Tide-operated custom signing-contract deployment (experimental/test-network only). Do not turn SOC staff into admins.                                                    |
+| Same requester, incident, field and duration            | Built-in signs subject/record/operation; custom guidance identifies VUID, not OIDC sub, as the network identity.                                                                                                                                                                                                                               | Need canonical SOC intent, both endorsements over identical bytes, exact ciphertext/policy binding and replay/substitution checks. Application hashes are not that contract.                                                                                                                                                        |
+| Verified completion before decryption                   | Admin browser signs policy; server stores bytes; network validates policy on use.                                                                                                                                                                                                                                                              | No exact backend completion verifier, trusted key provenance or idempotent activation receipt is supplied. Need verification API and valid/invalid completion fixtures before connecting authorityJobs to activation. Parsing a policy or closing a popup is insufficient.                                                          |
+| Trusted 15/30/60-minute expiry, including cached policy | Scenario explicitly says network checks policy expiry before contract execution; deleting policy rows does not revoke cached copies.                                                                                                                                                                                                           | Documented claim, not a tested SOC expiry result. Bootstrap tests omit deadline refusal. Need exact v4 construction, trusted activation/clock/skew semantics and direct new-decrypt rejection at/after signed deadline using cached ciphertext/policy without backend participation. Request/credential expiry is not grant expiry. |
+| Exact published compatible versions                     | Scenario cites ORK main c69fc4f6, revision-2 local crypto tests and later subject/refusal tests. version-policy still cites SDK/server 0.14.17 auth verification from August; Models.Policy.latestVersion avoids hardcoded format numbers.                                                                                                     | No published SDK/server/enclave/ORK combination for v4 SOC grants is supplied. Need exact packages, image digest, enclave SRI and ORK release/build/network. The guide's dev-image production description conflicts with the newer upstream changelog; do not select a runtime from this stale table.                               |
+
+**Result:** no implementation-ready full SOC route yet. Updated guidance clarifies
+built-in record access and upstream measurements, but does not close the six
+contract gates below. Built-in access needs no custom deployment; whether SOC
+signing needs one remains conditional on an existing supported rule. No flag or
+SDK upgrade alone is justified. DPoP API transport remains separate from the
+authority contract; a missing relay is not proved to prevent field crypto.
+
+**Smallest next proposal:** obtain one versioned SOC signing/v4-expiry fixture
+covering the gaps in this table and the exact compatible build set. The agent
+can review it, prepare negative tests and refine the conditional file list below.
+Only then request approval for exact SDK/enclave, role/mapper/policy changes.
+Owner private login is needed for live multi-user acceptance; Tide must deploy
+any required custom contract. No owner setting change is needed for this review.
+
+Application-verified evidence remains the separately recorded owner workflow:
+two application decisions, retained audit and locked evidence. All measurements
+above are upstream reports, not tests in this application. No crypto, policy,
+runtime, dependency or service operation occurred; no runtime tests were repeated.
+
 ## Tide update delivery check — 22 October 2026
 
 Tide team reports that its latest MCP resolves the integration blocker. This is

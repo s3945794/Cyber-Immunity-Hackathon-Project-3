@@ -2,7 +2,7 @@
 
 ## Overview
 
-The backend is a **Firebase Cloud Functions v2** app using the **Express fat-lambda** pattern — a single Cloud Function (`api`) that delegates all routing to an Express app. The Cloud Function export remains available, but the approved Week 9 runtime is the local demo listener in server.ts (native or Docker), not a deployed cloud function. Local emulation is not production storage.
+The backend is an **Express API**. The approved runtime is the local Docker/native listener. A Firebase Cloud Functions v2 `api` export is retained as a hosting entry point; it is not evidence of a deployed Cloud Function. The local entry point is server.ts. Local emulation is not production storage.
 
 ## Structure
 

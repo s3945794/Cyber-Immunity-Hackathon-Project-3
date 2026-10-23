@@ -1891,6 +1891,25 @@ https://docs.tide.org/Admin/e2ee
     guidance is unavailable. A content-index query does not renegotiate tools;
     no unverified package or connection-setting change was made. Root cause
     of update non-delivery is not confirmed. Time spent: Not recorded.
+  Updated live guidance review - 23 October 2026:
+  * Exposed tools now advertise Agent Pack 1.9.33; the connection was kept.
+    Focused relationship scenario/bootstrap and custom-contract/version-policy
+    reads document user/record/read-only checks and network policy expiry.
+    Upstream local measurements are not verification in this SOC application.
+  * Built-in grants still require realm-admin issuance. The generic quorum
+    example does not establish distinct eligible non-requester SOC signers.
+    Exact signed intent, verified completion and cached-policy deadline tests
+    remain missing. No complete published SDK/server/enclave/ORK combination
+    was established; the version table still cites August auth verification.
+  * Next action is a versioned SOC signing/v4-expiry fixture and compatible
+    build set, not another reconnect or an SDK flag alone. See the capability
+    assessment for the single detailed mapping. No runtime tests or policy
+    changes; evidence stays locked. Time spent: Not recorded.
+  Implementation cross-check - 23 October 2026:
+  * service.ts persists the second application approval as authorising with
+    unavailable authority and a blocked job; evidence() still denies access.
+    This confirms the application boundary, not a new Fabric test or a cause
+    for F8. Existing Pack 1.9.33 guidance remains the source review above.
   Impact / next action:
   * Named-user encryption building blocks are more specific now; quorum,
     verified completion and trusted deadline remain blockers. Custom-contract
